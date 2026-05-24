@@ -322,6 +322,9 @@ async function _getQwenHeadersInternal(forceNew = false): Promise<{ headers: Rec
     throw new Error('Playwright not initialized');
   }
 
+  // Capture to local const so TypeScript preserves narrowing inside closures
+  const page = activePage;
+
   // Set up route interception BEFORE navigating, so we catch the page's
   // automatic API calls that carry baxia-generated bx-headers.
   return new Promise((resolve, reject) => {
@@ -347,7 +350,7 @@ async function _getQwenHeadersInternal(forceNew = false): Promise<{ headers: Rec
       try {
         const reqHeaders = request.headers();
         if (!reqHeaders['bx-ua']) {
-          try { await route.continue(); } catch {}
+          try { await route.continue(); } catch {} // cleanup — continue may fail if request already handled
           return;
         }
 
@@ -365,27 +368,27 @@ async function _getQwenHeadersInternal(forceNew = false): Promise<{ headers: Rec
         cachedQwenHeaders = { headers: extracted, chatSessionId: '', parentMessageId: null };
         lastHeadersTime = Date.now();
 
-        await activePage!.unroute('**/*', routeHandler);
+        await page.unroute('**/*', routeHandler);
 
-        try { await route.continue(); } catch {}
+        try { await route.continue(); } catch {} // cleanup — continue may fail if request already handled
         finish(extracted);
       } catch (err) {
         console.error('[Playwright] Route handler error:', err);
-        try { await route.continue(); } catch {}
+        try { await route.continue(); } catch {} // cleanup — continue may fail if request already handled
       }
     };
 
-    activePage!.route('**/*', routeHandler).then(async () => {
+    page.route('**/*', routeHandler).then(async () => {
       console.log('[Playwright] Navigating for header extraction...');
       
-      const needsNav = forceNew || !activePage!.url().includes('chat.qwen.ai');
+      const needsNav = forceNew || !page.url().includes('chat.qwen.ai');
       if (needsNav) {
-        await activePage!.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded' });
+        await page.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded' });
       } else {
-        await activePage!.reload({ waitUntil: 'domcontentloaded' });
+        await page.reload({ waitUntil: 'domcontentloaded' });
       }
 
-      const isLoginPage = activePage!.url().includes('login') || !!(await activePage!.$('input[type="email"]'));
+      const isLoginPage = page.url().includes('login') || !!(await page.$('input[type="email"]'));
       if (isLoginPage) {
         const email = process.env.QWEN_EMAIL;
         const password = process.env.QWEN_PASSWORD;
@@ -394,7 +397,7 @@ async function _getQwenHeadersInternal(forceNew = false): Promise<{ headers: Rec
           try {
             const ok = await loginToQwen(email, password);
             if (ok) {
-              await activePage!.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded' });
+              await page.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded' });
             }
           } catch (err: any) {
             console.error('[Playwright] Auto-login failed:', err.message);

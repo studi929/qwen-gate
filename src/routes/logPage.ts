@@ -239,7 +239,9 @@ evtSource.onmessage = function(e) {
     countEl.textContent = entryCount;
     toolCountEl.textContent = totalToolCalls;
     errorCountEl.textContent = totalErrors;
-  } catch(e) {}
+  } catch(e) {
+    console.error('[LogPage] Failed to process SSE entry:', e);
+  }
 };
 
 // Load initial entries

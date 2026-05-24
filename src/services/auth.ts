@@ -86,7 +86,9 @@ function discoverSavedAccounts(): Array<{ email: string; password: string }> {
         if (data.email && data.token) {
           accounts.push({ email: data.email, password: '' });
         }
-      } catch {}
+      } catch (err) {
+        console.error(`[Auth] Failed to parse saved account file ${file}:`, err);
+      }
     }
     return accounts;
   } catch {
@@ -320,7 +322,7 @@ async function loginFreshViaBrowser(email: string, hashedPassword: string): Prom
         });
 
         let data: any = {};
-        try { data = await response.json(); } catch {}
+        try { data = await response.json(); } catch {} // expected — non-JSON responses fall back to empty data
 
         const token = data?.data?.token || data?.token || data?.data?.session_token || null;
         const refreshToken = data?.data?.refresh_token || data?.refresh_token || null;

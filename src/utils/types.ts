@@ -22,4 +22,5 @@ export type {
   ToolHandler,
   ToolContext,
   ToolRegistration,
+  ModelSpec,
 } from '../types/openai.ts';

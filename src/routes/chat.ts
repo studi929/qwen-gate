@@ -1,8 +1,9 @@
 import { Context } from 'hono';
 import { stream as honoStream } from 'hono/streaming';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { v4 as uuidv4 } from 'uuid';
 import { createQwenStream } from '../services/qwen.ts';
-import { OpenAIRequest, Message } from '../utils/types.ts';
+import { OpenAIRequest, Message, ModelSpec } from '../utils/types.ts';
 import type { FunctionToolDefinition } from '../tools/types.ts';
 import { robustParseJSON } from '../utils/json.ts';
 import { StreamingToolParser, MAX_TOOL_CALLS_PER_RESPONSE } from '../tools/parser.ts';
@@ -179,7 +180,7 @@ Never output raw JSON with text around it.
 This is the highest priority rule — incorrect format causes cascading failures.
 `;
 
-function parseQwenErrorPayload(raw: string): { message: string; status: number } | null {
+function parseQwenErrorPayload(raw: string): { message: string; status: ContentfulStatusCode } | null {
   const text = raw.trim();
   if (!text || text.startsWith('data: ')) return null;
 
@@ -225,15 +226,13 @@ export async function chatCompletions(c: Context) {
     
     const messages = body.messages || [];
 
-
-    const bodyAny = body as any;
     const logEntry = logStore.createEntry(logId, body.model, isStream);
     logEntry.clientRequest = {
       messageCount: messages.length,
       roles: messages.map(m => m.role),
-      hasTools: !!(bodyAny.tools?.length),
-      toolNames: bodyAny.tools?.map((t: any) => t.function?.name || t.name) || [],
-      tool_choice: bodyAny.tool_choice ? (typeof bodyAny.tool_choice === 'string' ? bodyAny.tool_choice : JSON.stringify(bodyAny.tool_choice)) : null,
+      hasTools: !!(body.tools?.length),
+      toolNames: body.tools?.map(t => t.function.name) || [],
+      tool_choice: body.tool_choice ? (typeof body.tool_choice === 'string' ? body.tool_choice : JSON.stringify(body.tool_choice)) : null,
       lastMessage: messages.length > 0 ? safeTruncate(messages[messages.length - 1].content, 300) : '',
     };
 
@@ -243,10 +242,10 @@ export async function chatCompletions(c: Context) {
         stream: isStream,
         messageCount: messages.length,
         roles: messages.map(m => m.role),
-        hasTools: !!(bodyAny.tools && bodyAny.tools.length),
-        toolCount: bodyAny.tools?.length || 0,
-        toolNames: bodyAny.tools?.map((t: any) => t.function?.name || t.name) || [],
-        tool_choice: bodyAny.tool_choice,
+        hasTools: !!(body.tools && body.tools.length),
+        toolCount: body.tools?.length || 0,
+        toolNames: body.tools?.map(t => t.function.name) || [],
+        tool_choice: body.tool_choice,
         lastMessagePreview: messages.length > 0 ? safeTruncate(messages[messages.length - 1].content, 300) : null,
       });
     }
@@ -255,7 +254,7 @@ export async function chatCompletions(c: Context) {
     );
     if (hasImages) {
       const modelId = (body.model as string).toLowerCase().replace(/\./g, '-').replace(/-no-thinking$/, '');
-      const specs = (modelSpecs as any)[modelId];
+      const specs = (modelSpecs as Record<string, ModelSpec>)[modelId];
       const supportsImages = specs?.modalities.includes('image');
       if (!supportsImages) {
         const original = body.model;
@@ -293,7 +292,7 @@ export async function chatCompletions(c: Context) {
         prompt += `User: ${truncated || ''}\n\n`;
       } else if (msg.role === 'assistant') {
         let assistantContent = contentStr || '';
-        const reasoning = (msg as any).reasoning_content;
+        const reasoning = msg.reasoning_content;
         if (reasoning) {
           assistantContent = `<think>\n${reasoning}\n</think>\n${assistantContent}`;
         }
@@ -342,29 +341,23 @@ export async function chatCompletions(c: Context) {
     }
 
     // Inject tools available and tool_choice if provided
-    if (bodyAny.tools && Array.isArray(bodyAny.tools) && bodyAny.tools.length > 0) {
+    if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) {
       if (toolCalling) systemPrompt += TOOL_FORMAT_INSTRUCTION;
-      // Better formatting for tools
-      const formattedTools = bodyAny.tools.map((t: any) => {
-        if (t.type === 'function') {
-          return {
-            name: t.function.name,
-            description: t.function.description || '',
-            parameters: t.function.parameters
-          };
-        }
-        return t;
-      });
+      const formattedTools = body.tools.map(t => ({
+        name: t.function.name,
+        description: t.function.description || '',
+        parameters: t.function.parameters
+      }));
       const toolsJson = JSON.stringify(formattedTools, null, 2);
       
       systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\nIMPORTANT: When calling a tool, output ONLY raw JSON with no surrounding text:\n{"name": "tool_name", "arguments": {"param": "value"}}\n\nNever wrap tool calls in fences or backticks.\n\n`;
       
-      if (bodyAny.tool_choice === 'required' || bodyAny.tool_choice === 'any') {
+      if (body.tool_choice === 'required' || body.tool_choice === 'any') {
         systemPrompt += `CRITICAL: You MUST call one of the available tools in this response. Do NOT respond with text. Do NOT answer the user directly. Always use a tool.\n\n`;
-      } else if (bodyAny.tool_choice === 'none') {
+      } else if (body.tool_choice === 'none') {
         systemPrompt += `IMPORTANT: Do NOT use any tools. Respond to the user directly.\n\n`;
-      } else if (bodyAny.tool_choice && typeof bodyAny.tool_choice === 'object' && bodyAny.tool_choice.function) {
-        const forcedTool = bodyAny.tool_choice.function.name;
+      } else if (body.tool_choice && typeof body.tool_choice === 'object' && 'function' in body.tool_choice) {
+        const forcedTool = body.tool_choice.function.name;
         systemPrompt += `CRITICAL: You MUST call the tool "${forcedTool}" in this response.\n\n`;
       }
     }
@@ -597,7 +590,7 @@ export async function chatCompletions(c: Context) {
       const upstreamError = parseQwenErrorPayload(buffer);
       if (upstreamError) {
         sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
-        return c.json({ error: { message: upstreamError.message } }, upstreamError.status as any);
+        return c.json({ error: { message: upstreamError.message } }, upstreamError.status);
       }
 
       const { text: remainingText, toolCalls: remainingToolCalls, thinking: remainingThinking } = toolParser.flush();
@@ -1329,8 +1322,8 @@ export async function chatCompletions(c: Context) {
       // before any background work competes for event loop time.
       setTimeout(() => {
         clearInterval(_cleanupInterval);
-        try { _cleanupReader.cancel(); } catch {}
-        try { _cleanupReader.releaseLock(); } catch {}
+try { _cleanupReader.cancel(); } catch {} // cleanup — cancel may fail if reader already closed
+try { _cleanupReader.releaseLock(); } catch {} // cleanup — releaseLock may fail if already released
         sessionPool.release(_cleanupChatId, _cleanupParentId, _cleanupHeaders, _cleanupEmail);
         // Persist raw vs processed output for debugging
         const entry = logStore.getRecent(1).find(e => e.id === logId);

@@ -65,6 +65,7 @@ export type ToolChoice =
   | 'auto'
   | 'none'
   | 'required'
+  | 'any'
   | { type: 'function'; function: { name: string } };
 
 // ─── Messages ──────────────────────────────────────────────────────────────────
@@ -151,7 +152,15 @@ export interface ChatCompletionChunk {
 export interface ParsedToolCall {
   id: string;
   name: string;
-  arguments: Record<string, unknown>;
+  arguments: unknown;
+}
+
+// ─── Model Specification ──────────────────────────────────────────────────────
+
+export interface ModelSpec {
+  max_context: number;
+  max_output: number;
+  modalities: string[];
 }
 
 // ─── Tool Call Result ──────────────────────────────────────────────────────────

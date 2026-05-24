@@ -158,14 +158,18 @@ class LogStore {
     if (this.systemEntries.length > MAX_SYSTEM_ENTRIES) this.systemEntries.pop();
 
     for (const listener of this.systemListeners) {
-      try { listener(entry); } catch {}
+      try { listener(entry); } catch (err) {
+        console.error('[LogStore] System log listener error:', err);
+      }
     }
 
     if (this.persistencePath) {
       try {
         const line = JSON.stringify(entry) + '\n';
         appendFileSync(this.persistencePath, line);
-      } catch {}
+      } catch (err) {
+        console.error('[LogStore] Failed to persist system log entry:', err);
+      }
     }
 
     const prefix = `[${level.toUpperCase()}]`;

@@ -56,7 +56,7 @@ export function robustParseJSON(str: string): any {
 
   try {
     return JSON.parse(trimmed);
-  } catch {}
+  } catch {} // expected — fall through to progressive repair below
 
   // Strip markdown code fences in all variants
   let sanitized = trimmed;
@@ -74,7 +74,7 @@ export function robustParseJSON(str: string): any {
 
   try {
     return JSON.parse(jsonPart);
-  } catch {}
+  } catch {} // expected — fall through to aggressive repair heuristics below
 
 
   // 0. Fix unquoted property names (e.g., arguments instead of "arguments")

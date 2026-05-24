@@ -1,6 +1,7 @@
 import { getQwenHeaders, getBasicHeaders } from './playwright.ts';
 import { v4 as uuidv4 } from 'uuid';
 import modelSpecs from '../models.json' with { type: 'json' };
+import type { ModelSpec } from '../types/openai.ts';
 import { withRetry } from '../utils/retry.ts';
 import { throttleAccount, pickAccount, getAllAccountEmails } from './auth.ts';
 import { createNetworkEntry, recordResponse, recordStreamChunk, completeEntry, errorEntry } from './networkDebug.ts';
@@ -260,7 +261,8 @@ export async function fetchQwenModels(): Promise<any[]> {
 
       const models = json.data.map((m: any) => {
         const id = (m.id as string).toLowerCase().replace(/\./g, '-');
-        const specs = (modelSpecs as any)[id] || (modelSpecs as any)[id.replace(/-no-thinking$/, '')] || { max_context: 1000000, max_output: 65536, modalities: ['text'] };
+        const typedSpecs = modelSpecs as Record<string, ModelSpec>;
+        const specs = typedSpecs[id] || typedSpecs[id.replace(/-no-thinking$/, '')] || { max_context: 1000000, max_output: 65536, modalities: ['text'] };
         return {
           id: m.id,
           object: 'model',
@@ -484,9 +486,18 @@ export async function createQwenStream(
         }
       }
 
-      const err = new Error(`Failed to fetch from Qwen: ${response.status} ${response.statusText} - ${errText}`);
-      (err as any).status = response.status;
-      throw err;
+      class UpstreamStatusError extends Error {
+        readonly status: number;
+        constructor(message: string, status: number) {
+          super(message);
+          this.name = 'UpstreamStatusError';
+          this.status = status;
+        }
+      }
+      throw new UpstreamStatusError(
+        `Failed to fetch from Qwen: ${response.status} ${response.statusText} - ${errText}`,
+        response.status
+      );
     }
 
     return { response, headers: reqHeaders };
