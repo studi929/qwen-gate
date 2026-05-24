@@ -417,6 +417,8 @@ export async function chatCompletions(c: Context) {
 
     if (!isStream) {
       const reader = stream!.getReader();
+      let nonStreamReleased = false;
+      try {
       const decoder = new TextDecoder();
 
       let currentThoughtIndex = 0;
@@ -664,6 +666,7 @@ export async function chatCompletions(c: Context) {
       }
 
       sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
+      nonStreamReleased = true;
       // Persist raw vs processed output for debugging
       const logEntry = logStore.getRecent(1).find(e => e.id === logId);
       if (logEntry) logStore.persistRequest(logEntry);
@@ -680,6 +683,13 @@ export async function chatCompletions(c: Context) {
         }],
         usage
       });
+      } finally {
+        try { reader.cancel(); } catch {}
+        try { reader.releaseLock(); } catch {}
+        if (!nonStreamReleased) {
+          sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
+        }
+      }
     }
 
     c.header('Content-Type', 'text/event-stream');
@@ -689,6 +699,8 @@ export async function chatCompletions(c: Context) {
     return honoStream(c, async (streamWriter: any) => {
       let heartbeatInterval: any;
       let totalChunks = 0;
+      let streamReader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+      let streamReleased = false;
       try {
       // Send heartbeat to prevent Cloudflare 524 timeout
       await streamWriter.write(': heartbeat\n\n');
@@ -722,7 +734,8 @@ export async function chatCompletions(c: Context) {
         choices: [makeChoice({ role: 'assistant', content: '' })]
       });
 
-      const reader = stream.getReader();
+      streamReader = stream.getReader();
+      const reader = streamReader;
       const decoder = new TextDecoder();
       
       let inThinkingState = false;
@@ -1320,6 +1333,7 @@ export async function chatCompletions(c: Context) {
 
       // 200ms delay ensures the HTTP response is fully flushed and TCP FIN is sent
       // before any background work competes for event loop time.
+      streamReleased = true;
       setTimeout(() => {
         clearInterval(_cleanupInterval);
 try { _cleanupReader.cancel(); } catch {} // cleanup — cancel may fail if reader already closed
@@ -1332,6 +1346,13 @@ try { _cleanupReader.releaseLock(); } catch {} // cleanup — releaseLock may fa
 
       } finally {
         clearInterval(heartbeatInterval);
+        if (!streamReleased && streamReader) {
+          try { streamReader.cancel(); } catch {}
+          try { streamReader.releaseLock(); } catch {}
+          sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
+          const entry = logStore.getRecent(1).find(e => e.id === logId);
+          if (entry) logStore.persistRequest(entry);
+        }
       }
     });
   } catch (err: any) {

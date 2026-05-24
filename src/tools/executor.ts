@@ -169,11 +169,11 @@ async function executeSingleTool(
     };
   }
 
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   try {
-    // Race the tool execution against a timeout
     const result = await Promise.race([
       registry.execute(tc.name, tc.arguments, context),
-      createTimeout(timeoutMs, tc.name),
+      createTimeout(timeoutMs, tc.name, (id) => { timeoutId = id; }),
     ]);
 
     return {
@@ -201,12 +201,15 @@ async function executeSingleTool(
       }),
       isError: true,
     };
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
   }
 }
 
-function createTimeout(ms: number, toolName: string): Promise<never> {
+function createTimeout(ms: number, toolName: string, onTimerCreated?: (id: ReturnType<typeof setTimeout>) => void): Promise<never> {
   return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Tool execution timed out after ${ms}ms for '${toolName}'`)), ms);
+    const id = setTimeout(() => reject(new Error(`Tool execution timed out after ${ms}ms for '${toolName}'`)), ms);
+    if (onTimerCreated) onTimerCreated(id);
   });
 }
 
