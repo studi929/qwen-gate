@@ -705,11 +705,31 @@ export async function openBrowserProfile(email: string, password?: string, optio
   try {
     context = await chromium.launchPersistentContext(profileDir, {
       headless,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      ignoreDefaultArgs: ['--enable-automation'],
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      viewport: { width: 1920, height: 1080 },
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
+        '--disable-infobars',
+        '--window-size=1920,1080',
+        '--window-position=0,0',
       ],
+    });
+
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      (window as any).chrome = { runtime: {} };
+      const origQuery = navigator.permissions.query;
+      navigator.permissions.query = (params: any) =>
+        params.name === 'notifications'
+          ? Promise.resolve({ state: Notification.permission } as PermissionStatus)
+          : origQuery.call(navigator.permissions, params);
     });
 
     const existingCookies: Cookie[] = await context.cookies();
@@ -811,6 +831,60 @@ export async function openBrowserProfile(email: string, password?: string, optio
     console.error('[BrowserProfile] Error:', err.message);
     if (context) { try { await context.close(); } catch {} }
     return 'error';
+  }
+}
+
+export async function refreshViaProfile(email: string): Promise<boolean> {
+  if (process.env.TEST_MOCK_PLAYWRIGHT) return true;
+
+  const profileDir = getProfileDir(email);
+  console.log(`[BrowserProfile] Refreshing token via persistent profile for ${email}`);
+
+  let context: any = null;
+
+  try {
+    context = await chromium.launchPersistentContext(profileDir, {
+      headless: true,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+      ],
+    });
+
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      (window as any).chrome = { runtime: {} };
+    });
+
+    const page = context.pages()[0] || await context.newPage();
+    validateQwenUrl('https://chat.qwen.ai');
+    await page.goto('https://chat.qwen.ai', { waitUntil: 'domcontentloaded', timeout: 15000 });
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await sleep(1500);
+      const cookies: Cookie[] = await context.cookies();
+      const tokenCookie = cookies.find((c: Cookie) => c.name === 'token');
+      if (tokenCookie && tokenCookie.expires && tokenCookie.expires * 1000 > Date.now()) {
+        const { saveCookies } = await import('./auth.ts');
+        await saveCookies(email, tokenCookie.value);
+        console.log(`[BrowserProfile] Token refreshed via profile for ${email}`);
+        try { await context.close(); } catch {}
+        return true;
+      }
+    }
+
+    console.log(`[BrowserProfile] No valid token found after profile navigation for ${email}`);
+    try { await context.close(); } catch {}
+    return false;
+  } catch (err: any) {
+    console.error(`[BrowserProfile] Profile refresh error for ${email}:`, err.message);
+    if (context) { try { await context.close(); } catch {} }
+    return false;
   }
 }
 

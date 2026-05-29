@@ -322,8 +322,29 @@ async function tryRefreshToken(acct: AccountEntry): Promise<boolean> {
         return true;
       }
     }
+
+    console.log(`[Auth] HTTP refresh failed for ${acct.email} — falling back to profile-based refresh`);
+    try {
+      const { refreshViaProfile } = await import('./playwright.ts');
+      const profileResult = await refreshViaProfile(acct.email);
+      if (profileResult) {
+        console.log(`[Auth] ✓ Token refreshed via profile for ${acct.email}`);
+        return true;
+      }
+    } catch (profileErr: any) {
+      console.error(`[Auth] Profile refresh fallback failed for ${acct.email}:`, profileErr.message);
+    }
+
     return false;
   } catch {
+    try {
+      const { refreshViaProfile } = await import('./playwright.ts');
+      const profileResult = await refreshViaProfile(acct.email);
+      if (profileResult) {
+        console.log(`[Auth] ✓ Token refreshed via profile for ${acct.email} (after network error)`);
+        return true;
+      }
+    } catch {}
     return false;
   } finally {
     cleanup();
@@ -945,10 +966,10 @@ export async function loadSavedCookies(email: string): Promise<AuthState | null>
  * Save token for an account to disk. Called by login.ts after manual login.
  */
 export async function saveCookies(email: string, token: string, refreshToken?: string | null, expiresAt?: number): Promise<void> {
+  const normalizedEmail = email.toLowerCase().trim();
   try {
     if (!existsSync(COOKIE_DIR)) mkdirSync(COOKIE_DIR, { recursive: true });
 
-    // Decode JWT to get the real embedded expiration — this is authoritative
     let jwtExpiresAt = expiresAt;
     if (!jwtExpiresAt) {
       const payload = decodeJwt(token);
@@ -960,17 +981,30 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
     }
 
     const data: CookieData = {
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       token,
       refreshToken: refreshToken || null,
       savedAt: Date.now(),
       expiresAt: jwtExpiresAt,
     };
 
-    writeFileSync(getCookieFilePath(email), JSON.stringify(data, null, 2), 'utf-8');
-    console.log(`[Auth] Saved token for ${email}`);
+    writeFileSync(getCookieFilePath(normalizedEmail), JSON.stringify(data, null, 2), 'utf-8');
+
+    const acct = accounts.find(a => a.email.toLowerCase().trim() === normalizedEmail);
+    if (acct && token) {
+      acct.state = {
+        token,
+        expiresAt: jwtExpiresAt,
+        refreshToken: refreshToken || acct.state?.refreshToken || null,
+      };
+      if (acct.throttledUntil > Date.now()) {
+        acct.throttledUntil = 0;
+      }
+    }
+
+    console.log(`[Auth] Saved token for ${normalizedEmail}`);
   } catch (err: any) {
-    console.error(`[Auth] Failed to save cookies for ${email}: ${err.message}`);
+    console.error(`[Auth] Failed to save cookies for ${normalizedEmail}: ${err.message}`);
   }
 }
 

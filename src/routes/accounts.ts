@@ -32,6 +32,21 @@ accountsRouter.post('/', async (c) => {
     }
 
     const result = await addAccount(email, password);
+
+    openBrowserProfile(email.toLowerCase().trim(), password, { headless: true })
+      .then(loginResult => {
+        if (loginResult === 'success') {
+          console.log(`[Accounts] Persistent browser login completed for ${email}`);
+        } else if (loginResult === 'captcha') {
+          console.log(`[Accounts] CAPTCHA detected for ${email} — click Login in dashboard to solve manually`);
+        } else if (loginResult === 'closed') {
+          console.log(`[Accounts] Browser closed by user for ${email}`);
+        }
+      })
+      .catch(err => {
+        console.error(`[Accounts] Persistent browser login error for ${email}:`, err.message);
+      });
+
     return c.json({ success: true, email: email.toLowerCase().trim(), loginSucceeded: result.loginSucceeded, loginError: result.loginError }, 201);
   } catch (err: any) {
     if (err.message.includes('already exists')) {
@@ -105,11 +120,11 @@ accountsRouter.get('/:email/autofill', async (c) => {
       return c.json({ success: true, email: account.email, message: 'Account is already authenticated.' });
     }
 
-    console.log(`[Accounts] Opening browser for manual login: ${email}`);
-    openBrowserProfile(account.email, undefined, { headless: false })
+    console.log(`[Accounts] Opening browser for login: ${email}`);
+    openBrowserProfile(account.email, account.password, { headless: false })
       .then(loginResult => {
         if (loginResult === 'success') {
-          console.log(`[Accounts] Manual login completed for ${email}`);
+          console.log(`[Accounts] Login completed for ${email}`);
         } else if (loginResult === 'captcha') {
           console.log(`[Accounts] CAPTCHA detected for ${email} — browser left open`);
         } else if (loginResult === 'closed') {
@@ -117,13 +132,13 @@ accountsRouter.get('/:email/autofill', async (c) => {
         }
       })
       .catch(err => {
-        console.error(`[Accounts] Manual login error for ${email}:`, err.message);
+        console.error(`[Accounts] Login error for ${email}:`, err.message);
       });
 
     return c.json({
       success: true,
       email: account.email,
-      message: 'Browser opened for manual login.'
+      message: 'Browser opened with credentials filled. Solve CAPTCHA or fix password if needed.'
     });
   } catch (err: any) {
     console.error('[Accounts] AUTOFILL failed:', err.message);

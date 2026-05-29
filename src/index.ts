@@ -228,15 +228,49 @@ app.get('/log/stream', (c) => {
     new ReadableStream({
       start(controller) {
         const encoder = new TextEncoder();
+        let alive = true;
+
+        const safeEnqueue = (data: string): boolean => {
+          if (!alive) return false;
+          try {
+            controller.enqueue(encoder.encode(data));
+            return true;
+          } catch {
+            alive = false;
+            return false;
+          }
+        };
+
+        // Send recent history
         for (const entry of logStore.getRecent(50)) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(entry)}\n\n`));
+          if (!safeEnqueue(`data: ${JSON.stringify(entry)}\n\n`)) break;
         }
+
+        // Heartbeat to prevent browser/proxy from dropping idle connections
+        const heartbeat = setInterval(() => {
+          if (!alive) { clearInterval(heartbeat); return; }
+          if (!safeEnqueue(': ping\n\n')) { clearInterval(heartbeat); }
+        }, 15000);
+        if (typeof (heartbeat as any).unref === 'function') (heartbeat as any).unref();
+
+        // Subscribe to new log entries
         const unsub = logStore.subscribe((entry) => {
-          try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(entry)}\n\n`)); } catch {}
+          if (!safeEnqueue(`data: ${JSON.stringify(entry)}\n\n`)) {
+            unsub();
+            clearInterval(heartbeat);
+            try { controller.close(); } catch {}
+          }
         });
+
+        // Cleanup on client disconnect
         const signal = c.req.raw?.signal;
         if (signal) {
-          signal.addEventListener('abort', () => { unsub(); try { controller.close(); } catch {} });
+          signal.addEventListener('abort', () => {
+            alive = false;
+            unsub();
+            clearInterval(heartbeat);
+            try { controller.close(); } catch {}
+          });
         }
       },
     }),
