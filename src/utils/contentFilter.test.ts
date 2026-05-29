@@ -162,3 +162,45 @@ test('stripToolEcho: does not strip user-facing answers that reference tools nat
   const result = stripToolEcho(input);
   assert.ok(result.includes('line1'), 'Should keep actual results');
 });
+
+test('S3: stripToolCallArtifacts strips "arguments":} interior fragment', () => {
+  const input = 'Hello\n","arguments":}\nWorld';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(!result.includes('"arguments"'), `Fragment not stripped: "${result}"`);
+  assert.ok(result.includes('Hello'), `Content before fragment lost: "${result}"`);
+  assert.ok(result.includes('World'), `Content after fragment lost: "${result}"`);
+});
+
+test('S4: stripToolCallArtifacts strips tool name + arguments fragment', () => {
+  const input = 'search_web_search_exa","arguments":}';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(!result.includes('"arguments"'), `Arguments fragment not stripped: "${result}"`);
+  assert.ok(!result.includes('search_web_search_exa'), `Tool name fragment not stripped: "${result}"`);
+});
+
+test('S4b: stripToolCallArtifacts strips concatenated fragments', () => {
+  const input = '","arguments":}","arguments":}';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(!result.includes('"arguments"'), `Concatenated fragments not stripped: "${result}"`);
+});
+
+test('S4c: stripToolCallArtifacts strips read tool name fragment', () => {
+  const input = 'read", "arguments": }';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(!result.includes('"arguments"'), `Arguments fragment not stripped: "${result}"`);
+});
+
+test('S6: stripToolCallArtifacts preserves normal JSON in content', () => {
+  const input = 'Here is an example: {"key": "value"} and more text.';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(result.includes('"key"'), `Normal JSON was incorrectly stripped: "${result}"`);
+  assert.ok(result.includes('"value"'), `Normal JSON value was incorrectly stripped: "${result}"`);
+  assert.ok(result.includes('Here is an example'), `Surrounding text lost: "${result}"`);
+});
+
+test('S6b: stripToolCallArtifacts preserves code block with JSON', () => {
+  const input = 'Use this config:\n\n\n{"host": "localhost", "port": 3000}\n\n\nDone.';
+  const result = stripToolCallArtifacts(input);
+  assert.ok(result.includes('"host"'), `Code block JSON stripped: "${result}"`);
+  assert.ok(result.includes('"port"'), `Code block JSON stripped: "${result}"`);
+});
