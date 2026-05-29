@@ -269,6 +269,10 @@ export function stripToolCallArtifacts(text: string): string {
   text = text.replace(/,\s*"arguments"\s*:/g, '');
   text = text.replace(/"[a-z_]+(?:\.[a-z_]+)*"(?=\s*,\s*"arguments")/g, '');
   text = text.replace(/read"\s*,\s*"arguments"\s*:\s*\}/g, '');
+  text = text.replace(/","arguments"\s*:\s*\}/g, '');
+  text = text.replace(/"[a-z_]+",\s*"arguments"\s*:\s*\}/g, '');
+  text = text.replace(/Tool Response \([a-z_]+$/gm, '');
+  text = text.replace(/\}\s*,\s*"arguments"/g, '');
 
   // ── Pass 3: Strip trailing dangling tool call tails like `}]}}}` ──
   // These can appear when a tool call array gets partially rendered.
@@ -305,10 +309,28 @@ export function stripToolCallArtifacts(text: string): string {
 export function stripStreamingDelta(delta: string): string {
   if (!delta) return '';
   let cleaned = delta;
+  
+  // Original patterns
   cleaned = cleaned.replace(/"arguments"\s*:\s*\}/g, '');
   cleaned = cleaned.replace(/,\s*"arguments"\s*:/g, '');
   cleaned = cleaned.replace(/"[a-z_]+(?:\.[a-z_]+)*"(?=\s*,\s*"arguments")/g, '');
   cleaned = cleaned.replace(/Tool Response \([a-z_]+$/gm, '');
+  
+  // Enhanced patterns for 02.md fragments: catch partial JSON from split tool calls
+  // Tool name fragments: bash", "arguments or read", "arguments
+  cleaned = cleaned.replace(/"[a-z_]+(?:\.[a-z_]+)*"\s*,\s*"(?:arguments|parameters)"?\s*:?/gi, '');
+  
+  // Partial field names: "argumen or "arguments": or "name":
+  cleaned = cleaned.replace(/"(?:argumen|argument|arguments|param|parameter|parameters|name)"?\s*:?\s*"?$/gm, '');
+  
+  // Orphaned JSON fragments: ": "bash", or name": "read"
+  cleaned = cleaned.replace(/"?\s*:\s*"[a-z_]+(?:\.[a-z_]+)*"?\s*,?\s*"?(?:arguments|parameters)?"?\s*:?$/gm, '');
+  cleaned = cleaned.replace(/^"?[a-z_]+(?:\.[a-z_]+)*"?\s*,\s*"?(?:arguments|parameters)/gm, '');
+  
+  // Stray quotes and braces that indicate partial JSON
+  cleaned = cleaned.replace(/\{\s*"(?:name|function)"?\s*:\s*"?$/gm, '');
+  cleaned = cleaned.replace(/^"?(?:name|function)"?\s*:\s*"[a-z_]+/gm, '');
+  
   return cleaned;
 }
 
