@@ -25,7 +25,7 @@
     "qg:ulw": "tsx src/cli.ts ulw"
   },
   "keywords": [],
-  "author": "Youssef Adel",
+  "author": "Youssef Adel (test)",
   "license": "ISC",
   "dependencies": {
     "@hono/node-server": "^2.0.3",

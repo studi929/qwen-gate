@@ -37,33 +37,33 @@ curl http://localhost:26405/health
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `26405` | Server port |
-| `API_KEY` | — | Optional auth key (protects `/v1/*` and `/log*` routes) |
-| `QWEN_EMAIL` | — | Qwen account email for auto-login |
-| `QWEN_PASSWORD` | — | Qwen account password for auto-login |
-| `BROWSER` | `chromium` | Playwright browser engine |
+| Variable        | Default    | Description                                             |
+| --------------- | ---------- | ------------------------------------------------------- |
+| `PORT`          | `26405`    | Server port                                             |
+| `API_KEY`       | —          | Optional auth key (protects `/v1/*` and `/log*` routes) |
+| `QWEN_EMAIL`    | —          | Qwen account email for auto-login                       |
+| `QWEN_PASSWORD` | —          | Qwen account password for auto-login                    |
+| `BROWSER`       | `chromium` | Playwright browser engine                               |
 
 ### Output Control
 
-| Variable | Default | Description |
-|---|---|---|
-| `TOOL_CALLING` | `true` | Enable tool call parsing. `false` = raw Qwen passthrough |
-| `CONTENT_FILTER` | `true` | Strip Qwen's internal `<think>`/`<thinking>` XML tags and redirect reasoning to `reasoning_content`. `false` = disable |
-| `CLEAN_OUTPUT` | `true` | Strip backtick fences before parsing. Only applies when `TOOL_CALLING=true` |
-| `STREAMING` | — | Force streaming: `true` = always stream, `false` = never stream |
-| `NON_STREAMING` | — | Alias for `STREAMING=false` |
-| `DEBUG` | — | Enable debug logging (shows raw Qwen chunks vs processed output) |
+| Variable         | Default | Description                                                                                                            |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `TOOL_CALLING`   | `true`  | Enable tool call parsing. `false` = raw Qwen passthrough                                                               |
+| `CONTENT_FILTER` | `true`  | Strip Qwen's internal `<think>`/`<thinking>` XML tags and redirect reasoning to `reasoning_content`. `false` = disable |
+| `CLEAN_OUTPUT`   | `true`  | Strip backtick fences before parsing. Only applies when `TOOL_CALLING=true`                                            |
+| `STREAMING`      | —       | Force streaming: `true` = always stream, `false` = never stream                                                        |
+| `NON_STREAMING`  | —       | Alias for `STREAMING=false`                                                                                            |
+| `DEBUG`          | —       | Enable debug logging (shows raw Qwen chunks vs processed output)                                                       |
 
 ### Session & Retry
 
-| Variable | Default | Description |
-|---|---|---|
-| `DELETE_SESSION` | `true` | Delete Qwen chat sessions after use |
-| `RETRY_MAX_ATTEMPTS` | `2` | Max retries for failed Qwen requests |
-| `RETRY_BASE_DELAY_MS` | `500` | Initial retry delay in ms |
-| `RETRY_BACKOFF_MULTIPLIER` | `0.1` | Backoff multiplier per retry |
+| Variable                   | Default | Description                          |
+| -------------------------- | ------- | ------------------------------------ |
+| `DELETE_SESSION`           | `true`  | Delete Qwen chat sessions after use  |
+| `RETRY_MAX_ATTEMPTS`       | `2`     | Max retries for failed Qwen requests |
+| `RETRY_BASE_DELAY_MS`      | `500`   | Initial retry delay in ms            |
+| `RETRY_BACKOFF_MULTIPLIER` | `0.1`   | Backoff multiplier per retry         |
 
 ## Output Format (OpenAI-Compatible)
 
@@ -97,10 +97,11 @@ All available Qwen models from chat.qwen.ai are listed at `/v1/models`. Append `
 The gateway supports OpenAI-compatible tool calling. The model is taught to produce pure JSON:
 
 ```json
-{"name": "read_file", "arguments": {"path": "src/main.ts"}}
+{ "name": "read_file", "arguments": { "path": "src/main.ts" } }
 ```
 
 **Multi-layer defense** ensures reliable output:
+
 1. System prompt teaches correct format
 2. Parser strips XML wrappers, markdown fences
 3. Content filter removes stray thinking/XML tags
@@ -111,18 +112,18 @@ The gateway supports OpenAI-compatible tool calling. The model is taught to prod
 
 ### Available Tools
 
-| Tool | Description |
-|---|---|
-| `bash` | Execute shell commands |
-| `read_file` | Read files/directories |
-| `glob` | Find files by pattern |
-| `grep` | Search file contents |
-| `edit` | Edit files (find/replace) |
-| `write_file` | Create/overwrite files |
-| `task` | Launch subagents |
-| `webfetch` | Fetch URL content |
-| `todowrite` | Manage task lists |
-| `skill` | Load specialized skills |
+| Tool         | Description               |
+| ------------ | ------------------------- |
+| `bash`       | Execute shell commands    |
+| `read_file`  | Read files/directories    |
+| `glob`       | Find files by pattern     |
+| `grep`       | Search file contents      |
+| `edit`       | Edit files (find/replace) |
+| `write_file` | Create/overwrite files    |
+| `task`       | Launch subagents          |
+| `webfetch`   | Fetch URL content         |
+| `todowrite`  | Manage task lists         |
+| `skill`      | Load specialized skills   |
 
 ## OpenCode Integration
 
@@ -158,6 +159,65 @@ Client → Qwen Gate → Playwright (bx-headers) → chat.qwen.ai API
 
 ## Docker
 
-```bash
+bash
 docker compose up --build
-```
+
+## Graphify Integration
+
+Graphify converts code, docs, and project content into a knowledge graph for semantic queries and cross-file relationship analysis. Use qwen-gate as the LLM backend for graph extraction and queries.
+
+### Setup
+
+1. **Configure environment**:
+
+   bash
+   cp .env.graphify .env
+
+2. **Set required variables**:
+
+   bash
+   OPENAI_API_KEY=your_key_here
+   GRAPHIFY_OPENAI_BASE_URL=http://localhost:3001/v1
+   GRAPHIFY_OPENAI_MODEL=qwen3.5-plus
+   GRAPHIFY_TIMEOUT=120
+
+### Usage
+
+bash
+
+# Extract knowledge graph from codebase
+
+graphify extract .
+
+# Update graph after code changes
+
+graphify update .
+
+# Query the graph
+
+graphify query "<question>"
+
+# Find relationships between files
+
+graphify path "<file-a>" "<file-b>"
+
+# Explain a concept
+
+graphify explain "<concept>"
+
+### Environment Variables
+
+| Variable                   | Required | Description                                      |
+| -------------------------- | -------- | ------------------------------------------------ |
+| `OPENAI_API_KEY`           | Yes      | API key for authentication                       |
+| `GRAPHIFY_OPENAI_BASE_URL` | Yes      | qwen-gate endpoint (http://localhost:26405/v1)   |
+| `GRAPHIFY_OPENAI_MODEL`    | No       | Qwen model for embeddings (default: qwen3.7-max) |
+| `GRAPHIFY_TIMEOUT`         | No       | Request timeout in milliseconds (default: 30000) |
+
+### Output
+
+Graph data is stored in `graphify-out/`:
+
+- `graph.json` - Full knowledge graph
+- `GRAPH_REPORT.md` - Architecture overview
+- `wiki/index.md` - Navigation index (if generated)```
