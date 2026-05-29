@@ -112,14 +112,35 @@ export async function rateLimitMiddleware(
   return null;
 }
 
-// Cleanup old buckets periodically (optional, prevents memory growth)
+// Cleanup old buckets periodically (prevents memory growth from stale entries)
 export function cleanupIdleBuckets(maxIdleMinutes: number = 60): void {
   const now = Date.now();
   const maxIdleMs = maxIdleMinutes * 60 * 1000;
-  
+
   for (const [key, bucket] of buckets.entries()) {
     if (now - bucket.lastRefill > maxIdleMs) {
       buckets.delete(key);
     }
+  }
+}
+
+// Auto-cleanup: prune idle buckets every 15 minutes to prevent unbounded Map growth.
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startAutoCleanup(): void {
+  if (cleanupTimer) return;
+  cleanupTimer = setInterval(() => {
+    cleanupIdleBuckets(60);
+  }, CLEANUP_INTERVAL_MS);
+  if (cleanupTimer && typeof cleanupTimer.unref === 'function') {
+    cleanupTimer.unref(); // Don't prevent process exit
+  }
+}
+
+export function stopAutoCleanup(): void {
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+    cleanupTimer = null;
   }
 }

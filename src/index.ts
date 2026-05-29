@@ -7,16 +7,48 @@ import { fetchQwenModels, disableNativeTools, disablePersonalization } from './s
 import * as dotenv from 'dotenv';
 import { initPlaywright, BrowserType, getQwenHeaders, closePlaywright, getActivePage } from './services/playwright.ts';
 import { initAuth, getAccountStats, getAccountCount, getAvailableCount, reloadAccounts } from './services/auth.ts';
+import { accountsRouter } from './routes/accounts.ts';
 import { sessionPool } from './services/sessionPool.ts';
 import { networkInterfaces } from 'os';
 import { resolve } from 'path';
+import crypto from 'crypto';
 import { logStore } from './services/logStore.ts';
 import { logHtml as logHtmlTemplate } from './routes/logPage.ts';
+import { startAutoCleanup, stopAutoCleanup } from './middleware/rateLimit.ts';
+
+// Compare two strings in timing-constant fashion to prevent timing attacks on API key auth.
+// Length mismatch is intentionally NOT early-returned to avoid leaking length information.
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  // Pad the shorter buffer so both are equal length for timingSafeEqual
+  const maxLen = Math.max(bufA.length, bufB.length);
+  const padA = Buffer.alloc(maxLen, 0);
+  const padB = Buffer.alloc(maxLen, 0);
+  bufA.copy(padA, maxLen - bufA.length);
+  bufB.copy(padB, maxLen - bufB.length);
+  try {
+    return crypto.timingSafeEqual(padA, padB);
+  } catch {
+    return false;
+  }
+}
+
+// Escape a string for safe embedding in a JS single-quoted string literal
+function escapeJSString(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
 
 // Inject API_KEY into dashboard HTML for client-side auth
 const logHtml = logHtmlTemplate.replace(
   '<script>',
-  `<script>\nwindow.API_KEY = '${process.env.API_KEY || ''}';`
+  `<script>\nwindow.API_KEY = '${escapeJSString(process.env.API_KEY || '')}';`
 );
 import { stream as honoStream } from 'hono/streaming';
 import { debugNetworkApp } from './routes/debugNetwork.ts';
@@ -61,6 +93,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   try { await closePlaywright(); } catch (err: any) {
     console.error('[Shutdown] Playwright close error:', err.message);
   }
+  stopAutoCleanup();
   process.exit(0);
 }
 
@@ -95,7 +128,7 @@ app.use('/log*', async (c, next) => {
   // SSE endpoint: EventSource cannot send custom headers, accept token as query param
   if (c.req.path === '/log/stream') {
     const token = c.req.query('token');
-    if (token === apiKey) return await next();
+    if (token && safeCompare(token, apiKey)) return await next();
     return c.json({ error: 'Unauthorized' }, 401);
   }
   if (c.req.path === '/log') return await next();
@@ -106,12 +139,14 @@ app.get('/dashboard', async (c) => {
   const apiKey = process.env.API_KEY;
   if (apiKey) {
     const authHeader = c.req.header('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== apiKey) {
+    if (!authHeader || !authHeader.startsWith('Bearer ') || !safeCompare(authHeader.slice(7), apiKey)) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
   }
   return c.html(logHtml);
 });
+
+app.get('/', (c) => c.redirect('/log'));
 
 // Basic health check
 app.get('/health', (c) => {
@@ -141,7 +176,7 @@ app.post('/admin/accounts/reload', async (c) => {
   const apiKey = process.env.API_KEY;
   if (apiKey) {
     const authHeader = c.req.header('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== apiKey) {
+    if (!authHeader || !authHeader.startsWith('Bearer ') || !safeCompare(authHeader.slice(7), apiKey)) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
   }
@@ -159,7 +194,7 @@ app.get('/system/logs', (c) => {
   const apiKey = process.env.API_KEY;
   if (apiKey) {
     const authHeader = c.req.header('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== apiKey) {
+    if (!authHeader || !authHeader.startsWith('Bearer ') || !safeCompare(authHeader.slice(7), apiKey)) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
   }
@@ -173,16 +208,15 @@ app.get('/metrics/model-health', (c) => {
   const apiKey = process.env.API_KEY;
   if (apiKey) {
     const authHeader = c.req.header('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ') || authHeader.slice(7) !== apiKey) {
+    if (!authHeader || !authHeader.startsWith('Bearer ') || !safeCompare(authHeader.slice(7), apiKey)) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
   }
   return c.json(logStore.getAllModelHealth());
 });
 
-// Log viewer (legacy) — redirects to dashboard
 app.get('/log', (c) => {
-  return c.redirect('/dashboard');
+  return c.html(logHtml);
 });
 
 app.get('/log/json', (c) => {
@@ -217,6 +251,24 @@ app.get('/log/stream', (c) => {
 });
 
 app.route('/debug/network', debugNetworkApp);
+
+// Account CRUD API — protected by bearer auth
+app.use('/api/accounts*', async (c, next) => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return await next();
+  return bearerAuth({ token: apiKey })(c, next);
+});
+app.route('/api/accounts', accountsRouter);
+
+// 10MB request body limit on all chat endpoints — MUST be registered before the route handler
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+app.use('/v1/chat/completions', async (c, next) => {
+  const contentLength = Number(c.req.header('content-length') || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return c.json({ error: { message: 'Request body too large' } }, 413);
+  }
+  await next();
+});
 
 // OpenAI compatible routes
 app.post('/v1/chat/completions', chatCompletions);
@@ -262,6 +314,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     } catch (err: any) {
       console.warn('[Startup] initAuth failed:', err.message);
     }
+
+    startAutoCleanup();
 
     console.log('[Startup] Pre-warming headers...');
     try {
