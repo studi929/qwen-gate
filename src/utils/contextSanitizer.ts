@@ -181,8 +181,14 @@ export function sanitizeConversation(
 
     if (msg.role === 'tool') {
       const toolText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-      if (toolText.length > 50000) {
-        cleaned.push({ ...msg, content: toolText.slice(0, 50000) + '\n[truncated]' });
+      // Bug 4 fix: Use byte-accurate truncation to match chat.ts truncateToolResult
+      const maxBytes = 50000;
+      const encoded = new TextEncoder().encode(toolText);
+      if (encoded.length > maxBytes) {
+        // Find safe boundary (don't split multi-byte chars)
+        const safeBytes = encoded.subarray(0, maxBytes);
+        const truncated = new TextDecoder('utf-8', { fatal: false }).decode(safeBytes);
+        cleaned.push({ ...msg, content: truncated + '\n[truncated]' });
       } else {
         cleaned.push(msg);
       }

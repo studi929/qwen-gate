@@ -16,6 +16,7 @@ import { logStore } from '../services/logStore.ts';
 import { modelRouter } from '../services/modelRouter.ts';
 import { pickAccount, getAccountStats } from '../services/auth.ts';
 import { rateLimitMiddleware } from '../middleware/rateLimit.ts';
+import { checkContextWindow, estimateTokens } from '../utils/tokenEstimator.ts';
 
 // Debug logging — enabled via DEBUG=true env var
 function logDebug(label: string, data: any) {
@@ -333,7 +334,21 @@ export async function chatCompletions(c: Context) {
       }
     }
 
-    // Extract the prompt
+    const modelId = (body.model as string).toLowerCase().replace(/\./g, '-').replace(/-no-thinking$/, '');
+    const specs = (modelSpecs as Record<string, ModelSpec>)[modelId];
+    const maxContext = specs?.max_context || 131072;
+    const maxOutput = specs?.max_output || 8192;
+
+    const formattedMessages = messages.map(m => ({ role: m.role, content: Array.isArray(m.content) ? m.content.map((c: any) => c.text || JSON.stringify(c)).join('\n') : String(m.content ?? '') }));
+    const estimatedTokens = estimateTokens(formattedMessages.map(m => m.content).join('\n'));
+    const contextCheck = checkContextWindow(estimatedTokens, maxContext, maxOutput, body.model as string, formattedMessages);
+
+    if (!contextCheck.ok) {
+      return c.json({ error: { message: contextCheck.message, type: 'invalid_request_error', param: 'messages', code: 'context_window_exceeded' } }, 400);
+    }
+
+    const availableTokens = contextCheck.availableTokens;
+
     let prompt = '';
     let systemPrompt = '';
     
@@ -356,8 +371,11 @@ export async function chatCompletions(c: Context) {
           .replace(/<(?:think|thinking|thought|tool_call|tool_use|function_call|tool)\b[^>]*>[\s\S]*?<\/(?:think|thinking|thought|tool_call|tool_use|function_call|tool)>/gi, '')
           .replace(/^(?:System|Assistant|User|Human):\s*/gim, '')
           .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '');
-        const truncated = sanitized.length > 32768
-          ? sanitized.substring(0, 32768) + '\n\n[TRUNCATED: input exceeded 32768 characters]'
+        // Bug 2 fix: Token-aware truncation instead of hard 32,768 char limit.
+        // Use conservative 3.0 chars/token ratio to stay within available tokens.
+        const charLimit = Math.floor(availableTokens * 3.0);
+        const truncated = sanitized.length > charLimit
+          ? sanitized.substring(0, charLimit) + `\n\n[TRUNCATED: input exceeded ${charLimit} characters (model: ${body.model}, available tokens: ${availableTokens})]`
           : sanitized;
         prompt += `User: ${truncated || ''}\n\n`;
       } else if (msg.role === 'assistant') {

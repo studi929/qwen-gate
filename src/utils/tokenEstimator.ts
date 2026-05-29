@@ -10,6 +10,11 @@
  * IMPORTANT: These are estimates. Actual token counts come from Qwen's API
  * response (chunk.usage.input_tokens / output_tokens). These heuristics
  * are only used BEFORE Qwen responds and as fallback.
+ *
+ * NOTE ON ACCURACY: Heuristic ratios may drift from actual Qwen tokenization.
+ * Always prefer API-reported usage.input_tokens when available.
+ * To calibrate: compare estimateTokens() output against usage.input_tokens
+ * for representative prompts; adjust RATIO_* constants if error > 15%.
  */
 
 // ─── Token Estimation ─────────────────────────────────────────────────────────
@@ -62,7 +67,10 @@ function isCodeChar(char: string): boolean {
  * different char-to-token ratios for each. Significantly more accurate
  * than a flat `length / N` for mixed-language or code-heavy inputs.
  */
-export function estimateTokens(text: string): number {
+export function estimateTokens(
+  text: string,
+  options?: { tools?: Array<{function?: {name: string; description: string; parameters?: object}}>; messageCount?: number }
+): number {
   if (!text) return 0;
 
   let cjkChars = 0;
@@ -83,7 +91,26 @@ export function estimateTokens(text: string): number {
   const codeTokens = Math.ceil(codeChars / RATIO_CODE);
   const proseTokens = Math.ceil(proseChars / RATIO_PROSE);
 
-  return cjkTokens + codeTokens + proseTokens;
+  let total = cjkTokens + codeTokens + proseTokens;
+
+  if (options?.tools?.length) {
+    for (const tool of options.tools) {
+      total += 10;
+      const fn = tool.function;
+      if (fn) {
+        total += estimateTokens(fn.name + ' ' + (fn.description || ''));
+        if (fn.parameters) {
+          total += estimateTokens(JSON.stringify(fn.parameters));
+        }
+      }
+    }
+  }
+
+  if (options?.messageCount) {
+    total += options.messageCount * 5;
+  }
+
+  return total;
 }
 
 /**
@@ -91,9 +118,16 @@ export function estimateTokens(text: string): number {
  * Used when performance matters more than precision.
  * Falls back to the original `length / 3.5` heuristic.
  */
-export function estimateTokensFast(text: string): number {
+export function estimateTokensFast(
+  text: string,
+  options?: { tools?: unknown[] }
+): number {
   if (!text) return 0;
-  return Math.ceil(text.length / RATIO_DEFAULT);
+  let estimate = Math.ceil(text.length / RATIO_DEFAULT);
+  if (options?.tools?.length) {
+    estimate += options.tools.length * 15;
+  }
+  return estimate;
 }
 
 // ─── Overhead Tracking ────────────────────────────────────────────────────────
@@ -145,49 +179,53 @@ export interface ContextWindowCheck {
  * @param maxContext - Model's max context window (from models.json)
  * @param maxOutput - Model's max output tokens
  * @param modelName - Model name for error messaging
+ * @param messages - Optional messages array for per-message overhead (5 tokens each)
  */
 export function checkContextWindow(
   estimatedTokens: number,
   maxContext: number,
   maxOutput: number,
   modelName: string,
+  messages?: Array<{ role: string; content: string }>,
 ): ContextWindowCheck {
   const availableTokens = maxContext - maxOutput;
+  const messageOverhead = messages ? messages.length * 5 : 0;
+  const totalEstimatedTokens = estimatedTokens + messageOverhead;
 
-  if (estimatedTokens > maxContext) {
+  if (totalEstimatedTokens > maxContext) {
     return {
       ok: false,
-      estimatedTotalTokens: estimatedTokens,
+      estimatedTotalTokens: totalEstimatedTokens,
       maxContext,
       maxOutput,
       availableTokens,
       message:
         `Context window exceeded for model "${modelName}": ` +
-        `estimated ${estimatedTokens} prompt tokens exceeds ` +
+        `estimated ${totalEstimatedTokens} prompt tokens (including ${messageOverhead} message overhead) exceeds ` +
         `the model's ${maxContext} context window. ` +
         `Reduce your prompt length or switch to a model with a larger context window.`,
     };
   }
 
-  if (estimatedTokens > availableTokens) {
+  if (totalEstimatedTokens > availableTokens) {
     return {
       ok: false,
-      estimatedTotalTokens: estimatedTokens,
+      estimatedTotalTokens: totalEstimatedTokens,
       maxContext,
       maxOutput,
       availableTokens,
       message:
         `Prompt too long for model "${modelName}": ` +
-        `estimated ${estimatedTokens} prompt tokens leaves ` +
-        `only ${maxContext - estimatedTokens} tokens for the response, ` +
-        `but the model needs at least ${maxOutput} for max output. ` +
+        `estimated ${totalEstimatedTokens} prompt tokens (including ${messageOverhead} message overhead) leaves ` +
+        `only ${maxContext - totalEstimatedTokens} tokens for the response, ` +
+        `but max output is limited to ${maxOutput}, leaving ${maxContext - totalEstimatedTokens} tokens for generation. ` +
         `Reduce your prompt or increase available context.`,
     };
   }
 
   return {
     ok: true,
-    estimatedTotalTokens: estimatedTokens,
+    estimatedTotalTokens: totalEstimatedTokens,
     maxContext,
     maxOutput,
     availableTokens,
