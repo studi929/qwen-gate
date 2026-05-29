@@ -349,7 +349,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     serverInstance = serve({
       fetch: app.fetch,
-      port
+      port,
+      serverOptions: {
+        requestTimeout: 600_000,      // 10 minutes — SSE streams can run long
+        keepAliveTimeout: 75_000,     // 75 seconds
+        headersTimeout: 65_000,       // 65 seconds (must be < requestTimeout)
+      },
     });
     logStore.log('info', 'server', 'Server started on port ' + port);
   }).catch((err: any) => {
