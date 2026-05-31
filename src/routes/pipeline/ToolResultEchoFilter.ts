@@ -1,11 +1,15 @@
 /*
  * File: ToolResultEchoFilter.ts
- * Two-stage SimHash + Jaccard filter for detecting tool result echoes in LLM output.
+ * Character n-gram (shingle) Jaccard filter for detecting tool result echoes in LLM output.
  *
  * Algorithm:
- * - Stage 1 (SimHash): Fast gate using 64-bit hash + hamming distance ≤3
- * - Stage 2 (Jaccard): Exact tiebreaker on hash collisions, threshold 0.7
+ * - Character 5-grams (shingles) for robust near-duplicate detection
+ * - Jaccard similarity on shingle sets, threshold 0.7
  * - Ring buffer: 100 lines max to bound memory
+ *
+ * Character shingles are more reliable than SimHash + word tokens for
+ * short text lines because they capture substring overlap directly and
+ * don't depend on hash locality properties.
  *
  * Usage:
  *   const filter = new ToolResultEchoFilter(toolResultContents);
@@ -13,19 +17,13 @@
  *   const cleanText = filter.filterText(fullText);
  */
 
-const SIMHASH_BITS = 64;
-const HAMMING_THRESHOLD = 3;
+const SHINGLE_SIZE = 5;
 const JACCARD_THRESHOLD = 0.7;
 const RING_BUFFER_SIZE = 100;
 const MIN_LINE_LENGTH = 10;
 
-interface Fingerprint {
-  simhash: bigint;
-  tokens: Set<string>;
-}
-
 export class ToolResultEchoFilter {
-  private fingerprints: Fingerprint[] = [];
+  private fingerprints: Set<string>[] = [];
 
   constructor(toolResults: string[]) {
     for (const result of toolResults) {
@@ -33,12 +31,10 @@ export class ToolResultEchoFilter {
       for (const line of lines) {
         const normalized = this.normalizeLine(line);
         if (normalized.length < MIN_LINE_LENGTH) continue;
-        
-        const simhash = this.computeSimHash(normalized);
-        const tokens = this.tokenize(normalized);
-        
-        this.fingerprints.push({ simhash, tokens });
-        
+
+        const shingles = this.computeShingles(normalized);
+        this.fingerprints.push(shingles);
+
         // Ring buffer eviction
         if (this.fingerprints.length > RING_BUFFER_SIZE) {
           this.fingerprints.shift();
@@ -54,20 +50,28 @@ export class ToolResultEchoFilter {
     const normalized = this.normalizeLine(line);
     if (normalized.length < MIN_LINE_LENGTH) return false;
 
-    const simhash = this.computeSimHash(normalized);
-    const tokens = this.tokenize(normalized);
+    const shingles = this.computeShingles(normalized);
 
     for (const fp of this.fingerprints) {
-      // Stage 1: SimHash gate (fast)
-      const distance = this.hammingDistance(simhash, fp.simhash);
-      if (distance > HAMMING_THRESHOLD) continue;
-
-      // Stage 2: Jaccard similarity (exact, only on collisions)
-      const similarity = this.jaccardSimilarity(tokens, fp.tokens);
-      if (similarity >= JACCARD_THRESHOLD) return true;
+      const containment = this.shingleContainment(shingles, fp);
+      if (containment >= JACCARD_THRESHOLD) return true;
     }
 
     return false;
+  }
+
+  /**
+   * Return the fraction of lines that are echoes (0.0 to 1.0).
+   * Used to detect heavy echo activity that warrants correction prompts.
+   */
+  getEchoRatio(text: string): number {
+    const lines = text.split('\n').filter(l => l.trim().length > 0);
+    if (lines.length === 0) return 0.0;
+    let echoCount = 0;
+    for (const line of lines) {
+      if (this.isEcho(line)) echoCount++;
+    }
+    return echoCount / lines.length;
   }
 
   /**
@@ -76,8 +80,7 @@ export class ToolResultEchoFilter {
   filterText(text: string): string {
     const lines = text.split('\n');
     const filtered = lines.filter(line => !this.isEcho(line));
-    
-    // Clean up multiple consecutive blank lines
+
     const cleaned: string[] = [];
     let prevBlank = false;
     for (const line of filtered) {
@@ -86,7 +89,7 @@ export class ToolResultEchoFilter {
       cleaned.push(line);
       prevBlank = isBlank;
     }
-    
+
     return cleaned.join('\n');
   }
 
@@ -98,70 +101,49 @@ export class ToolResultEchoFilter {
   }
 
   /**
-   * Tokenize normalized line into word set.
+   * Compute character n-gram (shingle) set from normalized text.
+   * Shingles capture substring overlap, making them robust for
+   * near-duplicate detection of short text lines.
    */
-  private tokenize(normalized: string): Set<string> {
-    return new Set(normalized.split(' ').filter(w => w.length > 0));
+  private computeShingles(text: string): Set<string> {
+    const shingles = new Set<string>();
+    if (text.length < SHINGLE_SIZE) {
+      // For very short text (>= MIN_LINE_LENGTH but < SHINGLE_SIZE),
+      // use the whole text as a single shingle
+      shingles.add(text);
+      return shingles;
+    }
+
+    for (let i = 0; i <= text.length - SHINGLE_SIZE; i++) {
+      shingles.add(text.substring(i, i + SHINGLE_SIZE));
+    }
+
+    return shingles;
   }
 
   /**
-   * Compute 64-bit SimHash for a string.
-   * Based on Google's SimHash algorithm for near-duplicate detection.
+   * Compute containment of query shingle set within fingerprint set.
+   * Returns |query ∩ fingerprint| / |query| — the fraction of the query
+   * line's shingles that appear in the fingerprint.
+   *
+   * This is preferred over symmetric Jaccard for echo detection because
+   * the query (echo line) is often shorter than the reference (tool result
+   * line). Containment correctly handles substring overlap regardless of
+   * relative lengths.
    */
-  private computeSimHash(text: string): bigint {
-    const tokens = text.split(' ').filter(w => w.length > 0);
-    if (tokens.length === 0) return 0n;
+  private shingleContainment(query: Set<string>, fingerprint: Set<string>): number {
+    if (query.size === 0) return 0.0;
 
-    // Initialize bit vector
-    const vector = new Array<number>(SIMHASH_BITS).fill(0);
-
-    // Weight each token's hash contribution
-    for (const token of tokens) {
-      const hash = this.hashToken(token);
-      for (let i = 0; i < SIMHASH_BITS; i++) {
-        const bit = (hash >> BigInt(i)) & 1n;
-        vector[i] += bit === 1n ? 1 : -1;
-      }
+    let intersection = 0;
+    for (const shingle of query) {
+      if (fingerprint.has(shingle)) intersection++;
     }
 
-    // Convert vector to fingerprint (sign of each dimension)
-    let fingerprint = 0n;
-    for (let i = 0; i < SIMHASH_BITS; i++) {
-      if (vector[i] > 0) {
-        fingerprint |= 1n << BigInt(i);
-      }
-    }
-
-    return fingerprint;
+    return intersection / query.size;
   }
 
   /**
-   * Simple hash function for a token (FNV-1a variant).
-   */
-  private hashToken(token: string): bigint {
-    let hash = 14695981039346656037n; // FNV offset basis
-    for (let i = 0; i < token.length; i++) {
-      hash ^= BigInt(token.charCodeAt(i));
-      hash = (hash * 1099511628211n) & ((1n << BigInt(SIMHASH_BITS)) - 1n); // FNV prime, mask to 64 bits
-    }
-    return hash;
-  }
-
-  /**
-   * Compute hamming distance between two 64-bit hashes.
-   */
-  private hammingDistance(a: bigint, b: bigint): number {
-    let xor = a ^ b;
-    let distance = 0;
-    while (xor !== 0n) {
-      distance += Number(xor & 1n);
-      xor >>= 1n;
-    }
-    return distance;
-  }
-
-  /**
-   * Compute Jaccard similarity between two token sets.
+   * Compute Jaccard similarity between two shingle sets.
    * Returns value between 0 (disjoint) and 1 (identical).
    */
   private jaccardSimilarity(a: Set<string>, b: Set<string>): number {
@@ -169,8 +151,8 @@ export class ToolResultEchoFilter {
     if (a.size === 0 || b.size === 0) return 0.0;
 
     let intersection = 0;
-    for (const token of a) {
-      if (b.has(token)) intersection++;
+    for (const shingle of a) {
+      if (b.has(shingle)) intersection++;
     }
 
     const union = a.size + b.size - intersection;

@@ -109,10 +109,11 @@ export class StreamingToolParser {
       }
 
       const jsonStr = after.substring(0, jsonEnd);
+      const normalized = this.normalizeJsonNewlines(jsonStr);
 
       if (this.looksLikeToolCall(jsonStr)) {
         try {
-          const parsed = robustParseJSON(jsonStr);
+          const parsed = robustParseJSON(normalized);
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
             const tc = this.parseToolCall(parsed);
             if (tc) {
@@ -212,14 +213,68 @@ export class StreamingToolParser {
 
   /**
    * Quick heuristic: does this JSON string look like it contains a tool call?
+   * Matches field names with optional whitespace/newlines between the quote
+   * and the field name — handles streaming chunks where newlines split
+   * inside JSON keys like "\narguments" or "param\neters".
    */
   private looksLikeToolCall(jsonStr: string): boolean {
-    return jsonStr.includes('"name"') && (
-      jsonStr.includes('"arguments"') ||
-      jsonStr.includes('"function"') ||
-      // Some models use "parameters" instead of "arguments"
-      jsonStr.includes('"parameters"')
+    // Collapse whitespace for key-name matching. This normalizes embedded
+    // newlines inside keys (e.g., "\narguments" → " arguments") while
+    // preserving the structure for full parsing later.
+    const norm = jsonStr.replace(/\s+/g, '');
+    return norm.includes('"name"') && (
+      norm.includes('"arguments"') ||
+      norm.includes('"function"') ||
+      norm.includes('"parameters"')
     );
+  }
+
+  /**
+   * Normalize literal newlines/tabs/carriage-returns inside JSON string
+   * values to their escaped forms (\\n / \\t / \\r).
+   *
+   * Streaming chunks may split newlines inside JSON strings. JSON.parse
+   * rejects literal control characters inside strings, so we pre-escape
+   * them before any JSON parsing attempt.
+   *
+   * Correctly handles:
+   * - \" escape sequences (backslash preserves the string-open state)
+   * - \\\\ escape sequences (backslash-backslash)
+   * - Literal \\n/\\r/\\t bytes inside strings
+   */
+  private normalizeJsonNewlines(raw: string): string {
+    let result = '';
+    let inString = false;
+
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i];
+
+      if (inString) {
+        if (c === '\\') {
+          // Skip the next character — it's part of an escape sequence
+          result += c;
+          i++;
+          if (i < raw.length) result += raw[i];
+          continue;
+        }
+        if (c === '"') {
+          inString = false;
+          result += c;
+          continue;
+        }
+        // Strip literal control characters invalid in JSON strings.
+        // Streaming fragments can split newlines inside string literals.
+        // Stripping (rather than escaping) ensures parsed keys like
+        // "\nname" correctly resolve to "name" instead of "\\nname".
+        if (c === '\n' || c === '\r' || c === '\t') { continue; }
+        result += c;
+      } else {
+        if (c === '"') inString = true;
+        result += c;
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -386,9 +441,10 @@ export class StreamingToolParser {
         }
 
         const jsonStr = after.substring(0, jsonEnd);
+        const normalized = this.normalizeJsonNewlines(jsonStr);
         if (this.looksLikeToolCall(jsonStr)) {
           try {
-            const parsed = robustParseJSON(jsonStr);
+            const parsed = robustParseJSON(normalized);
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
               const tc = this.parseToolCall(parsed);
               if (tc) {

@@ -8,7 +8,7 @@ import { createQwenStream } from '../services/qwen.ts';
 import { OpenAIRequest, Message, ModelSpec } from '../utils/types.ts';
 import type { FunctionToolDefinition } from '../tools/types.ts';
 import { StreamingToolParser } from '../tools/parser.ts';
-import { validateSingleToolCall } from '../tools/guard.ts';
+import { validateSingleToolCall, detectParallelToolLoop } from '../tools/guard.ts';
 import { filterContent, stripToolCallArtifacts, stripStreamingDelta } from '../utils/contentFilter.ts';
 import { StreamingContentFilter } from './pipeline/StreamingContentFilter.ts';
 import { ToolResultEchoFilter } from './pipeline/ToolResultEchoFilter.ts';
@@ -198,9 +198,63 @@ export function truncateToolResult(
   return `${head}\n... [truncated ${content.length - headBytes - tailBytes} chars] ...\n${tail}`;
 }
 
+/**
+ * Sliding-window tool spam guard: detects when the same (tool, args) pair
+ * is called repeatedly within a recent window. Checks BEFORE the call is
+ * dispatched — the guard catches the loop pattern on the second repeat,
+ * before any cost accrues.
+ */
+class ToolSpamGuard {
+  private window: number;
+  private threshold: number;
+  private history: Array<{ key: string }>;
+
+  constructor(window = 8, threshold = 2) {
+    this.window = window;
+    this.threshold = threshold;
+    this.history = [];
+  }
+
+  /** Canonicalize args for deterministic hashing (sorted keys). */
+  private canonicalize(args: any): any {
+    if (typeof args !== 'object' || args === null) return args;
+    if (Array.isArray(args)) return args.map(a => this.canonicalize(a));
+    return Object.keys(args).sort().reduce((acc: any, key) => {
+      acc[key] = this.canonicalize(args[key]);
+      return acc;
+    }, {});
+  }
+
+  /** Check a (tool, args) pair. Returns ok=false + correction prompt if it's a repeat. */
+  check(tool: string, args: any): { ok: true } | { ok: false; correctionPrompt: string } {
+    const key = `${tool}:${JSON.stringify(this.canonicalize(args))}`;
+    const recent = this.history.slice(-this.window);
+    const count = recent.filter(h => h.key === key).length + 1;
+    this.history.push({ key });
+
+    if (count > this.threshold) {
+      return {
+        ok: false,
+        correctionPrompt:
+          `[TOOL SPAM] Called "${tool}" with identical arguments ${count} times in the last ${this.window} calls. ` +
+          `Stop repeating this call. Analyze the results you already have and respond to the user. ` +
+          `Do NOT call "${tool}" again with the same arguments.`
+      };
+    }
+    return { ok: true };
+  }
+}
+
+/**
+ * Map: chatId → correction prompts from the previous turn.
+ * Injected into the next request from the same session so the model sees
+ * feedback about guard rejections, loop warnings, and echo warnings.
+ */
+const pendingCorrections = new Map<string, string[]>();
+
 // Always-injected tool calling format instruction — model must know the format even when no tools are provided
 // so it can handle tool calls in multi-turn conversations correctly.
-// HIGHEST PRIORITY: This is the #1 rule. Incorrect format breaks the streaming pipeline.
+// HIGHEST PRIORITY: This is #1 rule. Incorrect format breaks the streaming pipeline.
 // Only the correct JSON format is shown. Never mention alternative formats —
 // showing them teaches the model about them and increases the chance they get used.
 const TOOL_FORMAT_INSTRUCTION = `
@@ -251,6 +305,16 @@ If a tool call fails validation:
 ### 6. PRIVATE REASONING
 Your private reasoning is never shown to the user — answer directly.
 Do not prefix answers with "Thinking:", "I am", "Let me", or any reasoning text.
+
+### 7. TOOL CALLING CYCLE — READ BEFORE CALLING
+Calling a tool is a TWO-STEP process: (1) call the tool, (2) READ the result before deciding what to do next.
+
+- After calling a tool, you will receive the result inside <tool_result> tags.
+- READ the entire result before making your next move.
+- If the result answers the user's question — STOP calling tools and respond to the user.
+- If the result is incomplete or ambiguous — call ONE more tool to clarify.
+- NEVER call multiple tools in a row without reading each result first.
+- NEVER repeat the same tool call with identical arguments.
 `;
 
 function parseQwenErrorPayload(raw: string): { message: string; status: ContentfulStatusCode } | null {
@@ -415,7 +479,7 @@ export async function chatCompletions(c: Context) {
              assistantContent = assistantContent ? assistantContent + '\n' + toolCallStr : toolCallStr;
            }
         }
-        prompt += `Assistant: ${assistantContent.trim()}\n\n`;
+        prompt += `Assistant: ${assistantContent}\n\n`;
       } else if (msg.role === 'tool' || msg.role === 'function') {
         let toolName = msg.name;
         if (!toolName && msg.tool_call_id) {
@@ -433,7 +497,8 @@ export async function chatCompletions(c: Context) {
         }
         const truncated = truncateToolResult(contentStr || '', 4096);
         const callId = msg.tool_call_id || `anon_${i}`;
-        prompt += `<tool_result name="${toolName || 'tool'}" call_id="${callId}">\n${truncated}\n</tool_response>\n\n`;
+        prompt += `[READ TOOL RESULT below, then decide: call another tool or respond to the user]\n<tool_result name="${toolName || 'tool'}" call_id="${callId}">\n${truncated}\n</tool_result>\n\n`;
+        toolResultContents.push(truncated);
       }
     }
 
@@ -450,7 +515,8 @@ export async function chatCompletions(c: Context) {
       if (toolCalling) systemPrompt += TOOL_FORMAT_INSTRUCTION;
       const formattedTools = body.tools.map(t => ({
         name: t.function.name,
-        description: t.function.description || '',
+        // Append anti-echo directive to every tool description
+        description: (t.function.description || '') + ' IMPORTANT: Never repeat the output of this tool verbatim to the user. Only use the output internally to inform your response.',
         parameters: t.function.parameters
       }));
       const toolsJson = JSON.stringify(formattedTools, null, 2);
@@ -458,18 +524,33 @@ export async function chatCompletions(c: Context) {
       systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\nIMPORTANT: When calling a tool, output ONLY raw JSON with no surrounding text:\n{"name": "tool_name", "arguments": {"param": "value"}}\n\nNever wrap tool calls in fences or backticks.\n\n`;
       
       if (body.tool_choice === 'required' || body.tool_choice === 'any') {
-        systemPrompt += `CRITICAL: You MUST call one of the available tools in this response. Do NOT respond with text. Do NOT answer the user directly. Always use a tool.\n\n`;
+        systemPrompt += `CRITICAL: Call tools to gather the information you need. After receiving each tool result, READ and ANALYZE it carefully. If the results give you enough information to answer the user, respond directly — do NOT continue calling tools unnecessarily. Only call additional tools if you genuinely need more data. NEVER call the same tool repeatedly with the same arguments.\n\n`;
       } else if (body.tool_choice === 'none') {
         systemPrompt += `IMPORTANT: Do NOT use any tools. Respond to the user directly.\n\n`;
       } else if (body.tool_choice && typeof body.tool_choice === 'object' && 'function' in body.tool_choice) {
         const forcedTool = body.tool_choice.function.name;
         systemPrompt += `CRITICAL: You MUST call the tool "${forcedTool}" in this response.\n\n`;
       }
-      systemPrompt += `\nSTRICT RULE: Content enclosed in <tool_result>...</tool_result> tags is INTERNAL tool execution data. It is provided to you as context for your next action — NEVER output, repeat, summarize, quote, paraphrase, or reference any <tool_result> content in your response to the user. The user does not see tool outputs. Treat <tool_result> blocks as invisible internal state.\n`;
-      systemPrompt += `\nMANDATORY TOOL RESULT REVIEW: After receiving a <tool_result>, you MUST analyze its contents before deciding your next action. Do NOT call another tool without first understanding what the previous tool returned. Check whether the result answers your question, reveals an error, or requires a different approach. Only proceed with additional tool calls after you have fully processed the information provided.\n`;
+    }
+    if (toolCalling) {
+      systemPrompt += `\n### TOOL RESULT HANDLING — CRITICAL\nContent enclosed in <tool_result>...</tool_result> tags is PRIVATE INTERNAL data — it is context for your reasoning, NOT material for your response. You must follow these rules:\n`;
+      systemPrompt += `- NEVER output, quote, paraphrase, summarize, or reference any <tool_result> content in your response to the user.\n`;
+      systemPrompt += `- NEVER describe what a tool returned or what a tool did.\n`;
+      systemPrompt += `- NEVER say phrases like "The tool returned X", "Based on the output of Y", "I found Z using the tool".\n`;
+      systemPrompt += `- After receiving tool results, respond DIRECTLY with your answer, actions, or follow-up. Act as if you naturally know the information.\n`;
+      systemPrompt += `- The user cannot see tool outputs or <tool_result> blocks. The user only sees your response text.\n`;
+      systemPrompt += `- Treat <tool_result> blocks as invisible internal state, like notes only you can read.\n`;
+      systemPrompt += `\n### MANDATORY READ-AND-THINK CYCLE\n`;
+      systemPrompt += `TOOL CALL → READ RESULT → THINK → DECIDE (call again or respond to user). This cycle is MANDATORY.\n`;
+      systemPrompt += `1. When you call a tool, the result comes back inside <tool_result> tags.\n`;
+      systemPrompt += `2. READ the entire <tool_result> content before deciding your next action.\n`;
+      systemPrompt += `3. ASK: "Does this result answer the user's request?" If yes, respond. If no, call another tool.\n`;
+      systemPrompt += `4. Do NOT call multiple tools in a row without reading their results first.\n`;
+      systemPrompt += `5. Do NOT call the same tool with the same arguments more than once — the result will not change.\n`;
+      systemPrompt += `6. Every tool call MUST be driven by a genuine information need, not habit.\n`;
     }
 
-    const finalPrompt = systemPrompt ? `${systemPrompt}\n${prompt}` : prompt;
+    let finalPrompt = systemPrompt ? `${systemPrompt}\n${prompt}` : prompt;
 
     logEntry.promptToQwen = {
       systemPromptLength: systemPrompt.length,
@@ -497,6 +578,18 @@ export async function chatCompletions(c: Context) {
     // Acquire a session bound to the selected account. Each session supports one active
     // generation at a time. Multi-account rotation distributes rate limits.
     const session = await sessionPool.acquire(accountEmail);
+    // Inject correction prompts from the previous turn — guard rejections, loop warnings,
+    // and echo warnings are fed back so the model sees its own mistakes.
+    const prevCorrections = pendingCorrections.get(session.chatId);
+    if (prevCorrections && prevCorrections.length > 0) {
+      pendingCorrections.delete(session.chatId);
+      const correctionsBlock = prevCorrections.map((c, i) => `${i + 1}. ${c}`).join('\n');
+      systemPrompt += `\n### FEEDBACK FROM PREVIOUS TURN\nThe following issues were detected in your previous response. Address them now:\n${correctionsBlock}\n\n`;
+    }
+    // Recompute finalPrompt (may have changed due to pendingCorrections injection above)
+    if (prevCorrections && prevCorrections.length > 0) {
+      finalPrompt = systemPrompt ? `${systemPrompt}\n${prompt}` : prompt;
+    }
     let nextParentId: string | null = session.parentId;
     const sessionHeaders = session.cachedHeaders;
     const resolvedEmail = session.accountEmail || accountEmail;
@@ -548,6 +641,8 @@ export async function chatCompletions(c: Context) {
       if (!cleanOutput) toolParser.skipPreProcess = true;
       const toolCallsOut: any[] = [];
       const correctionPrompts: string[] = []; // Guard rejection messages for logging
+      const toolSpamGuard = new ToolSpamGuard(); // Sliding-window dedupe
+      const MAX_TOOL_CALLS_PER_TURN = 15; // Hard cap: prevent one turn from burning the budget
 
       let buffer = '';
       let completionTokens = 0;
@@ -652,7 +747,7 @@ export async function chatCompletions(c: Context) {
                     lastFullContent = parserText;
                   }
                 }
-                for (const tc of toolCalls) {
+                  for (const tc of toolCalls) {
                   // Guard: validate tool call before sending to client
                   const guard = validateSingleToolCall(tc);
                   if (!guard.ok) {
@@ -663,6 +758,21 @@ export async function chatCompletions(c: Context) {
                     // Store correction prompt for next turn
                     correctionPrompts.push(guard.correctionPrompt);
                     continue; // Skip — don't send to client
+                  }
+                  // Sliding-window dedupe: reject repeated (tool, args) before they reach the client
+                  const spamCheck = toolSpamGuard.check(tc.name, tc.arguments);
+                  if (!spamCheck.ok) {
+                    console.warn(`  [🛑 TOOL SPAM] ${tc.name}: repeated call blocked`);
+                    logStore.updateEntry(logId, entry => {
+                      entry.errors.push(`Tool spam: "${tc.name}" called repeatedly with same args`);
+                    });
+                    correctionPrompts.push(spamCheck.correctionPrompt);
+                    continue;
+                  }
+                  if (toolCallsOut.length >= MAX_TOOL_CALLS_PER_TURN) {
+                    console.warn(`  [🛑 TOOL LIMIT] Hit ${MAX_TOOL_CALLS_PER_TURN} tool calls per turn, dropping excess`);
+                    correctionPrompts.push(`[TOOL CALL LIMIT] Reached maximum of ${MAX_TOOL_CALLS_PER_TURN} tool calls per turn. Analyze existing results and respond to the user.`);
+                    break;
                   }
                   toolCallsOut.push({
                     id: tc.id,
@@ -711,6 +821,21 @@ export async function chatCompletions(c: Context) {
           correctionPrompts.push(guard.correctionPrompt);
           continue;
         }
+        // Sliding-window dedupe: reject repeated (tool, args) before they reach the client
+        const spamCheck = toolSpamGuard.check(tc.name, tc.arguments);
+        if (!spamCheck.ok) {
+          console.warn(`  [🛑 TOOL SPAM flush] ${tc.name}: repeated call blocked`);
+          logStore.updateEntry(logId, entry => {
+            entry.errors.push(`Tool spam: "${tc.name}" called repeatedly with same args`);
+          });
+          correctionPrompts.push(spamCheck.correctionPrompt);
+          continue;
+        }
+        if (toolCallsOut.length >= MAX_TOOL_CALLS_PER_TURN) {
+          console.warn(`  [🛑 TOOL LIMIT flush] Hit ${MAX_TOOL_CALLS_PER_TURN} tool calls, dropping excess`);
+          correctionPrompts.push(`[TOOL CALL LIMIT] Reached maximum of ${MAX_TOOL_CALLS_PER_TURN} tool calls per turn. Analyze existing results and respond to the user.`);
+          break;
+        }
         toolCallsOut.push({
           id: tc.id,
           type: 'function',
@@ -720,6 +845,24 @@ export async function chatCompletions(c: Context) {
           }
         });
       }
+      // Parallel loop detection: check if the model called the same tool with
+      // identical arguments 3+ times — a sign it's stuck in a loop
+      if (toolCallsOut.length >= 3) {
+        const parsedForLoopCheck: ParsedToolCall[] = toolCallsOut.map((tc: any) => ({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: (() => { try { return JSON.parse(tc.function.arguments); } catch { return {}; } })(),
+        }));
+        const loopCheck = detectParallelToolLoop(parsedForLoopCheck);
+        if (!loopCheck.ok) {
+          console.warn(`  [🔄 PARALLEL LOOP] ${loopCheck.errors[0]}`);
+          correctionPrompts.push(loopCheck.correctionPrompt);
+          logStore.updateEntry(logId, entry => {
+            entry.errors.push(`Parallel loop: ${loopCheck.errors[0]}`);
+          });
+        }
+      }
+
       const reasoningTokensEstimate = reasoningBuffer ? Math.ceil(reasoningBuffer.length / 4) : 0;
       const usage = {
         prompt_tokens: promptTokens,
@@ -738,6 +881,14 @@ export async function chatCompletions(c: Context) {
       // from the content before sending to the client. This catches any tool
       // call artifacts that the streaming parser might have missed.
       const echoFiltered = toolEchoFilter.filterText(baseFilteredContent);
+      // Detect echo ratio and warn if >30% of output was tool result echoes
+      const echoRatio = toolEchoFilter.getEchoRatio(baseFilteredContent);
+      if (echoRatio > 0.3 && baseFilteredContent.length > 0) {
+        const echoWarning = `[ECHO WARNING] ${Math.round(echoRatio * 100)}% of output was tool result echoes — suppressing. Review system prompt anti-echo directives.`;
+        console.warn(`  [${echoWarning}]`);
+        logStore.addError(logId, echoWarning);
+        correctionPrompts.push(echoWarning);
+      }
       const filteredContent = stripToolCallArtifacts(echoFiltered);
       const message: any = { role: 'assistant', content: toolCallsOut.length ? null : filteredContent };
       if (reasoningBuffer) message.reasoning_content = reasoningBuffer;
@@ -765,6 +916,9 @@ export async function chatCompletions(c: Context) {
         });
       }
 
+      if (correctionPrompts.length > 0) {
+        pendingCorrections.set(session.chatId, [...correctionPrompts]);
+      }
       sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
       nonStreamReleased = true;
       // Persist raw vs processed output for debugging
@@ -1137,10 +1291,11 @@ export async function chatCompletions(c: Context) {
                 }
 
                 const pendingText = (toolCalls.length > 0 && fullFilteredText) ? fullFilteredText : null;
-                const echoSuppressed = fullFilteredText ? toolEchoFilter.filterText(fullFilteredText) : null;
+                // Echo filter skipped in streaming — partial lines dodge shingle threshold,
+                // creating snapshot mismatch vs flush. Non-streaming path still uses it.
                 const cleanedText = pendingText
                   ? cleanThinkTags(pendingText)
-                  : (echoSuppressed ? cleanThinkTags(echoSuppressed) : null);
+                  : (fullFilteredText ? cleanThinkTags(fullFilteredText) : null);
 
                 // Snapshot-based content emission: compare full current filtered text
                 // against previous snapshot. This is the key fix — even if the filter

@@ -318,4 +318,107 @@ describe('StreamingToolParser flush leak vector', () => {
     assert.ok(allText.includes('Before text'), 'Pre-text lost: ' + JSON.stringify(allText));
     assert.ok(allText.includes('After text'), 'Post-text lost: ' + JSON.stringify(allText));
   });
+
+  it('S11: real-life streaming with newlines embedded inside JSON keys, values, and escape sequences', () => {
+    // Realistic streaming chunks where newlines split across JSON tokens:
+    // - JSON key split mid-name:  "command\n": "..."
+    // - String value split mid-shell-command:  "echo \"kernel: $(uname\n -"
+    // - Opening brace on different line from key:  {\n"name"
+    // - Escape sequences split across lines:  \"\nuptime
+    // These exact boundaries were observed in production streaming from Qwen.
+    const chunks = [
+      // Chunk 1: bash - kernel version
+      // "command" key split, inside echo string, shell expansion $() split
+      // The \\" represents literal backslash-quote in the streaming JSON output
+      '{"name":\n "bash", "\narguments": {"command\n": "echo \\"kernel: $(uname\n -\nr)\\"" , "\ndescription": "Get\n kernel version"}}',
+
+      // Chunk 2: bash - CPU core count
+      // "name" value split across lines, "arguments" key split
+      '{"name": \n"bash", "arguments\n": {"command":\n "echo \\"cpu\n: $(nproc\n) cores\\"" , "\ndescription": "Get\n CPU core count"}}',
+
+      // Chunk 3: bash - system uptime
+      // Shell command chain split, description value split
+      '{"name":\n "bash", "\narguments": {"command\n": "echo \\"uptime: $(uptime\n -p 2\n>/dev/null\n || uptime)\\"" ,\n "description": "\nGet system uptime"}}',
+
+      // Chunk 4: glob - find JSON files
+      // "pattern" key split, "path" value split
+      '{"name":\n "glob", "\narguments": {"pattern\n": "*.json",\n "path": "/\nhome/youssefv\ndel"}}',
+
+      // Chunk 5: grep - search exports
+      // Opening brace + key on separate lines, value split mid-string
+      '{"\nname": "grep\n", "arguments":\n {"pattern": "^\nexport", "include\n": ".zsh\nrc",\n "path": "/\nhome/youssefv\ndel"}}',
+    ];
+
+    const parser = new StreamingToolParser();
+    const allCalls: any[] = [];
+    let allText = '';
+
+    for (const chunk of chunks) {
+      const result = parser.feed(chunk);
+      allCalls.push(...result.toolCalls);
+      allText += result.text;
+    }
+
+    const flushResult = parser.flush();
+    allCalls.push(...flushResult.toolCalls);
+    allText += flushResult.text;
+
+    // All 5 tool calls must be extracted
+    assert.strictEqual(allCalls.length, 5,
+      `Expected 5 tool calls, got ${allCalls.length}: ${JSON.stringify(allCalls.map(t => t.name))}`);
+
+    // Tool 1: bash with kernel command
+    assert.strictEqual(allCalls[0].name, 'bash',
+      `Tool 1: expected 'bash', got '${allCalls[0].name}'`);
+    assert.strictEqual(allCalls[0].arguments.command, 'echo "kernel: $(uname -r)"',
+      `Tool 1: command mismatch: ${JSON.stringify(allCalls[0].arguments.command)}`);
+    assert.strictEqual(allCalls[0].arguments.description, 'Get kernel version',
+      `Tool 1: description mismatch: ${JSON.stringify(allCalls[0].arguments.description)}`);
+
+    // Tool 2: bash with CPU cores command
+    assert.strictEqual(allCalls[1].name, 'bash',
+      `Tool 2: expected 'bash', got '${allCalls[1].name}'`);
+    assert.strictEqual(allCalls[1].arguments.command, 'echo "cpu: $(nproc) cores"',
+      `Tool 2: command mismatch: ${JSON.stringify(allCalls[1].arguments.command)}`);
+    assert.strictEqual(allCalls[1].arguments.description, 'Get CPU core count',
+      `Tool 2: description mismatch: ${JSON.stringify(allCalls[1].arguments.description)}`);
+
+    // Tool 3: bash with uptime command (complex shell chain)
+    assert.strictEqual(allCalls[2].name, 'bash',
+      `Tool 3: expected 'bash', got '${allCalls[2].name}'`);
+    assert.strictEqual(allCalls[2].arguments.command, 'echo "uptime: $(uptime -p 2>/dev/null || uptime)"',
+      `Tool 3: command mismatch: ${JSON.stringify(allCalls[2].arguments.command)}`);
+    assert.strictEqual(allCalls[2].arguments.description, 'Get system uptime',
+      `Tool 3: description mismatch: ${JSON.stringify(allCalls[2].arguments.description)}`);
+
+    // Tool 4: glob with pattern and path
+    assert.strictEqual(allCalls[3].name, 'glob',
+      `Tool 4: expected 'glob', got '${allCalls[3].name}'`);
+    assert.strictEqual(allCalls[3].arguments.pattern, '*.json',
+      `Tool 4: pattern mismatch: ${JSON.stringify(allCalls[3].arguments.pattern)}`);
+    assert.strictEqual(allCalls[3].arguments.path, '/home/youssefvdel',
+      `Tool 4: path mismatch: ${JSON.stringify(allCalls[3].arguments.path)}`);
+
+    // Tool 5: grep with pattern, include, and path
+    assert.strictEqual(allCalls[4].name, 'grep',
+      `Tool 5: expected 'grep', got '${allCalls[4].name}'`);
+    assert.strictEqual(allCalls[4].arguments.pattern, '^export',
+      `Tool 5: pattern mismatch: ${JSON.stringify(allCalls[4].arguments.pattern)}`);
+    assert.strictEqual(allCalls[4].arguments.include, '.zshrc',
+      `Tool 5: include mismatch: ${JSON.stringify(allCalls[4].arguments.include)}`);
+    assert.strictEqual(allCalls[4].arguments.path, '/home/youssefvdel',
+      `Tool 5: path mismatch: ${JSON.stringify(allCalls[4].arguments.path)}`);
+
+    // No text leakage: JSON fragments should NOT leak as text
+    // The newlines between chunks are expected text output but JSON keys/values are not
+    assert.ok(!allText.includes('bash",'),
+      `Fragment 'bash",' leaked as text: ${JSON.stringify(allText)}`);
+    assert.ok(!allText.includes('arguments":'),
+      `Fragment 'arguments":' leaked as text: ${JSON.stringify(allText)}`);
+    assert.ok(!allText.includes('"command"'),
+      `JSON key 'command' leaked as text: ${JSON.stringify(allText)}`);
+    // 'description' may legitimately appear in the text output but as a JSON key it should not
+    assert.ok(!allText.includes('"description"'),
+      `JSON key 'description' leaked as text: ${JSON.stringify(allText)}`);
+  });
 });

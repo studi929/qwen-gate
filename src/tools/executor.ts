@@ -130,7 +130,7 @@ export function parseToolCallsFromContent(content: string): {
     remaining = after.substring(jsonEnd);
   }
 
-  return { textContent: textContent.trim(), toolCalls };
+  return { textContent, toolCalls };
 }
 
 /**

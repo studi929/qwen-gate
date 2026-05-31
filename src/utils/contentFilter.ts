@@ -81,13 +81,12 @@ export function filterContent(raw: string): FilterResult {
   }
 
   text = text.replace(QWEN_THINK_TAG_PATTERN, ' ');
-  text = text.replace(/ {2,}/g, ' ');
 
   const paragraphs = text.split(/\n\s*\n/);
   const cleanParagraphs: string[] = [];
 
   for (const para of paragraphs) {
-    const paraLines = para.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const paraLines = para.split('\n').filter(l => l.trim().length > 0);
     if (paraLines.length === 0) {
       cleanParagraphs.push('');
       continue;
@@ -286,7 +285,7 @@ export function stripToolCallArtifacts(text: string): string {
   // window with information nobody needs to see twice.
   text = stripToolEcho(text);
 
-  text = text.replace(/\n{3,}/g, '\n\n').trim();
+  text = text.replace(/\n{3,}/g, '\n\n');
 
   return text;
 }
@@ -416,7 +415,7 @@ export function stripToolEcho(text: string): string {
 
   result = filteredLines.join('\n');
 
-  result = result.replace(/\n{3,}/g, '\n\n').trim();
+  result = result.replace(/\n{3,}/g, '\n\n');
 
   return result;
 }
