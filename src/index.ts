@@ -79,7 +79,7 @@ async function gracefulShutdown(_signal: string): Promise<void> {
   }
   isShuttingDown = true;
   if (serverInstance) {
-    try { (serverInstance as any).close?.(); } catch {
+    try { serverInstance.close(); } catch {
       // intentional: server close failure during shutdown is non-blocking, continue cleanup
     }
   }
@@ -101,18 +101,6 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 app.use('*', cors());
 
-// Helper to get local network IPs
-function getNetworkAddress() {
-  const interfaces = networkInterfaces();
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]!) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return null;
-}
 
 // API Key protection middleware
 app.use('/v1/*', async (c, next) => {
@@ -250,7 +238,7 @@ app.get('/log/stream', (c) => {
           if (!alive) { clearInterval(heartbeat); return; }
           if (!safeEnqueue(': ping\n\n')) { clearInterval(heartbeat); }
         }, 15000);
-        if (typeof (heartbeat as any).unref === 'function') (heartbeat as any).unref();
+        heartbeat.unref();
 
         // Subscribe to new log entries
         const unsub = logStore.subscribe((entry) => {
@@ -337,7 +325,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   logStore.enablePersistence(resolve(process.cwd(), 'logs'));
 
   const port = parseInt(process.env.PORT || '26405', 10) || 26405;
-  console.log(`📌 PORT from .env: ${process.env.PORT || '(not set — using default 26405)'}`);
 
   initPlaywright(true, browserType).then(async () => {
     serverInstance = serve({
@@ -350,9 +337,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       },
     });
     logStore.log('info', 'server', 'Server started on port ' + port);
-    console.log(`🚀 Server listening on http://localhost:${port}`);
 
-    console.log('⏳ Authenticating accounts in background...');
     try {
       await initAuth();
     } catch (err: any) {
@@ -364,15 +349,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const authenticatedAccounts = accountStats.filter(a => a.authenticated).length;
     const throttledAccounts = accountStats.filter(a => a.throttled).length;
 
-    console.log('');
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('  🔐 Account Status');
-    console.log('═══════════════════════════════════════════════════════');
     if (totalAccounts === 0) {
-      console.log('  ⚠️  No accounts loaded. Add accounts via /accounts or accounts.json');
     } else {
-      console.log(`  📊 Total: ${totalAccounts} | ✅ Authenticated: ${authenticatedAccounts} | ❌ Not authed: ${totalAccounts - authenticatedAccounts} | ⏸ Throttled: ${throttledAccounts}`);
-      console.log('  ───────────────────────────────────────────────────');
       for (const acct of accountStats) {
         const status = acct.authenticated
           ? (acct.throttled ? `⏸ throttled (${Math.ceil(acct.throttledRemainingMs / 1000)}s)` : '✅ ready')
@@ -381,11 +359,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           ? ` | token: ${Math.ceil(acct.tokenExpiresInMs / 60000)}min`
           : '';
         const reqs = acct.totalRequests > 0 ? ` | reqs: ${acct.totalRequests}` : '';
-        console.log(`  ${acct.authenticated ? '●' : '○'} ${acct.email}  —  ${status}${expiresIn}${reqs}`);
       }
     }
-    console.log('═══════════════════════════════════════════════════════');
-    console.log('');
 
     startAutoCleanup();
 
@@ -400,7 +375,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       disablePersonalization().catch(err => console.warn('[Startup] disablePersonalization failed:', err.message)),
     ]);
 
-    console.log('✅ Background initialization complete');
   }).catch((err: any) => {
     console.error('Failed to initialize playwright:', err);
     process.exit(1);

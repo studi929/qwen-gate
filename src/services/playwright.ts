@@ -8,12 +8,11 @@ export type BrowserType = 'chromium' | 'firefox' | 'webkit' | 'chrome' | 'edge';
 
 // Per-account isolated browser contexts
 export interface AccountContext {
-  context: BrowserContext;
-  page: Page;
+  context: BrowserContext | null;
+  page: Page | null;
   lastRefresh: number;
   cookies: Record<string, string>;
   headers: Record<string, string>;
-  refreshInterval?: NodeJS.Timeout;
 }
 
 const accountContexts = new Map<string, AccountContext>();
@@ -148,7 +147,10 @@ export async function getBasicHeaders(email?: string): Promise<BasicHeaders> {
   // P0: Use cached userAgent (never changes during browser lifetime)
   if (!cachedUserAgent) {
     for (const accCtx of accountContexts.values()) {
-      cachedUserAgent = await accCtx.page.evaluate(() => navigator.userAgent, { timeout: 10_000 } as any);
+      cachedUserAgent = await Promise.race([
+        accCtx.page!.evaluate(() => navigator.userAgent),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error('UserAgent timeout')), 10_000)),
+      ]);
       break;
     }
     if (!cachedUserAgent) {
@@ -232,197 +234,16 @@ export async function initPlaywright(headless = true, browserType: BrowserType =
   const cleanupAllContexts = async () => {
     for (const [_email, accCtx] of accountContexts.entries()) {
       if (accCtx.refreshInterval) clearInterval(accCtx.refreshInterval);
-      await accCtx.context.close();
-    }
-    accountContexts.clear();
-    if (defaultBrowser) {
-      await defaultBrowser.close();
-      defaultBrowser = null;
-    }
-  };
-  process.on('exit', () => { /* sync cleanup not possible, rely on SIGTERM */ });
-  process.on('SIGTERM', cleanupAllContexts);
-  process.on('SIGINT', cleanupAllContexts);
-
-  })().finally(() => {
-    initInFlight = null;
-  });
-  return initInFlight;
-}
-
-/**
- * Create a new isolated BrowserContext for a specific account
- */
-export async function createAccountContext(email: string, cookies?: Record<string, string>): Promise<AccountContext> {
-  if (process.env.TEST_MOCK_PLAYWRIGHT) {
-    // Mock context for testing
-    return {
-      context: null as any,
-      page: null as any,
-      lastRefresh: Date.now(),
-      cookies: cookies || {},
-      headers: {}
-    };
-  }
-  
-  // Fast path: context already exists
-  const existing = accountContexts.get(email);
-  if (existing) return existing;
-
-  // Deduplicate concurrent creation: if another call is already creating
-  // a context for the same email, join that promise instead of creating a duplicate.
-  const inFlight = contextCreationInFlight.get(email);
-  if (inFlight) return inFlight;
-
-  const creationPromise = createContextInternal(email, cookies);
-  contextCreationInFlight.set(email, creationPromise);
-
-  try {
-    const ctx = await creationPromise;
-    return ctx;
-  } finally {
-    contextCreationInFlight.delete(email);
-  }
-}
-
-async function createContextInternal(email: string, cookies?: Record<string, string>): Promise<AccountContext> {
-  await initPlaywright();
-  if (!defaultBrowser) throw new Error('Playwright browser not initialized');
-  
-  // Double-check after init: another concurrent call may have created it while we waited
-  if (accountContexts.has(email)) {
-    return accountContexts.get(email)!;
-  }
-  
-  // Create new isolated context with storage state if cookies provided
-  const context = await defaultBrowser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-    ignoreDefaultArgs: ['--enable-automation'],
-    storageState: cookies ? { cookies: Object.entries(cookies).map(([name, value]) => ({
-      name,
-      value,
-      domain: '.qwen.ai',
-      path: '/',
-      expires: Math.floor(Date.now() / 1000) + 3600,
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Lax'
-    } as Cookie)), origins: [] } : undefined
-  });
-  
-  // Bypass navigator.webdriver detection
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => undefined,
-    });
-  });
-  
-  const page = await context.newPage();
-  
-  const extractedHeaders: Record<string, string> = {};
-  const routeHandler = async (route: any, request: any) => {
-    const headers = request.headers();
-    if (headers['bx-umidtoken']) extractedHeaders['bx-umidtoken'] = headers['bx-umidtoken'];
-    if (headers['bx-ua']) extractedHeaders['bx-ua'] = headers['bx-ua'];
-    if (headers['user-agent']) extractedHeaders['user-agent'] = headers['user-agent'];
-    await route.continue();
-  };
-  await page.route('**/api/**', routeHandler);
-  
-  // Inject initial cookies if provided
-  if (cookies) {
-    const cookieList = Object.entries(cookies).map(([name, value]) => ({
-      name,
-      value,
-      domain: 'chat.qwen.ai',
-      path: '/',
-      secure: true,
-      httpOnly: true
-    }));
-    await context.addCookies(cookieList);
-  }
-  
-  const accCtx: AccountContext = {
-    context,
-    page,
-    lastRefresh: Date.now(),
-    cookies: cookies || {},
-    headers: extractedHeaders
-  };
-  
-  accountContexts.set(email, accCtx);
-  
-  // Start auto-refresh interval for cookies (every 30s)
-  accCtx.refreshInterval = setInterval(async () => {
-    try {
-      await refreshAccountCookies(email);
-    } catch (err) {
-      console.error(`[AccountContext] Refresh failed for ${email}:`, err);
-    }
-  }, COOKIE_REFRESH_INTERVAL);
-  
-  return accCtx;
-}
-
-/**
- * Refresh cookies for a specific account context without full navigation
- */
-export async function refreshAccountCookies(email: string): Promise<void> {
-  if (process.env.TEST_MOCK_PLAYWRIGHT) return;
-  
-  const accCtx = accountContexts.get(email);
-  if (!accCtx) return;
-  
-  const { context, page } = accCtx;
-  
-  try {
-    // Check if context is still valid by checking cookies
-    const cookies = await context.cookies();
-    const hasAuthCookie = cookies.some(c => c.name.toLowerCase().includes('token') || c.name.toLowerCase().includes('session'));
-    
-    if (!hasAuthCookie) {
-      // Context expired, need to navigate to refresh
-      validateQwenUrl('https://chat.qwen.ai/');
-      await page.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded', timeout: 15000 });
-      await sleep(2000);
-
-      // Re-check if we got an auth cookie after navigation
-      const postCookies = await context.cookies();
-      const hasPostAuth = postCookies.some(c => c.name.toLowerCase().includes('token') || c.name.toLowerCase().includes('session'));
-      if (!hasPostAuth) {
-        console.warn(`[AccountContext] ${email} still has no auth cookie after navigation - token invalid, marking unavailable`);
-        const { throttleAccount } = await import('./auth.ts');
-        throttleAccount(email, 120_000);
-        accCtx.cookies = {};
-        accCtx.lastRefresh = Date.now();
-        return;
+        await accCtx.context?.close();
+      } catch {
+        // intentional: context close failure during cleanup is non-blocking, context may already be destroyed
       }
-      // Use post-navigation cookies
-      postCookies.splice(0, postCookies.length, ...postCookies);
+      accountContexts.delete(email);
     }
-    
-    const freshCookies = await context.cookies();
-    const cookieRecord: Record<string, string> = {};
-    for (const c of freshCookies) {
-      cookieRecord[c.name] = c.value;
-    }
-    
-    accCtx.cookies = cookieRecord;
-    accCtx.lastRefresh = Date.now();
-    
-  } catch (err) {
-    console.error(`[AccountContext] Refresh error for ${email}:`, err);
-    // Don't throw - let the interval continue, next attempt may succeed
-  }
-}
-
-
-
-export async function closePlaywright() {
-  if (process.env.TEST_MOCK_PLAYWRIGHT) return;
-  for (const [_email, accCtx] of accountContexts.entries()) {
-    if (accCtx.refreshInterval) clearInterval(accCtx.refreshInterval);
-    await accCtx.context.close();
+  } else {
+    for (const [email, accCtx] of accountContexts) {
+      try {
+        await accCtx.context?.close();
   }
   accountContexts.clear();
   if (defaultBrowser) {
@@ -555,61 +376,18 @@ export async function loginToQwen(email: string, password: string): Promise<bool
  */
 async function captureBxHeaders(accCtx: AccountContext): Promise<void> {
   try {
-    await accCtx.page.evaluate(async () => {
+    await accCtx.page!.evaluate(async () => {
       await fetch('https://chat.qwen.ai/api/v2/models', {
         method: 'GET',
         headers: { 'accept': 'application/json', 'source': 'web' },
       }).catch(() => {});
-    }, { timeout: 10000 } as any);
-    await sleep(500);
-  } catch (err: any) {
-    console.warn(`[AccountContext] bx-header capture fetch failed: ${err.message}`);
-  }
-}
-
-/**
- * Get headers for a specific account or the best available account.
- * @param email Optional account email - if provided, use that account's context
- */
-export type LoginResult = 'success' | 'captcha' | 'closed' | 'error';
-
-export interface BrowserProfileOptions {
-  headless?: boolean;
-}
-
-export async function openBrowserProfile(email: string, password?: string, options?: BrowserProfileOptions): Promise<LoginResult> {
-  if (process.env.TEST_MOCK_PLAYWRIGHT) return 'success' as LoginResult;
-
-  const headless = options?.headless ?? false;
-  const profileDir = getProfileDir(email);
-  const mode = headless ? 'headless' : 'visible';
-
-  let context: any = null;
-  let page: any = null;
-
-  try {
-    context = await chromium.launchPersistentContext(profileDir, {
-      headless,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      ignoreDefaultArgs: ['--enable-automation'],
-      locale: 'en-US',
-      timezoneId: 'America/New_York',
-      viewport: { width: 1920, height: 1080 },
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-infobars',
-        '--window-size=1920,1080',
-        '--window-position=0,0',
-      ],
     });
 
     await context.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
       Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-      (window as any).chrome = { runtime: {} };
+      Object.defineProperty(window, 'chrome', { value: { runtime: {} }, configurable: true });
       const origQuery = navigator.permissions.query;
       navigator.permissions.query = (params: any) =>
         params.name === 'notifications'
@@ -733,7 +511,7 @@ export async function refreshViaProfile(email: string): Promise<boolean> {
       Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
       Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
       Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-      (window as any).chrome = { runtime: {} };
+      Object.defineProperty(window, 'chrome', { value: { runtime: {} }, configurable: true });
     });
 
     const page = context.pages()[0] || await context.newPage();
