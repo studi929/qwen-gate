@@ -20,6 +20,21 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SERVER_ENTRY = resolve(__dirname, 'index.ts');
 
 function showHelp() {
+  const port = process.env.PORT || '26405';
+  console.log(`
+qg — Qwen Gate CLI
+
+Usage:
+  qg                    Start the gateway server
+  qg start              Start the gateway server
+  qg login <email>      Authenticate a Qwen account via browser
+  qg restart            Restart the gateway server
+  qg ulw [on|off]       Toggle ultrawork mode
+  qg --help, -h         Show this help
+
+Server starts on http://localhost:${port}
+Dashboard: http://localhost:${port}/log
+`.trim());
 }
 
 async function startServer() {
