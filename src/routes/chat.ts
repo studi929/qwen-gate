@@ -1263,6 +1263,13 @@ export async function chatCompletions(c: Context) {
                   : '';
                 const fullFilteredText = stripToolCallArtifacts(baseFilteredContent);
 
+                // Apply echo filter to the full accumulated text (not per-chunk fragments).
+                // The shingle algorithm needs complete lines to detect echoes reliably;
+                // filtering the buffer rather than individual delta avoids partial-line
+                // threshold problems. The snapshot diff below ensures only the newly
+                // filtered delta is emitted each chunk (high-water mark pattern).
+                const echoFilteredText = toolEchoFilter.filterText(fullFilteredText);
+
                 // Emit parser-captured thinking first (from <think> tags)
                 if (parserThinking) {
                   await writeEvent({
@@ -1290,12 +1297,10 @@ export async function chatCompletions(c: Context) {
                   }
                 }
 
-                const pendingText = (toolCalls.length > 0 && fullFilteredText) ? fullFilteredText : null;
-                // Echo filter skipped in streaming — partial lines dodge shingle threshold,
-                // creating snapshot mismatch vs flush. Non-streaming path still uses it.
+                const pendingText = (toolCalls.length > 0 && echoFilteredText) ? echoFilteredText : null;
                 const cleanedText = pendingText
                   ? cleanThinkTags(pendingText)
-                  : (fullFilteredText ? cleanThinkTags(fullFilteredText) : null);
+                  : (echoFilteredText ? cleanThinkTags(echoFilteredText) : null);
 
                 // Snapshot-based content emission: compare full current filtered text
                 // against previous snapshot. This is the key fix — even if the filter
