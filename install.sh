@@ -37,9 +37,8 @@ info "Installing dependencies"
 npm install --prefix "$DIR"
 ok "Dependencies installed"
 
-info "Installing Playwright Chromium"
-npx --prefix "$DIR" playwright install chromium
-ok "Browser installed"
+info "CloakBrowser binary will auto-download on first launch"
+ok "Browser ready (auto-download)"
 
 # ── Environment ────────────────────────────────────────────────────
 

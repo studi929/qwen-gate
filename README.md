@@ -9,8 +9,8 @@ OpenAI-compatible API gateway for **Qwen models (chat.qwen.ai)** using Playwrigh
 - **OpenAI-compatible API** — `/v1/chat/completions` and `/v1/models` with streaming + non-streaming
 - **Tool calling** — full function/tool schema support with validation, spam detection, and correction feedback
 - **Thinking / reasoning** — `<think>` block handling and emission
-- **Multi-account sessions** — Playwright-backed per-account browser contexts with automatic rotation
-- **Session autoscaling** — concurrent Playwright sessions spun up under load
+- **Multi-account sessions** — CloakBrowser-backed per-account browser contexts with automatic rotation
+- **Session autoscaling** — concurrent sessions spun up under load
 - **Streaming SSE** — incremental delta emission, heartbeat keep-alive, and content-filter integrity across stream boundaries
 - **Content filter** — strips tool-call artifacts, streaming JSON fragment leaks, and XML leaks while preserving code whitespace
 - **Token estimation** — context window validation with accurate token counting
@@ -30,9 +30,9 @@ Or manually:
 git clone https://github.com/youssefvdel/qwen-gate.git
 cd qwen-gate
 npm install
-npx playwright install chromium
 cp .env.example .env
 npm start     # Starts on http://localhost:26405
+# CloakBrowser stealth binary auto-downloads on first launch (~200MB)
 ```
 
 ## Usage
@@ -92,8 +92,8 @@ Client (OpenAI SDK, curl, etc.)
          │
          ▼
   ┌──────────────┐
-  │  Session     │   Per-account Playwright browser contexts
-  │   Manager    │   Autoscaling + rotation
+  │  Session     │   Per-account CloakBrowser contexts
+   │   Manager    │   (58 C++ stealth patches) · Autoscaling + rotation
   └──────┬───────┘
          │
          ▼
