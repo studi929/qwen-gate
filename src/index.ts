@@ -219,7 +219,7 @@ app.get('/log', (c) => {
 });
 
 app.get('/log/json', (c) => {
-  return c.json(logStore.getRecent(50));
+  return c.json(logStore.getRecent(10));
 });
 
 app.get('/log/stream', (c) => {

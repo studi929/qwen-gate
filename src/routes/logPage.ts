@@ -161,13 +161,14 @@ tbody tr:hover{background:var(--bg-elevated)}
 .msg-body:not(.collapsed){max-height:250px;overflow-y:auto}
 
 /* Foldable sections */
-.foldable-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;padding:4px 0;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);font-weight:500}
+.foldable-section{border:1px solid var(--border);border-radius:6px;margin:6px 0;overflow:hidden}
+.foldable-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-secondary);font-weight:500;background:var(--bg-elevated)}
 .foldable-header:hover{color:var(--text-primary)}
 .fold-toggle{display:inline-block;transition:transform .2s;font-size:9px}
 .foldable-header.collapsed .fold-toggle{transform:rotate(0deg)}
 .foldable-header:not(.collapsed) .fold-toggle{transform:rotate(90deg)}
 .foldable-body.collapsed{display:none}
-.foldable-body:not(.collapsed){max-height:400px;overflow-y:auto}
+.foldable-body:not(.collapsed){padding:4px 8px}
 
 /* Empty State */
 .empty-state{padding:32px 16px;text-align:center;color:var(--text-secondary);font-size:0.8125rem}
@@ -676,7 +677,7 @@ async function refreshModelHealth() {
 
 /* ── System Logs ── */
 async function refreshSysLogs() {
-  var data = await apiFetch('/system/logs?limit=50');
+  var data = await apiFetch('/system/logs?limit=10');
   var container = document.getElementById('sysLogsContainer');
   var empty = document.getElementById('sysLogsEmpty');
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -708,7 +709,7 @@ function connectSSE() {
     try {
       var entry = JSON.parse(ev.data);
       addRequestEntry(entry);
-    } catch(e) {}
+    } catch(e) {console.error('SSE parse error', e)}
   };
   es.onerror = function() {
     es.close();
@@ -734,12 +735,23 @@ function renderEntryHtml(entry) {
     + (entry.accountEmail ? '<span class="badge badge-neutral account-badge">' + escHtml(entry.accountEmail.split('@')[0]) + '</span>' : '')
     + '</div>'
     + '<div class="req-detail">'
-    + (entry.clientRequest?.messages?.length ? '<div class="foldable-header collapsed" onclick="toggleFold(this)"><span class="fold-toggle">▶</span> Messages (' + entry.clientRequest.messages.length + ')</div><div class="foldable-body collapsed">' + entry.clientRequest.messages.map(function(m) {
+    + (entry.errors && entry.errors.length > 0 ? '<div class="req-section-label">Warnings &amp; Errors</div>' + entry.errors.map(function(e) {
+        var isWarning = e.indexOf('ECHO') !== -1 || e.indexOf('LOOP') !== -1 || e.indexOf('Loop') !== -1 || e.indexOf('parallel') !== -1;
+        var badgeClass = isWarning ? 'badge-warning' : 'badge-danger';
+        var label = isWarning ? 'WARN' : 'ERROR';
+        return '<div style="margin:4px 0;padding:6px 8px;background:var(--bg-elevated);border-radius:6px;font-family:var(--mono);font-size:0.75rem"><span class="badge ' + badgeClass + '" style="margin-right:6px">' + label + '</span>' + escHtml(e) + '</div>';
+      }).join('') : '')
+    + (entry.clientRequest?.messages?.length ? '<div class="foldable-section"><div class="foldable-header collapsed" onclick="toggleFold(this)"><span class="fold-toggle">▶</span> Messages (' + entry.clientRequest.messages.length + ')</div><div class="foldable-body collapsed">' + entry.clientRequest.messages.map(function(m) {
         var rc = m.role === 'system' ? 'badge-accent' : m.role === 'user' ? 'badge-neutral' : m.role === 'tool' ? 'badge-warning' : 'badge-success';
         return '<div style="margin:8px 0"><div class="msg-header collapsed" onclick="toggleFold(this)"><span class="fold-toggle">▶</span><span class="badge ' + rc + '">' + escHtml(m.role) + '</span></div><div class="msg-body collapsed"><div class="req-block" style="margin-top:4px"><pre>' + escHtml(m.content) + '</pre></div></div></div>';
-      }).join('') + '</div>' : '')
-    + (rawText ? '<div class="req-section-label">Raw AI Response</div><div class="req-block"><pre>' + escHtml(rawText) + '</pre></div>' : '')
-    + (processedText ? '<div class="req-section-label">Processed Output</div><div class="req-block"><pre>' + escHtml(processedText) + '</pre></div>' : '')
+      }).join('') + '</div></div>' : '')
+    + (entry.qwenRawChunks?.length > 1 ? '<div class="foldable-section"><div class="foldable-header collapsed" onclick="toggleFold(this)"><span class="fold-toggle">▶</span> Raw Chunks (' + entry.qwenRawChunks.length + ')</div><div class="foldable-body collapsed" style="max-height:70vh;overflow-y:auto">' + entry.qwenRawChunks.map(function(c, i) {
+        var isJson = c.trim().startsWith('{') && c.includes('"name"');
+        var chunkLabel = isJson ? 'tool' : 'text';
+        return '<div style="margin:4px 0;padding:4px 6px;border-left:3px solid ' + (isJson ? 'var(--accent)' : 'var(--text-muted)') + ';font-family:var(--mono);font-size:0.7rem"><span class="badge ' + (isJson ? 'badge-accent' : 'badge-neutral') + '" style="margin-right:4px">#' + (i + 1) + ' ' + chunkLabel + '</span>' + escHtml(c) + '</div>';
+      }).join('') + '</div></div>' : '')
+    + (rawText ? '<div class="foldable-section"><div class="foldable-header" onclick="toggleFold(this)"><span class="fold-toggle">▼</span> Raw AI Response</div><div class="foldable-body"><pre style="white-space:pre-wrap;word-break:break-all;overflow-x:auto">' + escHtml(rawText) + '</pre></div></div>' : '')
+    + (processedText ? '<div class="foldable-section"><div class="foldable-header" onclick="toggleFold(this)"><span class="fold-toggle">▼</span> Processed Output</div><div class="foldable-body"><pre style="white-space:pre-wrap;word-break:break-all;overflow-x:auto">' + escHtml(processedText) + '</pre></div></div>' : '')
     + (entry.parsedToolCalls?.length ? '<div class="req-section-label">Tool Execution</div>' + entry.parsedToolCalls.map(function(tc) {
         var s = tc.blocked ? '<span class="badge badge-warning">BLOCKED</span>' : (tc.error ? '<span class="badge badge-danger">ERROR</span>' : '<span class="badge badge-success">SUCCESS</span>');
         var d = '';
