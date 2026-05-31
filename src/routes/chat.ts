@@ -497,7 +497,7 @@ export async function chatCompletions(c: Context) {
         }
         const truncated = truncateToolResult(contentStr || '', 4096);
         const callId = msg.tool_call_id || `anon_${i}`;
-        prompt += `[READ TOOL RESULT below, then decide: call another tool or respond to the user]\n<tool_result name="${toolName || 'tool'}" call_id="${callId}">\n${truncated}\n</tool_result>\n\n`;
+        prompt += `<tool_result name="${toolName || 'tool'}" call_id="${callId}">\n${truncated}\n</tool_result>\n\n`;
         toolResultContents.push(truncated);
       }
     }

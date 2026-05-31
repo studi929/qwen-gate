@@ -283,6 +283,20 @@ test('XML-6: stripToolCallArtifacts preserves non-tool XML in content', () => {
   assert.ok(result.includes('<Component'), 'JSX stripped: ' + JSON.stringify(result));
 });
 
+test('SYS-1: filterContent strips leaked [READ TOOL RESULT] markers', () => {
+  const input = 'Here is my answer.\n[READ TOOL RESULT below, then decide: call another tool or respond to the user]\nMore text here.';
+  const result = filterContent(input);
+  assert.ok(!result.cleanText.includes('[READ TOOL RESULT'), 'Marker leaked: ' + JSON.stringify(result.cleanText));
+  assert.ok(result.cleanText.includes('Here is my answer.'), 'Normal content stripped');
+  assert.ok(result.cleanText.includes('More text here.'), 'Normal content stripped');
+});
+
+test('SYS-2: stripStreamingDelta strips leaked [READ TOOL RESULT] markers', () => {
+  const input = 'Answer text\n[READ TOOL RESULT below, then decide: call another tool or respond to the user]\n';
+  const result = stripStreamingDelta(input);
+  assert.ok(!result.includes('[READ TOOL RESULT'), 'Marker leaked: ' + JSON.stringify(result));
+});
+
 test('stripToolEcho preserves "Based on the results" reasoning', () => {
   const input = 'Based on the results, the fix is in auth.ts.';
   const result = stripToolEcho(input);
