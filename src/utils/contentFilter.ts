@@ -299,17 +299,45 @@ export function stripStreamingDelta(delta: string): string {
 
   cleaned = cleaned.replace(/\[READ TOOL RESULT below[^\]]*\]\s*/g, '');
   cleaned = cleaned.replace(/<tool_result[^>]*>[\s\S]*?<\/tool_result>/g, '');
-  cleaned = cleaned.replace(/<\/tool_result>/g, '');
+  // NOTE: do NOT strip orphaned </tool_result> here — stripToolCallArtifacts
+  // on accumulated text needs the closing tag to match opening+close pairs.
   cleaned = cleaned.replace(/\n?<tool(?:_[a-z]*)?$/g, '');
   cleaned = cleaned.replace(/\n?<t(?:o(?:o(?:l)?)?)?$/g, '');
 
-  // Original patterns
+  // ── Tool-call JSON fragment patterns ───────────────────────────────
+  // Order constraints:
+  //   1. Lookahead patterns (B) must run before the string they look for.
+  //   2. Tool-name eaters (B, C) must run before empty-args (A) because
+  //      A consumes `"arguments"` which B and C need to identify names.
+  //   3. (C) runs before (D) because D consumes the `, "arguments":` 
+  //      that C needs to determine where the tool name ends.
+  //   4. (A) runs before (D) because relative order among cleanups.
+  //   Final: B → C → A → D → E
+
+  // (B) Tool name + lookahead for `, "arguments"` — catches
+  //     `: "bash"` or `"bash"` at start-of-chunk.  Negative lookbehind
+  //     `(?<!:)` prevents matching inside complete JSON tool calls
+  //     where `"read_file"` follows `"name":` (`: "read_file"`).
+  //     Removes the name only, leaving `, "arguments"` for (D).
+  cleaned = cleaned.replace(/(?<!:)"[a-z_]+(?:\.[a-z_]+)*"(?=\s*,\s*"arguments")/g, '');
+
+  // (C) Bare tool name + `, "arguments"` — for fragments where the
+  //     leading `"` was consumed by the structured tool_calls path.
+  //     Catches `bash", "arguments"`, `read", "argumen` etc.
+  cleaned = cleaned.replace(/[a-z_]+"\s*,\s*"(?:arguments|parameters|argumen|argu|param)/gi, '');
+
+  // (A) Remove empty/partial arguments objects: `"arguments": }`
   cleaned = cleaned.replace(/"arguments"\s*:\s*\}/g, '');
+
+  // (D) Standalone `, "arguments":` — catches what (B) and (C) left.
   cleaned = cleaned.replace(/,\s*"arguments"\s*:/g, '');
-  cleaned = cleaned.replace(/"[a-z_]+(?:\.[a-z_]+)*"(?=\s*,\s*"arguments")/g, '');
+
+  // (E) Trailing JSON key fragments — the tail of `"arguments":` when
+  //     the opening `"` landed in a previous chunk.  Catches `ents": {`
+  cleaned = cleaned.replace(/(?:argumen|argument|arguments|param|parameter|parameters)":\s*/gi, '');
   cleaned = cleaned.replace(/Tool Response \([a-z_]+$/gm, '');
   
-  // Enhanced patterns for 02.md fragments: catch partial JSON from split tool calls
+  // ── Legacy enhanced patterns (02.md-fragment fallbacks) ─────────────
   // Tool name fragments: bash", "arguments or read", "arguments
   cleaned = cleaned.replace(/"[a-z_]+(?:\.[a-z_]+)*"\s*,\s*"(?:arguments|parameters)"?\s*:?/gi, '');
   
