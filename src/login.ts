@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { launchPersistentContext } from 'cloakbrowser';
 import { closePlaywright, getProfileDir } from "./services/playwright.ts";
 import { saveCookies } from './services/auth.ts';
 import * as dotenv from 'dotenv';
@@ -15,11 +15,10 @@ export async function login(email: string): Promise<void> {
   // Use persistent context so browser UI state (cookies, localStorage) survives across runs
   const profileDir = getProfileDir(email);
   
-  const context = await chromium.launchPersistentContext(profileDir, {
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  const context = await launchPersistentContext({
+    userDataDir: profileDir,
     viewport: { width: 1280, height: 800 },
     headless: false,
-    args: ['--disable-blink-features=AutomationControlled'],
   });
   const page = await context.newPage();
 

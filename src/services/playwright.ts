@@ -1,8 +1,9 @@
 import { chromium, firefox, webkit, BrowserContext, Page, Cookie, Browser } from 'playwright';
+import { launch as cloakLaunch, launchPersistentContext as cloakPersistentContext } from 'cloakbrowser';
 import path from 'path';
 import crypto from 'crypto';
 import { mkdirSync } from 'fs';
-import { getToken, getTokenWithAccount, pickAccount } from "./auth.ts";
+import { getTokenWithAccount, pickAccount } from "./auth.ts";
 
 export type BrowserType = 'chromium' | 'firefox' | 'webkit' | 'chrome' | 'edge';
 
@@ -198,7 +199,7 @@ export async function initPlaywright(headless = true, browserType: BrowserType =
     // Re-check after acquiring — another caller may have finished while we waited
     if (defaultBrowser) return;
 
-  let browserEngine;
+  let browserEngine: any;
   let channel: string | undefined;
 
   switch (browserType) {
@@ -218,19 +219,25 @@ export async function initPlaywright(headless = true, browserType: BrowserType =
       break;
     case 'chromium':
     default:
-      browserEngine = chromium;
+      // CloakBrowser: 58 C++ source-level stealth patches, auto-downloaded binary.
+      // Passes reCAPTCHA v3 (0.9), Cloudflare Turnstile, FingerprintJS, BrowserScan.
+      defaultBrowser = await cloakLaunch({
+        headless,
+      });
       break;
   }
 
-  // Launch shared browser instance (not persistent context) for creating isolated contexts per account
-  defaultBrowser = await browserEngine.launch({
-    headless,
-    channel,
-    ignoreDefaultArgs: ['--enable-automation'],
-    args: [
-      '--disable-blink-features=AutomationControlled'
-    ]
-  });
+  // Non-cloak engines (firefox, webkit, chrome, edge) — basic Playwright launch
+  if (browserEngine) {
+    defaultBrowser = await browserEngine.launch({
+      headless,
+      channel,
+      ignoreDefaultArgs: ['--enable-automation'],
+      args: [
+        '--disable-blink-features=AutomationControlled'
+      ],
+    });
+  }
 
   const cleanupAllContexts = async () => {
     for (const [_email, accCtx] of accountContexts.entries()) {
@@ -299,8 +306,6 @@ async function createContextInternal(email: string, cookies?: Record<string, str
   
   // Create new isolated context with storage state if cookies provided
   const context = await defaultBrowser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-    ignoreDefaultArgs: ['--enable-automation'],
     storageState: cookies ? { cookies: Object.entries(cookies).map(([name, value]) => ({
       name,
       value,
@@ -311,13 +316,6 @@ async function createContextInternal(email: string, cookies?: Record<string, str
       secure: true,
       sameSite: 'Lax'
     } as Cookie)), origins: [] } : undefined
-  });
-  
-  // Bypass navigator.webdriver detection
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => undefined,
-    });
   });
   
   const page = await context.newPage();
@@ -585,40 +583,25 @@ export async function openBrowserProfile(email: string, password?: string, optio
 
   const headless = options?.headless ?? false;
   const profileDir = getProfileDir(email);
-  const mode = headless ? 'headless' : 'visible';
 
   let context: any = null;
   let page: any = null;
 
   try {
-    context = await chromium.launchPersistentContext(profileDir, {
+    context = await cloakPersistentContext({
+      userDataDir: profileDir,
       headless,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      ignoreDefaultArgs: ['--enable-automation'],
       locale: 'en-US',
-      timezoneId: 'America/New_York',
+      timezone: 'America/New_York',
       viewport: { width: 1920, height: 1080 },
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--disable-infobars',
         '--window-size=1920,1080',
         '--window-position=0,0',
       ],
     });
 
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-      Object.defineProperty(window, 'chrome', { value: { runtime: {} }, configurable: true });
-      const origQuery = navigator.permissions.query;
-      navigator.permissions.query = (params: any) =>
-        params.name === 'notifications'
-          ? Promise.resolve({ state: Notification.permission } as PermissionStatus)
-          : origQuery.call(navigator.permissions, params);
-    });
 
     const existingCookies: Cookie[] = await context.cookies();
     const existingToken = existingCookies.find((c: Cookie) => c.name === 'token');
@@ -721,23 +704,15 @@ export async function refreshViaProfile(email: string): Promise<boolean> {
   let context: any = null;
 
   try {
-    context = await chromium.launchPersistentContext(profileDir, {
+    context = await cloakPersistentContext({
+      userDataDir: profileDir,
       headless: true,
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
-      ignoreDefaultArgs: ['--enable-automation'],
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
       ],
     });
 
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
-      Object.defineProperty(window, 'chrome', { value: { runtime: {} }, configurable: true });
-    });
 
     const page = context.pages()[0] || await context.newPage();
     validateQwenUrl('https://chat.qwen.ai');
