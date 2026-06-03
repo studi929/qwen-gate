@@ -10,6 +10,7 @@ Complete API documentation for Qwen Gate's OpenAI-compatible endpoints.
 - [Endpoints](#endpoints)
   - [Chat Completions](#post-v1chatcompletions)
   - [Models](#get-v1models)
+- [Dashboard Routes](#dashboard-routes)
 - [Error Handling](#error-handling)
 - [SDKs and Clients](#sdks-and-clients)
 
@@ -68,8 +69,9 @@ Authorization: Bearer YOUR_API_KEY
 | `temperature` | number        | No       | `0.7`   | Sampling temperature (0-2)    |
 | `max_tokens`  | number        | No       | `1000`  | Maximum tokens to generate    |
 | `top_p`       | number        | No       | `0.9`   | Nucleus sampling parameter    |
-| `tools`       | array         | No       | -       | Array of tool definitions     |
-| `tool_choice` | string/object | No       | `auto`  | Tool selection strategy       |
+| `tools`           | array         | No       | -       | Array of tool definitions                     |
+| `tool_choice`     | string/object | No       | `auto`  | Tool selection strategy                       |
+| `stream_options`  | object        | No       | -       | Streaming options. Set `{"include_usage": true}` to get usage data in the final chunk |
 
 #### Message Object
 
@@ -78,6 +80,7 @@ Authorization: Bearer YOUR_API_KEY
   "role": "user|assistant|system|tool",
   "content": "string",
   "name": "string (optional)",
+  "reasoning_content": "string (optional, assistant messages only)",
   "tool_calls": [],
   "tool_call_id": "string (for tool messages)"
 }
@@ -103,14 +106,26 @@ curl http://localhost:26405/v1/chat/completions \
 
 **Response (streaming):**
 
+The server sends SSE (Server-Sent Events) with an initial heartbeat, then role assignment, content deltas, and optional reasoning deltas. Each chunk is OpenAI-compatible.
+
 ```
-data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello"},"finish_reason":null}]}
+: heartbeat
 
-data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{"content":"! How can I help you today?"},"finish_reason":null}]}
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","system_fingerprint":"fp_qwen_gate","service_tier":"default","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
 
-data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{"content":"Hello"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{"content":"! How can I help you today?"},"logprobs":null,"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","system_fingerprint":"fp_qwen_gate","service_tier":"default","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":15,"completion_tokens":10,"total_tokens":25,"completion_tokens_details":{"reasoning_tokens":0},"prompt_tokens_details":{"cached_tokens":0}}}
 
 data: [DONE]
+```
+
+For models with thinking/reasoning, additional chunks include `reasoning_content` in the delta:
+
+```
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"qwen-max","choices":[{"index":0,"delta":{"reasoning_content":"Let me think about this step by step..."},"logprobs":null,"finish_reason":null}]}
 ```
 
 **Response (non-streaming):**
@@ -121,6 +136,8 @@ data: [DONE]
   "object": "chat.completion",
   "created": 1234567890,
   "model": "qwen-max",
+  "system_fingerprint": "fp_qwen_gate",
+  "service_tier": "default",
   "choices": [
     {
       "index": 0,
@@ -128,13 +145,20 @@ data: [DONE]
         "role": "assistant",
         "content": "Hello! How can I help you today?"
       },
+      "logprobs": null,
       "finish_reason": "stop"
     }
   ],
   "usage": {
     "prompt_tokens": 15,
     "completion_tokens": 10,
-    "total_tokens": 25
+    "total_tokens": 25,
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
   }
 }
 ```
@@ -279,18 +303,66 @@ curl http://localhost:26405/v1/models \
       "object": "model",
       "created": 1234567890,
       "owned_by": "qwen",
-      "permission": []
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "modalities": ["text"]
     },
     {
       "id": "qwen-plus",
       "object": "model",
       "created": 1234567890,
       "owned_by": "qwen",
-      "permission": []
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "modalities": ["text"]
+    },
+    {
+      "id": "qwen-max-no-thinking",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "qwen",
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "modalities": ["text"]
+    },
+    {
+      "id": "qwen-plus-no-thinking",
+      "object": "model",
+      "created": 1234567890,
+      "owned_by": "qwen",
+      "context_window": 1000000,
+      "max_output_tokens": 65536,
+      "modalities": ["text"]
     }
   ]
 }
 ```
+
+Model names ending in `-no-thinking` disable the thinking/reasoning block for that model.
+
+## Dashboard Routes
+
+The server includes a built-in web dashboard at these routes. All dashboard routes are served as vanilla HTML/JS (no framework dependencies).
+
+| Route                       | Description                          |
+| --------------------------- | ------------------------------------ |
+| `/dashboard`                | Overview with live request stream    |
+| `/dashboard/logs`           | Request log with foldable entries    |
+| `/dashboard/accounts`       | Account status and cooldown display  |
+| `/dashboard/network`        | Network request inspector            |
+| `/dashboard/settings`       | Configuration editor                 |
+| `/log`                      | Redirect to `/dashboard/logs`        |
+
+### Log Streaming
+
+The dashboard receives live updates via SSE:
+
+| Route           | Description                               |
+| --------------- | ----------------------------------------- |
+| `/log/json`     | Recent log entries as JSON                |
+| `/log/stream`   | SSE stream of log entries in real time    |
+
+These endpoints share the same `Authorization: Bearer` header as the API. The SSE endpoint accepts an alternative `?token=` query parameter since `EventSource` cannot set custom headers.
 
 ## Error Handling
 
@@ -301,6 +373,7 @@ curl http://localhost:26405/v1/models \
   "error": {
     "message": "Error description",
     "type": "error_type",
+    "param": "field_name (optional)",
     "code": "error_code"
   }
 }
@@ -320,11 +393,25 @@ curl http://localhost:26405/v1/models \
 }
 ```
 
+Example for context window exceeded:
+
+```json
+{
+  "error": {
+    "message": "Context window exceeded. Input has ~25000 tokens, but the model qwen-max supports a maximum context of 10000 tokens.",
+    "type": "invalid_request_error",
+    "param": "messages",
+    "code": "context_window_exceeded"
+  }
+}
+```
+
 **Causes:**
 
 - Missing required fields
 - Invalid message format
 - Malformed JSON
+- Context window exceeded
 
 #### 401 Unauthorized
 
@@ -477,15 +564,15 @@ curl http://localhost:26405/v1/chat/completions \
 
 ### Echo Detection
 
-Qwen Gate automatically detects and prevents AI models from echoing tool results verbatim. This is handled transparently and requires no special configuration.
+Qwen Gate automatically detects when the model echoes tool results verbatim in its response. When echo is detected, the connection is dropped and the OpenAI SDK automatically retries with a correction prompt. This is transparent to the API consumer.
 
-### RTK Compression
+### Tool Compression
 
-Tool results are automatically compressed using RTK-style compression to reduce token usage by 20-40%. This is transparent to the API consumer.
+Tool results are intelligently compressed before being sent to the Qwen model. Git diffs, JSON arrays, and structured data are summarized to reduce token usage and prevent echo at the source.
 
 ### Session Pooling
 
-Sessions are automatically managed and pooled for optimal performance. No configuration required.
+Sessions are automatically managed per-account using CloakBrowser browser contexts. The pool rotates across accounts, auto-scales under load, and cleans up idle sessions. No API-level configuration required.
 
 ## Support
 
