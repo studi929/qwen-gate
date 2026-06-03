@@ -32,6 +32,28 @@ The wizard walks you through setting the port, API key, and browser engine. Visi
 
 Configuration uses `config.json` (created via `npm run setup` or the dashboard settings page). Environment variables still work but `config.json` takes precedence for most values.
 
+```jsonc
+{
+  "PORT": 26405,
+  "HOST": "localhost",
+  "API_KEY": "sk-your-api-key",
+  "BROWSER": "chromium",
+  "BROWSER_HEADLESS": true,
+  "LOG_LEVEL": "info",
+  "LOG_FORMAT": "text",
+  "LOG_MAX_ENTRIES": 20,
+  "DASHBOARD": true,
+  "TOOL_CALLING": true,
+  "CONTENT_FILTER": true,
+  "ECHO_DETECTOR": true,
+  "ECHO_JACCARD_THRESHOLD": 0.9,
+  "RATE_LIMIT_COOLDOWN_MS": 120000,
+  "RETRY_ENABLED": true,
+  "RETRY_MAX_ATTEMPTS": 3,
+  "DELETE_SESSION": true
+}
+```
+
 ### Server
 
 | Variable | Default | Description |
@@ -164,37 +186,45 @@ curl http://localhost:26405/v1/models
 ## Architecture
 
 ```
-           ┌──────────────┐
-           │  OpenAI      │
-           │  Client      │
-           └──────┬───────┘
-                  │
-                  ▼
-   ┌──────────────────────────────┐
-   │  Hono Server (PORT=26405)    │
-   │  /v1/chat/completions        │
-   │  /v1/models                  │
-   │  /accounts                   │
-   └──────────────┬───────────────┘
-                  │
-                  ▼
-   ┌──────────────────────────────┐
-   │  Session Pool                │   CloakBrowser sessions per account
-   │  ─ autoscaling               │   auto-created, rotated, recycled
-   │  ─ multi-account rotation    │
-   └──────────────┬───────────────┘
-                  │
-                  ▼
-   ┌──────────────────────────────┐
-   │  Playwright Route Handler    │   intercepts chat.qwen.ai
-   │  request rewrite → response  │   rewrites payload in-flight
-   └──────────────┬───────────────┘
-                  │
-                  ▼
-   ┌──────────────┐
-   │  Pipeline    │   ToolSpamGuard · content filter · echo filter
-   │              │   streaming deltas · token estimation
-   └──────────────┘
+                    ┌──────────────┐
+                    │  OpenAI      │
+                    │  Client      │
+                    └──────┬───────┘
+                           │  POST /v1/chat/completions
+                           ▼
+            ┌──────────────────────────────────┐
+            │  Hono API Server (PORT=26405)    │
+            │  /v1/chat/completions            │
+            │  /v1/models                      │
+            │  /accounts                       │
+            │  /health  /pool/stats            │
+            │  /log/stream  /system/logs       │
+            └─────────┬───────────┬────────────┘
+                      │           │
+               API    │           │  Dashboard
+                      ▼           ▼
+   ┌────────────────────────┐  ┌──────────────────────────────┐
+   │  Session Pool          │  │  Astro Web Dashboard         │
+   │  ─ autoscaling         │  │  /dashboard                  │
+   │  ─ multi-account       │  │  ├─ /overview    (KPI+pool)  │
+   │  ─ rotation + recycle  │  │  ├─ /logs        (requests)  │
+   └───────────┬────────────┘  │  ├─ /accounts    (CRUD)      │
+               │               │  ├─ /network     (debug)     │
+               ▼               │  └─ /settings    (config)    │
+   ┌────────────────────────┐  └──────────────────────────────┘
+   │  Playwright Handler    │
+   │  req rewrite → response│
+   └───────────┬────────────┘
+               │
+               ▼
+   ┌────────────────────────┐
+   │  Response Pipeline     │
+   │  ToolSpamGuard ·       │
+   │  content filter ·      │
+   │  echo filter ·         │
+   │  streaming deltas ·    │
+   │  token estimation      │
+   └────────────────────────┘
 ```
 
 ### Request Flow
@@ -211,14 +241,195 @@ curl http://localhost:26405/v1/models
 
 ## Dashboard
 
-Visit `http://localhost:<PORT>/dashboard` for the live dashboard:
+The web dashboard is available at `http://localhost:<PORT>/dashboard` (enabled by default, disable with `DASHBOARD=false`). It auto-refreshes every 2 seconds with live SSE updates as requests stream in.
 
-- Request log with per-entry foldable sections (raw chunks, raw AI response, processed output)
-- Account status and cooldown indicators
-- Session pool health and autoscaling stats
-- Live SSE updates as requests stream in
-- System logs panel with level/category filtering
-- Color-coded chunk types (tool vs text) and full content inspection
+Navigate between pages using the sidebar on the left. The sidebar shows a green live indicator when the server is running and displays the server uptime at the bottom.
+
+### Pages
+
+#### Overview (`/dashboard`)
+
+The landing page shows the system status at a glance:
+
+- **KPI Cards** -- Total Accounts, Authenticated, Active Sessions, Queue depth, Total Requests, and Uptime
+- **Session Pool** -- Active, Waiting, Available, and Total session counts with a utilization bar (color-coded: green below 50%, yellow 50-80%, red above 80%)
+- **Model Health** -- Per-model success/error counts and success rate badges for each Qwen model used
+- **System Logs** -- Recent server log entries with timestamps, level badges (debug/info/warn/error), and category labels
+
+#### Logs (`/dashboard/logs`)
+
+A live request log that streams entries via SSE as they arrive:
+
+- Each entry shows model name, stream mode (SSE vs SYNC), status badge (done/streaming/error), token count, and account email
+- **Input section** (folded by default) -- the full messages array sent by the client, color-coded by role (system, user, tool, assistant)
+- **Raw Output** and **Processed Output** panels displayed side by side for comparison
+- **Tool Calls** section lists every parsed tool invocation with name, arguments, blocked/error/success status, execution time, and result
+- **Chunk Stream** panel (right column) shows every raw chunk from Qwen, color-coded by type (tool vs text) with index labels
+- Errors are highlighted at the top with WARN (echo/loop) or ERROR badges
+- A connection status indicator shows SSE health (Connected/Reconnecting/Disconnected)
+- Load More button reveals older entries beyond the visible limit of 10
+- Clear button to wipe the log
+
+#### Accounts (`/dashboard/accounts`)
+
+Manage Qwen accounts through a form and table interface:
+
+- **Add Account** form -- enter email and password, then click Add Account. The server attempts an automated login and shows a success or warning toast
+- **Accounts table** -- lists every account with:
+  - Email address
+  - Auth status indicator (green dot = authenticated, red = expired, yellow = throttled, gray = not authenticated)
+  - In-flight request count
+  - Total requests served
+  - Throttle badge with remaining cooldown time
+  - Token TTL countdown
+  - **Remove** button (with confirmation modal) deletes the account and its session data
+  - **Login** button (visible when not authenticated) opens a browser window for manual sign-in; the session is captured automatically once you log in on the Qwen page
+- The table polls every 2 seconds for live updates
+
+#### Network (`/dashboard/network`)
+
+Debug panel that shows all outbound HTTP requests made by the Playwright browser layer to `chat.qwen.ai`:
+
+- Table columns: Time, Method (GET/POST/PUT/DELETE), URL, Status code, Duration
+- Each row is expandable -- click to reveal Request Headers, Request Body, Response Headers, Response Body, and Stream Chunks
+- **Filter controls** at the top: filter by HTTP method, status range (2xx/4xx/5xx), or request category (chat, auth, models, session-create, session-delete, settings, other)
+- Entries show their phase badge (pending/streaming/completed/error)
+- Duration cells are color-coded: green for fast, yellow for slow
+- Shows an empty state message when no data has been recorded yet (normal -- data only appears when requests are actively flowing through the gateway)
+
+#### Settings (`/dashboard/settings`)
+
+Edit all server configuration parameters through a web form:
+
+- Sections match the env var groups: Server, Pipeline, Echo Detection, Auth, Logging, Retry
+- Input types adapt to the setting: text fields, number fields, dropdown selects, and checkboxes
+- Click **Save Changes** to persist. The server applies the new config on the fly -- no restart needed for most values
+- Success/error messages appear inline and as toast notifications
+- The config is stored in `config.json` alongside the project
+
+## CLI Commands
+
+The `qg` CLI is available after installing the package (`npm install -g .` or running via `npx` from the project root). It can also be invoked as `qwengate` or `qwen-gate`.
+
+```
+Usage: qg [command] [options]
+
+Commands:
+  start              Start the API server (default)
+  login <email>      Authenticate a Qwen account via browser
+  restart            Restart the running server
+  status             Check if the server is running
+  help               Show help message
+
+Options:
+  --port <n>         Override port (default: from config or 26405)
+  --browser <e>      Browser engine: chromium, firefox, chrome, edge
+  --host <addr>      Bind address (default: from config or localhost)
+```
+
+### Examples
+
+**Start the server on the default port:**
+
+```bash
+qg
+# [qg] Starting server (tsx src/index.tsx)...
+```
+
+**Start on a specific port with a different browser:**
+
+```bash
+qg start --port 8080 --browser firefox
+# [qg] Starting server (tsx src/index.tsx)...
+# [qg] Extra args: --port 8080 --browser firefox
+```
+
+**Login a Qwen account (opens a browser window for manual sign-in):**
+
+```bash
+qg login user@example.com
+# [qg] Authenticating user@example.com...
+# A browser window will open. Log in to chat.qwen.ai, then press Enter.
+# [qg] Login complete. You can now use this account with Qwen Gate.
+```
+
+The login command launches a CloakBrowser persistent context pointing to `chat.qwen.ai/auth`. A browser window opens where you sign in manually. After logging in, press Enter in the terminal. The session cookies are saved automatically. Account credentials can also be added through the Dashboard at `/dashboard/accounts`.
+
+**Check server status:**
+
+```bash
+qg status
+# [qg] Server is running on port 26405 (PID: 12345)
+```
+
+When the server is not running:
+
+```bash
+qg status
+# [qg] Server is not running
+```
+
+**Restart the server:**
+
+```bash
+qg restart
+# [qg] Stopping server...
+# [qg] Starting server (tsx src/index.tsx)...
+```
+
+**Show help:**
+
+```bash
+qg help
+# [qg]
+# [qg] Qwen Gate -- OpenAI-compatible gateway for Qwen AI
+# [qg]
+# [qg] USAGE
+# [qg]   qg [command] [options]
+# ...
+
+## Troubleshooting
+
+### Browser automation fails
+
+The gateway requires a working browser engine to communicate with `chat.qwen.ai`. If you see errors about browser launch failures:
+
+- **Check that Playwright browsers are installed.** Run `npx playwright install chromium` (or `firefox`, `chrome`, `edge` depending on your `BROWSER` setting).
+- **System dependencies may be missing.** On Linux, run `npx playwright install-deps chromium` to install shared library dependencies (libnss3, libatk-bridge, etc.).
+- **CloakBrowser persistent contexts** require a writable profile directory. Make sure the `data/` folder exists and is writable.
+- **Headless mode** is used by default for API requests, but login (`qg login`) always opens a visible window. If you are in a headless server environment, use the `/dashboard/accounts` page to add accounts with credentials instead of the browser-based login flow.
+- **Set `BROWSER_HEADLESS=false`** in config.json if you need to debug the browser behavior visually during API calls.
+
+### Account authentication errors
+
+- **Session expired.** Qwen auth tokens expire after 8 hours by default (configurable via `AUTH_TOKEN_MAX_AGE_MS`). If requests start failing with 401 errors, re-authenticate the account through the Dashboard at `/dashboard/accounts` -- click the Login button next to the affected account.
+- **Invalid credentials.** If automated login fails, the Dashboard will show a "Login failed" toast. Try adding the account again with the correct password, or use the manual browser login flow.
+- **Missing accounts.** The session pool has no sessions to serve requests if no accounts are added. Add at least one account via the Dashboard or the `/accounts` API. Run `curl http://localhost:26405/accounts` to verify.
+- **Token refresh fails.** The gateway refreshes tokens automatically every 5 minutes before expiry. If this process fails, check the system logs in the Dashboard overview page for refresh errors. Network connectivity to `chat.qwen.ai` is required.
+
+### Rate limiting issues
+
+Qwen's backend may rate-limit accounts when too many requests are sent in a short window:
+
+- **The Dashboard shows a yellow "Throttled" badge** on the Accounts page with a countdown timer. Wait for the cooldown to expire (default: 2 minutes, configurable via `RATE_LIMIT_COOLDOWN_MS`).
+- **The session pool rotates to another account** automatically when one is throttled. If all accounts are throttled, requests queue up (visible on the Overview page Queue KPI).
+- **Reduce concurrency** by lowering the number of parallel requests. The session pool autoscales but each account can only handle one request at a time.
+- **Adjust cooldown timing** by increasing `RATE_LIMIT_COOLDOWN_MS` in the Dashboard Settings page to give accounts more recovery time.
+
+### Network page shows no data
+
+The Network debug panel at `/dashboard/network` displays outbound HTTP requests made by the Playwright browser layer. If it shows an empty state:
+
+- **This is normal when no requests are active.** Data only appears when API calls are flowing through the gateway. Make a test request to `/v1/chat/completions` first.
+- **Network capture is per-session.** If the session pool recycled all sessions before you opened the page, historical data may not be available. The panel shows up to the last 50 entries.
+- **Check that the browser engine is running.** If the session pool shows zero active sessions, no network data will be captured.
+
+### General debugging tips
+
+- **Enable debug logging** by setting `DEBUG=true` in config.json or via the Settings page. This prints raw Qwen chunks alongside processed output.
+- **Stream debugging only** -- set `DEBUG_STREAM=true` for streaming pipeline details without full debug noise.
+- **Check the System Logs panel** on the Dashboard overview page for server-level errors and warnings.
+- **Log format** can be switched to `json` (`LOG_FORMAT=json`) for structured logging compatible with log aggregators like ELK or Datadog.
 
 ## Testing
 
