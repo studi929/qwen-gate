@@ -15,10 +15,10 @@ Production deployment for Qwen Gate.
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Install dependencies (postinstall creates config.json with defaults)
 npm install --production
 
-# Create config.json
+# Customize config (optional -- skip if defaults are fine)
 npm run setup
 
 # Start the server
@@ -80,6 +80,7 @@ module.exports = {
   }]
 };
 
+// mkdir -p logs  (create the logs directory referenced above)
 // pm2 start ecosystem.config.js
 ```
 
@@ -143,7 +144,7 @@ Settings apply immediately. No restart needed for most changes.
 
 ### Via Dashboard
 
-Open `http://localhost:4321/dashboard/settings` for the web config UI. Changes persist to `config.json`.
+Open `http://localhost:26405/dashboard/settings` (or your configured PORT) for the web config UI. Changes persist to `config.json`.
 
 ## Reverse Proxy (nginx)
 
@@ -190,11 +191,11 @@ pm2 logs qwen-gate                  # Via PM2
 journalctl -u qwen-gate -f          # Via systemd
 ```
 
-Set `LOG_FORMAT: "json"` in `config.json` for structured log output.
+`LOG_FORMAT` defaults to `json`. Set to `"text"` for human-readable log output.
 
 ### Dashboard
 
-Open `http://localhost:4321/dashboard` for real-time request logs, account status, and session pool stats.
+Open `http://localhost:26405/dashboard` (or your configured PORT) for real-time request logs, account status, and session pool stats.
 
 ## Security
 
