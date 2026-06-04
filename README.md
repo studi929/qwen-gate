@@ -102,18 +102,7 @@ The server starts on [http://localhost:26405](http://localhost:26405).
 
 ### Use with Any OpenAI-Compatible Client
 
-Qwen Gate exposes a standard OpenAI API — point any client at it:
-
-```bash
-# Claude Code — add to your CLAUDE.md or run:
-export ANTHROPIC_BASE_URL=http://localhost:26405/v1
-
-# OpenCode — set in your config:
-OPENAI_BASE_URL=http://localhost:26405/v1
-
-# Any OpenAI SDK — just change the base URL:
-openai.base_url = "http://localhost:26405/v1"
-```
+Qwen Gate works with any tool that speaks OpenAI's API: **Claude Code, OpenCode, Qwen Code, Cursor**, standard OpenAI SDKs (Python, Node.js, curl), and anything else using the `/v1/chat/completions` format — just point it at `http://localhost:26405/v1`.
 
 > **Tip:** Use `model: "qwen3.7-max"` for the latest Qwen model. Available models: `qwen3-max`, `qwen3.7-max`, `qwen3-plus`, `qwen-turbo`, `qwen3`.
 
@@ -141,6 +130,8 @@ curl -X POST http://localhost:26405/v1/chat/completions \
 ```
 
 ### Tool Calling
+
+> **How it works:** Qwen doesn't natively support tool calling — it outputs tool calls as JSON text in its response. The gateway parses that text and converts it into OpenAI-compatible tool call objects. It's not perfect, but it works for most use cases.
 
 ```bash
 curl -X POST http://localhost:26405/v1/chat/completions \
