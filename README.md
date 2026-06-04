@@ -147,18 +147,18 @@ curl -X POST http://localhost:26405/v1/chat/completions \
 
 All settings in `config.json`. Key options:
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `PORT` | `"26405"` | Server port |
-| `API_KEY` | `""` | Bearer token for API auth (empty = no auth) |
-| `BROWSER` | `"chromium"` | Browser engine: `chromium`, `firefox`, `webkit` |
-| `TOOL_CALLING` | `"true"` | Enable tool call parsing |
-| `CLEAN_OUTPUT` | `"true"` | Strip internal artifacts from responses |
-| `ECHO_DETECTOR` | `"true"` | Detect tool-result echo leaks |
-| `SAVE_REQUEST_LOGS` | `"false"` | Save per-request logs to disk |
-| `OPEN_DASHBOARD_ON_START` | `"false"` | Auto-open dashboard in browser |
-| `RATE_LIMIT_COOLDOWN_MS` | `"120000"` | Cooldown after rate limit (2 min) |
-| `RETRY_MAX_ATTEMPTS` | `"3"` | Max retry attempts |
+| Key                       | Default      | Description                                     |
+| ------------------------- | ------------ | ----------------------------------------------- |
+| `PORT`                    | `"26405"`    | Server port                                     |
+| `API_KEY`                 | `""`         | Bearer token for API auth (empty = no auth)     |
+| `BROWSER`                 | `"chromium"` | Browser engine: `chromium`, `firefox`, `webkit` |
+| `TOOL_CALLING`            | `"true"`     | Enable tool call parsing                        |
+| `CLEAN_OUTPUT`            | `"true"`     | Strip internal artifacts from responses         |
+| `ECHO_DETECTOR`           | `"true"`     | Detect tool-result echo leaks                   |
+| `SAVE_REQUEST_LOGS`       | `"false"`    | Save per-request logs to disk                   |
+| `OPEN_DASHBOARD_ON_START` | `"false"`    | Auto-open dashboard in browser                  |
+| `RATE_LIMIT_COOLDOWN_MS`  | `"120000"`   | Cooldown after rate limit (2 min)               |
+| `RETRY_MAX_ATTEMPTS`      | `"3"`        | Max retry attempts                              |
 
 Full reference: [docs/API.md](docs/API.md) and `config.example.jsonc`.
 
@@ -172,13 +172,13 @@ Full reference: [docs/API.md](docs/API.md) and `config.example.jsonc`.
 
 Accessible at `http://localhost:26405/dashboard`.
 
-| Page | Path | Purpose |
-|------|------|---------|
-| **Overview** | `/dashboard` | KPIs, model health, system logs, session pool status |
-| **Logs** | `/dashboard/logs` | Real-time request log with expandable entry details |
-| **Accounts** | `/dashboard/accounts` | Add/remove Qwen accounts, view auth status |
-| **Network** | `/dashboard/network` | Outbound API call inspector |
-| **Settings** | `/dashboard/settings` | Live config editor (changes apply instantly) |
+| Page         | Path                  | Purpose                                              |
+| ------------ | --------------------- | ---------------------------------------------------- |
+| **Overview** | `/dashboard`          | KPIs, model health, system logs, session pool status |
+| **Logs**     | `/dashboard/logs`     | Real-time request log with expandable entry details  |
+| **Accounts** | `/dashboard/accounts` | Add/remove Qwen accounts, view auth status           |
+| **Network**  | `/dashboard/network`  | Outbound API call inspector                          |
+| **Settings** | `/dashboard/settings` | Live config editor (changes apply instantly)         |
 
 ## CLI
 
@@ -281,12 +281,12 @@ Uses the `node:test` runner. Covers content filtering, tool-call parsing, echo d
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
+| Document                             | Description                                   |
+| ------------------------------------ | --------------------------------------------- |
 | [Architecture](docs/ARCHITECTURE.md) | System design, component breakdown, data flow |
-| [API Reference](docs/API.md) | Full endpoint documentation |
-| [Deployment](docs/DEPLOYMENT.md) | Production deployment guide |
-| [Development](docs/DEVELOPMENT.md) | Contributing, testing, code conventions |
+| [API Reference](docs/API.md)         | Full endpoint documentation                   |
+| [Deployment](docs/DEPLOYMENT.md)     | Production deployment guide                   |
+| [Development](docs/DEVELOPMENT.md)   | Contributing, testing, code conventions       |
 
 ## License
 

@@ -1,45 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="100%">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F5F1EA"/>
-      <stop offset="50%" stop-color="#F0EBE2"/>
-      <stop offset="100%" stop-color="#EBE5D9"/>
-    </linearGradient>
-    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#1a1615"/>
-      <stop offset="100%" stop-color="#4a4540"/>
-    </linearGradient>
-    <linearGradient id="tagBg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#E9E2D6"/>
-      <stop offset="100%" stop-color="#DDD4C6"/>
-    </linearGradient>
-  </defs>
-  <rect width="900" height="300" fill="url(#bg)" rx="16" stroke="#C9BFAE" stroke-width="1"/>
-  <rect x="4" y="4" width="892" height="292" rx="14" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.5"/>
-  <g transform="translate(30, 40)">
-    <svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" preserveAspectRatio="none" style="display: block;" version="1.1" viewBox="0 0 2000 2000"><path fill="rgb(209,145,112)" d="M1025.63 674.049c33.95-1.481 79.95-.116 114.68-.11l227.23.062c29.41.142 58.82.034 88.22-.324 10.69-.173 22.25.375 32.61-.524l-1.3 3.155c-4.77 11.786-14.73 27.248-21.35 38.757l-46.07 79.103-45.47 77.964c-6.25 10.673-17.33 30.908-24.3 40.001-21.93 2.428-48.9-.883-71.93 1.663-1.22-15.783-.12-45.27 0-61.912-12.39-5.233-27.24-12.994-39.47-18.99a8323 8323 0 0 1-80.34-40.099c-10.54 3.716-29.19 15.158-39.45 20.466-25.95 13.433-51.79 28.743-78.04 41.478-1.16 10.505-.86 27.423-.86 38.048l.05 60.301-.03 202.022c-.01 16.01 2.09 74.29-2.69 83.42-30.8 58.83-69.455 125.97-99.566 184.31 3.026 7.59 24.638 43.99 29.962 52.62 14.326 23.24 28.027 50 42.254 72.58-6.71 10.69-11.079 22.61-19.046 35.4l-1.859-.39c-9.924-18.18-21.203-36.63-31.581-54.66a8998 8998 0 0 0-54.369-95.06c-19.299 1.67-53.449.6-73.937.59l-141.781-.01c-25.317 0-57.123-.87-81.888.71 7.877-18.26 41.646-78.26 53.648-93.5 21.046-1.19 53.479-.15 75.245-.1l137.418.07c12.314-.01 58.708.99 67.035-.81 3.116-4.29 5.503-9 7.983-13.67 16.187-30.5 34.563-59.79 50.922-90.2l-98.585-179.41c-14.158-25.75-30.417-58.349-45.5-82.818 4.354-7.123 8.991-16.574 13.191-24.068a5913 5913 0 0 0 30.735-54.435c29.892-52.883 61.651-106.103 91.676-159.005 9.145-16.113 26.713-50.022 36.553-62.625"></path><path fill="rgb(238,186,163)" d="M552.822 627.091c1.337.924 2.085 1.393 2.946 2.904 21.814 38.268 44.366 76.216 66.715 114.173 3.655 6.208 17.929 28.963 19.652 33.693 53.779 86.801 105.926 180.668 158.181 269.079l72.887 124.87c8.283 14.47 24.578 40.61 30.648 54.36l-131.995.23c-21.638.04-51.273.88-72.244-.69-30.018-50.46-66.05-114.57-98.238-162.34l-110.214-189.236c-11.805-20.68-29.649-47.907-39.366-68.639 3.909-11.819 94.516-172.767 101.028-178.404"></path><path fill="rgb(209,145,112)" d="m1009.77 1548.04.41-.68c6.18-10.41 12.81-26.87 18.88-38.25l90.38-166.26c3.69-6.74 8.47-20.1 12.64-26.78 19.3 1.67 53.45.6 73.94.59l141.78.01c25.32 0 57.12.87 81.89-.71-7.88 18.26-41.65 78.26-53.65 93.5-21.04 1.19-53.48.15-75.24.1l-137.42-.07c-12.31.01-58.71-.99-67.04.81-3.11 4.29-5.5 9-7.98 13.67-16.19 30.5-34.56 59.79-50.92 90.2l98.58 179.41c14.16 25.75 30.42 58.35 45.5 82.82-4.35 7.12-8.99 16.57-13.19 24.07a5913 5913 0 0 0-30.74 54.43c-29.89 52.88-61.65 106.11-91.67 159.01-9.15 16.11-26.72 50.02-36.56 62.62"></path></svg>
-  </g>
-  <text x="220" y="128" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="url(#textGrad)" letter-spacing="-2">Qwen Gate</text>
-  <text x="222" y="168" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="18" fill="#8a7f6f" letter-spacing="1">OPENAI-COMPATIBLE API GATEWAY FOR QWEN MODELS</text>
-  <line x1="222" y1="185" x2="580" y2="185" stroke="#D49A82" stroke-width="1" opacity="0.4"/>
-  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#1a1615">
-    <rect x="222" y="200" width="80" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
-    <text x="262" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Playwright</text>
-    <rect x="312" y="200" width="75" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
-    <text x="349" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Hono</text>
-    <rect x="397" y="200" width="85" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
-    <text x="439" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">TypeScript</text>
-    <rect x="492" y="200" width="60" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
-    <text x="522" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">SSE</text>
-  </g>
-  <circle cx="780" cy="60" r="2" fill="#D49A82" opacity="0.4"/>
-  <circle cx="820" cy="90" r="1.5" fill="#C2866E" opacity="0.3"/>
-  <circle cx="760" cy="130" r="2.5" fill="#EAB8A6" opacity="0.3"/>
-  <circle cx="840" cy="160" r="1.5" fill="#D49A82" opacity="0.4"/>
-  <circle cx="800" cy="200" r="2" fill="#C2866E" opacity="0.3"/>
-  <circle cx="850" cy="230" r="1.5" fill="#EAB8A6" opacity="0.2"/>
-  <path d="M 20 20 L 20 40" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
-  <path d="M 20 20 L 40 20" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
-  <path d="M 880 280 L 880 260" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
-  <path d="M 880 280 L 860 280" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
-</svg>
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#F5F1EA"/>
+        <stop offset="50%" stop-color="#F0EBE2"/>
+        <stop offset="100%" stop-color="#EBE5D9"/>
+      </linearGradient>
+      <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#1a1615"/>
+        <stop offset="100%" stop-color="#4a4540"/>
+      </linearGradient>
+      <linearGradient id="tagBg" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E9E2D6"/>
+        <stop offset="100%" stop-color="#DDD4C6"/>
+      </linearGradient>
+    </defs>
+
+    <rect width="900" height="300" fill="url(#bg)" rx="16" stroke="#C9BFAE" stroke-width="1"/>
+    <rect x="4" y="4" width="892" height="292" rx="14" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.5"/>
+
+    <!-- Logo -->
+    <g transform="translate(30, 40)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 2000 2000"><path fill="rgb(209,145,112)" d="M1025.63 674.049c33.95-1.481 79.95-.116 114.68-.11l227.23.062c29.41.142 58.82.034 88.22-.324 10.69-.173 22.25.375 32.61-.524l-1.3 3.155c-4.77 11.786-14.73 27.248-21.35 38.757l-46.07 79.103-45.47 77.964c-6.25 10.673-17.33 30.908-24.3 40.001-21.93 2.428-48.9-.883-71.93 1.663-1.22-15.783-.12-45.27 0-61.912-12.39-5.233-27.24-12.994-39.47-18.99a8323 8323 0 0 1-80.34-40.099c-10.54 3.716-29.19 15.158-39.45 20.466-25.95 13.433-51.79 28.743-78.04 41.478-1.16 10.505-.86 27.423-.86 38.048l.05 60.301-.03 202.022c-.01 16.01 2.09 74.29-2.69 83.42-30.8 58.83-69.455 125.97-99.566 184.31 3.026 7.59 24.638 43.99 29.962 52.62 14.326 23.24 28.027 50 42.254 72.58-6.71 10.69-11.079 22.61-19.046 35.4l-1.859-.39c-9.924-18.18-21.203-36.63-31.581-54.66a8998 8998 0 0 0-54.369-95.06c-19.299 1.67-53.449.6-73.937.59l-141.781-.01c-25.317 0-57.123-.87-81.888.71 7.877-18.26 41.646-78.26 53.648-93.5 21.046-1.19 53.479-.15 75.245-.1l137.418.07c12.314-.01 58.708.99 67.035-.81 3.116-4.29 5.503-9 7.983-13.67 16.187-30.5 34.563-59.79 50.922-90.2l-98.585-179.41c-14.158-25.75-30.417-58.349-45.5-82.818 4.354-7.123 8.991-16.574 13.191-24.068a5913 5913 0 0 0 30.735-54.435c29.892-52.883 61.651-106.103 91.676-159.005 9.145-16.113 26.713-50.022 36.553-62.625"></path><path fill="rgb(238,186,163)" d="M552.822 627.091c1.337.924 2.085 1.393 2.946 2.904 21.814 38.268 44.366 76.216 66.715 114.173 3.655 6.208 17.929 28.963 19.652 33.693 53.779 86.801 105.926 180.668 158.181 269.079l72.887 124.87c8.283 14.47 24.578 40.61 30.648 54.36l-131.995.23c-21.638.04-51.273.88-72.244-.69-30.018-50.46-66.05-114.57-98.238-162.34l-110.214-189.236c-11.805-20.68-29.649-47.907-39.366-68.639 3.909-11.819 94.516-172.767 101.028-178.404"></path><path fill="rgb(209,145,112)" d="m1009.77 1548.04.41-.68c6.18-10.41 12.81-26.87 18.88-38.25l90.38-166.26c3.69-6.74 8.47-20.1 12.64-26.78 19.3 1.67 53.45.6 73.94.59l141.78.01c25.32 0 57.12.87 81.89-.71-7.88 18.26-41.65 78.26-53.65 93.5-21.04 1.19-53.48.15-75.24.1l-137.42-.07c-12.31.01-58.71-.99-67.04.81-3.11 4.29-5.5 9-7.98 13.67-16.19 30.5-34.56 59.79-50.92 90.2l98.58 179.41c14.16 25.75 30.42 58.35 45.5 82.82-4.35 7.12-8.99 16.57-13.19 24.07a5913 5913 0 0 0-30.74 54.43c-29.89 52.88-61.65 106.11-91.67 159.01-9.15 16.11-26.72 50.02-36.56 62.62"></path></svg>
+    </g>
+
+    <text x="220" y="128" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="url(#textGrad)" letter-spacing="-2">Qwen Gate</text>
+    <text x="222" y="168" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="18" fill="#8a7f6f" letter-spacing="1">OPENAI-COMPATIBLE API GATEWAY FOR QWEN MODELS</text>
+    <line x1="222" y1="185" x2="580" y2="185" stroke="#D49A82" stroke-width="1" opacity="0.4"/>
+
+    <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#1a1615">
+      <rect x="222" y="200" width="80" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="262" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Playwright</text>
+      <rect x="312" y="200" width="75" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="349" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Hono</text>
+      <rect x="397" y="200" width="85" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="439" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">TypeScript</text>
+      <rect x="492" y="200" width="60" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="522" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">SSE</text>
+    </g>
+
+    <circle cx="780" cy="60" r="2" fill="#D49A82" opacity="0.4"/>
+    <circle cx="820" cy="90" r="1.5" fill="#C2866E" opacity="0.3"/>
+    <circle cx="760" cy="130" r="2.5" fill="#EAB8A6" opacity="0.3"/>
+    <circle cx="840" cy="160" r="1.5" fill="#D49A82" opacity="0.4"/>
+    <circle cx="800" cy="200" r="2" fill="#C2866E" opacity="0.3"/>
+    <circle cx="850" cy="230" r="1.5" fill="#EAB8A6" opacity="0.2"/>
+
+    <path d="M 20 20 L 20 40" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
+    <path d="M 20 20 L 40 20" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
+    <path d="M 880 280 L 880 260" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
+    <path d="M 880 280 L 860 280" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
+  </svg>
