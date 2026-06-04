@@ -39,8 +39,12 @@ ok "Repository ready at $INSTALL_DIR"
 # ── Install dependencies ────────────────────────────────────────────
 
 info "Installing dependencies (this may take a minute)..."
-(cd "$INSTALL_DIR" && npm install) || fail "npm install failed — check Node.js/npm version"
-ok "Dependencies installed"
+(cd "$INSTALL_DIR" && npm install --loglevel=verbose 2>&1 | head -20) || fail "npm install failed — check Node.js/npm version"
+if [ ! -d "$INSTALL_DIR/node_modules" ]; then
+  fail "node_modules not found after install — trying again with npm install"
+  (cd "$INSTALL_DIR" && npm install) || fail "npm install failed on retry"
+fi
+ok "Dependencies installed ($(ls "$INSTALL_DIR/node_modules" 2>/dev/null | wc -l) packages)"
 
 info "CloakBrowser binary will auto-download on first launch"
 
