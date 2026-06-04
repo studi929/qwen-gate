@@ -6,13 +6,9 @@ export interface ConfigSchema {
   HOST: string;
   API_KEY: string;
   BROWSER: string;
-  DASHBOARD: string;
-  ASTRO_PORT: string;
   TOOL_CALLING: string;
   CLEAN_OUTPUT: string;
-  CONTENT_FILTER: string;
-  STREAMING: string;
-  NON_STREAMING: string;
+  STREAMING_MODE: string;
   MAX_TOOL_CALLS_PER_RESPONSE: string;
   ECHO_DETECTOR: string;
   ECHO_JACCARD_THRESHOLD: string;
@@ -23,16 +19,18 @@ export interface ConfigSchema {
   AUTH_REFRESH_BEFORE_MS: string;
   DELETE_SESSION: string;
   RATE_LIMIT_COOLDOWN_MS: string;
-  DEBUG: string;
-  DEBUG_STREAM: string;
   LOG_LEVEL: string;
   LOG_FORMAT: string;
-  LOG_MAX_ENTRIES: string;
+  MAX_LOGS: string;
   RETRY_ENABLED: string;
   RETRY_MAX_ATTEMPTS: string;
   RETRY_BASE_DELAY_MS: string;
   RETRY_MAX_DELAY_MS: string;
   RETRY_BACKOFF_MULTIPLIER: string;
+  CUSTOM_INSTRUCTION: string;
+  USE_CUSTOM_INSTRUCTION: string;
+  SAVE_REQUEST_LOGS: string;
+  OPEN_DASHBOARD_ON_START: string;
 }
 
 export const DEFAULT_CONFIG: ConfigSchema = {
@@ -40,13 +38,9 @@ export const DEFAULT_CONFIG: ConfigSchema = {
   HOST: 'localhost',
   API_KEY: '',
   BROWSER: 'chromium',
-  DASHBOARD: 'true',
-  ASTRO_PORT: '4321',
   TOOL_CALLING: 'true',
   CLEAN_OUTPUT: 'true',
-  CONTENT_FILTER: 'true',
-  STREAMING: '',
-  NON_STREAMING: '',
+  STREAMING_MODE: 'auto',
   MAX_TOOL_CALLS_PER_RESPONSE: '3',
   ECHO_DETECTOR: 'true',
   ECHO_JACCARD_THRESHOLD: '0.9',
@@ -57,16 +51,18 @@ export const DEFAULT_CONFIG: ConfigSchema = {
   AUTH_REFRESH_BEFORE_MS: '300000',
   DELETE_SESSION: 'true',
   RATE_LIMIT_COOLDOWN_MS: '120000',
-  DEBUG: '',
-  DEBUG_STREAM: '',
   LOG_LEVEL: 'info',
   LOG_FORMAT: 'json',
-  LOG_MAX_ENTRIES: '20',
+  MAX_LOGS: '50',
   RETRY_ENABLED: 'true',
   RETRY_MAX_ATTEMPTS: '3',
   RETRY_BASE_DELAY_MS: '1000',
   RETRY_MAX_DELAY_MS: '30000',
   RETRY_BACKOFF_MULTIPLIER: '2',
+  CUSTOM_INSTRUCTION: '',
+  USE_CUSTOM_INSTRUCTION: 'false',
+  SAVE_REQUEST_LOGS: 'false',
+  OPEN_DASHBOARD_ON_START: 'false',
 };
 
 const CONFIG_KEYS = new Set<string>(Object.keys(DEFAULT_CONFIG));

@@ -7,11 +7,17 @@
  * and optional file persistence for operational events (auth, circuit breaker,
  * session pool, streaming failures, etc.).
  */
-import { appendFileSync, mkdirSync } from 'fs';
-import { resolve } from "path";
-import { recordModelError as _recordModelError, recordModelSuccess as _recordModelSuccess, getModelHealth as _getModelHealth, resetModelHealth as _resetModelHealth, getAllModelHealth as _getAllModelHealth } from './modelHealth.ts';
-import { config } from './configService.ts';
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import { appendFileSync, mkdirSync, writeFileSync, existsSync } from "fs";
+import { join } from "path";
+import {
+  recordModelError as _recordModelError,
+  recordModelSuccess as _recordModelSuccess,
+  getModelHealth as _getModelHealth,
+  resetModelHealth as _resetModelHealth,
+  getAllModelHealth as _getAllModelHealth,
+} from "./modelHealth.ts";
+import { config } from "./configService.ts";
+export type LogLevel = "debug" | "info" | "warn" | "error";
 const LOG_LEVEL_RANK: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
@@ -100,7 +106,7 @@ export interface LogEntry {
   amplificationRatio?: number;
   amplificationTriggeredInput?: string;
 }
-const MAX_ENTRIES = parseInt(config.get('LOG_MAX_ENTRIES', '20'), 10);
+const MAX_ENTRIES = parseInt(config.get("MAX_LOGS", "50"), 10);
 const MAX_CHUNKS_PER_ENTRY = 100;
 const MAX_SYSTEM_ENTRIES = 200;
 const MAX_FIELD_LENGTH = 10240;
@@ -110,44 +116,69 @@ class LogStore {
   private systemEntries: SystemLogEntry[] = [];
   private listeners: Set<(entry: LogEntry) => void> = new Set();
   private systemListeners: Set<(entry: SystemLogEntry) => void> = new Set();
-  private persistencePath: string | null = null;
-  private requestLogPath: string | null = null;
   private systemIdCounter = 0;
   private serverStartTime = Date.now();
-  enablePersistence(dirPath: string): void {
+  private requestLogDir: string | null = null;
+  private requestDirMap: Map<string, string> = new Map();
+
+  /**
+   * Enable per-request file logging. Each request gets its own folder
+   * under `dirPath/<timestamp>/` containing:
+   *   input.json, raw_output.txt, processed_output.txt, chunk_stream.txt
+   */
+  enableRequestFileLogging(dirPath: string): void {
     try {
       mkdirSync(dirPath, { recursive: true });
-      const date = new Date().toISOString().slice(0, 10);
-      this.persistencePath = resolve(dirPath, `qwen-gate-${date}.log`);
-      this.requestLogPath = resolve(dirPath, `requests-${date}.jsonl`);
-    } catch (err) {
-      console.error(`[LogStore] Failed to enable persistence:`, err);
+      this.requestLogDir = dirPath;
+    } catch {
+      this.requestLogDir = null;
     }
   }
-  persistRequest(entry: LogEntry): void {
-    if (!this.requestLogPath) return;
+
+  getRequestLogDir(): string | null {
+    return this.requestLogDir;
+  }
+
+  private ensureRequestDir(id: string): string | null {
+    if (!this.requestLogDir) return null;
+    let ts = this.requestDirMap.get(id);
+    if (!ts) {
+      const d = new Date();
+      const y = d.getFullYear();
+      const M = d.getMonth() + 1;
+      const day = d.getDate();
+      const h = d.getHours();
+      const min = d.getMinutes();
+      const s = d.getSeconds();
+      ts = y + "-" + M + "-" + day + "_" + h + "-" + min + "-" + s;
+      this.requestDirMap.set(id, ts);
+    }
+    const dir = join(this.requestLogDir, ts);
     try {
-      const record = {
-        id: entry.id,
-        timestamp: entry.timestamp,
-        model: entry.model,
-        stream: entry.stream,
-        finishReason: entry.finalResponse?.finishReason || '',
-        clientRequest: entry.clientRequest,
-        // What Qwen actually produced (before any filtering)
-        qwenRawOutput: entry.rawFullContent || (entry.qwenRawChunks || []).join(''),
-        // What the API actually sent to the client (after parsing + filtering)
-        processedApiOutput: entry.processedApiOutput || '',
-        parsedToolCalls: entry.parsedToolCalls,
-        errors: entry.errors,
-        networkTiming: entry.networkTiming,
-      };
-      appendFileSync(this.requestLogPath, JSON.stringify(record) + '\n');
-    } catch (_err) {
-      // Swallow write errors — logging must never break the request path
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      return dir;
+    } catch {
+      return null;
     }
   }
-  log(level: LogLevel, category: string, message: string, metadata?: Record<string, unknown>): void {
+
+  saveRequestInput(id: string, body: unknown): void {
+    if (config.get("SAVE_REQUEST_LOGS") !== "true") return;
+    const dir = this.ensureRequestDir(id);
+    if (!dir) return;
+    try {
+      writeFileSync(join(dir, "input.json"), JSON.stringify(body, null, 2));
+    } catch {
+      /* disk write best-effort */
+    }
+  }
+
+  log(
+    level: LogLevel,
+    category: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): void {
     const entry: SystemLogEntry = {
       id: `sys-${++this.systemIdCounter}`,
       timestamp: new Date().toISOString(),
@@ -157,64 +188,79 @@ class LogStore {
       metadata,
     };
     this.systemEntries.unshift(entry);
-    if (this.systemEntries.length > MAX_SYSTEM_ENTRIES) this.systemEntries.pop();
+    if (this.systemEntries.length > MAX_SYSTEM_ENTRIES)
+      this.systemEntries.pop();
     for (const listener of this.systemListeners) {
-      try { listener(entry); } catch (err) {
-        console.error('[LogStore] System log listener error:', err);
-      }
-    }
-    if (this.persistencePath) {
       try {
-        const line = JSON.stringify(entry) + '\n';
-        appendFileSync(this.persistencePath, line);
+        listener(entry);
       } catch (err) {
-        console.error('[LogStore] Failed to persist system log entry:', err);
+        console.error("[LogStore] System log listener error:", err);
       }
     }
-    const prefix = `[${level.toUpperCase()}]`;
-    const meta = metadata ? ` ${JSON.stringify(metadata)}` : '';
-    if (level === 'error') console.error(`${prefix} [${category}] ${message}${meta}`);
-    else if (level === 'warn') console.warn(`${prefix} [${category}] ${message}${meta}`);
   }
-  debug(category: string, message: string, metadata?: Record<string, unknown>): void {
-    this.log('debug', category, message, metadata);
+  debug(
+    category: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.log("debug", category, message, metadata);
   }
-  info(category: string, message: string, metadata?: Record<string, unknown>): void {
-    this.log('info', category, message, metadata);
+  info(
+    category: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.log("info", category, message, metadata);
   }
-  warn(category: string, message: string, metadata?: Record<string, unknown>): void {
-    this.log('warn', category, message, metadata);
+  warn(
+    category: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.log("warn", category, message, metadata);
   }
-  error(category: string, message: string, metadata?: Record<string, unknown>): void {
-    this.log('error', category, message, metadata);
+  error(
+    category: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.log("error", category, message, metadata);
   }
   getSystemLogs(filter?: SystemLogFilter): SystemLogEntry[] {
     let result = this.systemEntries;
     if (filter?.minLevel) {
       const minRank = LOG_LEVEL_RANK[filter.minLevel];
-      result = result.filter(e => LOG_LEVEL_RANK[e.level] >= minRank);
+      result = result.filter((e) => LOG_LEVEL_RANK[e.level] >= minRank);
     }
     if (filter?.category) {
-      result = result.filter(e => e.category === filter.category);
+      result = result.filter((e) => e.category === filter.category);
     }
     if (filter?.since) {
-      result = result.filter(e => e.timestamp >= filter.since!);
+      result = result.filter((e) => e.timestamp >= filter.since!);
     }
     return result.slice(0, filter?.limit ?? 100);
   }
   subscribeSystem(listener: (entry: SystemLogEntry) => void): () => void {
     this.systemListeners.add(listener);
-    return () => { this.systemListeners.delete(listener); };
+    return () => {
+      this.systemListeners.delete(listener);
+    };
   }
-  createEntry(id: string, model: string, stream: boolean, requestId?: string, accountEmail?: string): LogEntry {
+  createEntry(
+    id: string,
+    model: string,
+    stream: boolean,
+    requestId?: string,
+    accountEmail?: string,
+  ): LogEntry {
     const entry: LogEntry = {
       id,
       timestamp: new Date().toISOString(),
       model,
       stream,
-      accountEmail: accountEmail || '',
+      accountEmail: accountEmail || "",
       // Structured log fields for external aggregators
-      level: 'info',
+      level: "info",
       request_id: requestId ?? id,
       latency_ms: null,
       tokens: null,
@@ -224,24 +270,24 @@ class LogStore {
         hasTools: false,
         toolNames: [],
         tool_choice: null,
-        lastMessage: '',
+        lastMessage: "",
         messages: [],
       },
       promptToQwen: {
         systemPromptLength: 0,
         totalLength: 0,
-        preview: '',
+        preview: "",
       },
       qwenRawChunks: [],
-      rawFullContent: '',
+      rawFullContent: "",
       toolCallResults: [],
       parsedToolCalls: [],
-      remainingText: '',
-      processedApiOutput: '',
+      remainingText: "",
+      processedApiOutput: "",
       finalResponse: {
-        finishReason: '',
+        finishReason: "",
         toolCallCount: 0,
-        contentPreview: '',
+        contentPreview: "",
       },
       errors: [],
     };
@@ -262,43 +308,75 @@ class LogStore {
     }
   }
   addRawChunk(id: string, chunk: string): void {
-    this.updateEntry(id, entry => {
+    this.updateEntry(id, (entry) => {
       if (entry.qwenRawChunks.length < MAX_CHUNKS_PER_ENTRY) {
         entry.qwenRawChunks.push(chunk);
       }
       if (entry.rawFullContent.length < MAX_FIELD_LENGTH) {
         entry.rawFullContent += chunk;
         if (entry.rawFullContent.length > MAX_FIELD_LENGTH) {
-          entry.rawFullContent = entry.rawFullContent.substring(0, MAX_FIELD_LENGTH) + '... [truncated]';
+          entry.rawFullContent =
+            entry.rawFullContent.substring(0, MAX_FIELD_LENGTH) +
+            "... [truncated]";
         }
       }
     });
+    // Persist to disk: append every chunk (no truncation) to chunk_stream.txt and raw_output.txt
+    if (config.get("SAVE_REQUEST_LOGS") === "true") {
+      const dir = this.ensureRequestDir(id);
+      if (dir) {
+        try {
+          appendFileSync(join(dir, "chunk_stream.txt"), chunk + "\n");
+          appendFileSync(join(dir, "raw_output.txt"), chunk);
+        } catch {
+          /* disk write best-effort */
+        }
+      }
+    }
   }
-  /** Record an amplification event when output vastly exceeds input */
-  recordAmplificationEvent(logId: string, ratio: number, triggeringInput: string): void {
-    this.updateEntry(logId, entry => {
-      entry.amplificationRatio = ratio;
-      entry.amplificationTriggeredInput = triggeringInput.length > 2000
-        ? triggeringInput.substring(0, 2000) + `... [truncated ${triggeringInput.length - 2000} more chars]`
-        : triggeringInput;
-    });
-  }
-  /** Append content that was actually sent to the client (after all processing) */
   addProcessedOutput(id: string, content: string): void {
-    this.updateEntry(id, entry => {
+    this.updateEntry(id, (entry) => {
       if (entry.processedApiOutput.length < MAX_FIELD_LENGTH) {
         entry.processedApiOutput += content;
         if (entry.processedApiOutput.length > MAX_FIELD_LENGTH) {
-          entry.processedApiOutput = entry.processedApiOutput.substring(0, MAX_FIELD_LENGTH) + '... [truncated]';
+          entry.processedApiOutput =
+            entry.processedApiOutput.substring(0, MAX_FIELD_LENGTH) +
+            "... [truncated]";
         }
       }
     });
+    // Persist to disk: append processed content (no truncation)
+    if (config.get("SAVE_REQUEST_LOGS") === "true") {
+      const dir = this.ensureRequestDir(id);
+      if (dir) {
+        try {
+          appendFileSync(join(dir, "processed_output.txt"), content);
+        } catch {
+          /* disk write best-effort */
+        }
+      }
+    }
   }
+  recordAmplificationEvent(
+    logId: string,
+    ratio: number,
+    triggeringInput: string,
+  ): void {
+    this.updateEntry(logId, (entry) => {
+      entry.amplificationRatio = ratio;
+      entry.amplificationTriggeredInput =
+        triggeringInput.length > 2000
+          ? triggeringInput.substring(0, 2000) +
+            `... [truncated ${triggeringInput.length - 2000} more chars]`
+          : triggeringInput;
+    });
+  }
+
   getEntry(id: string): LogEntry | undefined {
     return this.entryMap.get(id);
   }
   addError(id: string, error: string): void {
-    this.updateEntry(id, entry => {
+    this.updateEntry(id, (entry) => {
       entry.errors.push(error);
     });
   }
@@ -308,8 +386,8 @@ class LogStore {
   getAll(): LogEntry[] {
     return this.entries;
   }
-  setNetworkTiming(id: string, timing: LogEntry['networkTiming']): void {
-    this.updateEntry(id, entry => {
+  setNetworkTiming(id: string, timing: LogEntry["networkTiming"]): void {
+    this.updateEntry(id, (entry) => {
       entry.networkTiming = timing;
     });
   }
@@ -328,13 +406,21 @@ class LogStore {
   recordModelSuccess(model: string): void {
     _recordModelSuccess(model);
   }
-  getModelHealth(model: string): { errors: number; successes: number; errorRate: number; isHealthy: boolean } {
+  getModelHealth(model: string): {
+    errors: number;
+    successes: number;
+    errorRate: number;
+    isHealthy: boolean;
+  } {
     return _getModelHealth(model);
   }
   resetModelHealth(model: string): void {
     _resetModelHealth(model);
   }
-  getAllModelHealth(): Record<string, { successCount: number; errorCount: number; lastActivity: string }> {
+  getAllModelHealth(): Record<
+    string,
+    { successCount: number; errorCount: number; lastActivity: string }
+  > {
     return _getAllModelHealth();
   }
   private toolCallValidationFailures = 0;

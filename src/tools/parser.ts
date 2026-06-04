@@ -16,7 +16,6 @@ export class StreamingToolParser {
   private emittedCount = 0;
   private textEmissionBoundary = 0;
   public passThrough = false;
-  public skipPreProcess = false;
   feed(chunk: string): ParserResult {
     if (this.passThrough) { this.buffer += chunk; return { text: chunk, toolCalls: [], thinking: '' }; }
     this.buffer += chunk;

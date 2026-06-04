@@ -1,175 +1,173 @@
 # Qwen Gate
 
-> **⚠️ Disclaimer**: This project is for **educational and study purposes only**. It is an OpenAI-compatible API gateway that interfaces with Qwen models via `chat.qwen.ai`. The project is not affiliated with, endorsed by, or sponsored by Alibaba Group, Qwen, or `chat.qwen.ai`. All Qwen models and the `chat.qwen.ai` service are the property of their respective owners. Users are responsible for complying with `chat.qwen.ai`'s terms of service. The author assumes no responsibility for misuse, unauthorized access, or any violations of third-party terms.
+<p align="center">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" width="100%">
+    <defs>
+      <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#F5F1EA"/>
+        <stop offset="50%" stop-color="#F0EBE2"/>
+        <stop offset="100%" stop-color="#EBE5D9"/>
+      </linearGradient>
+      <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#1a1615"/>
+        <stop offset="100%" stop-color="#4a4540"/>
+      </linearGradient>
+      <linearGradient id="tagBg" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E9E2D6"/>
+        <stop offset="100%" stop-color="#DDD4C6"/>
+      </linearGradient>
+    </defs>
 
-OpenAI-compatible API gateway for **Qwen models (chat.qwen.ai)** using Playwright browser automation. Supports tool calling, thinking/reasoning, streaming, session autoscaling, multi-account management, and full OpenAI-compatible response formatting.
+    <rect width="900" height="300" fill="url(#bg)" rx="16" stroke="#C9BFAE" stroke-width="1"/>
+    <rect x="4" y="4" width="892" height="292" rx="14" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.5"/>
 
-## Features
+    <!-- Logo -->
+    <g transform="translate(30, 40)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" preserveAspectRatio="none" style="display: block;" version="1.1" viewBox="0 0 2000 2000"><path fill="rgb(209,145,112)" d="M1025.63 674.049c33.95-1.481 79.95-.116 114.68-.11l227.23.062c29.41.142 58.82.034 88.22-.324 10.69-.173 22.25.375 32.61-.524l-1.3 3.155c-4.77 11.786-14.73 27.248-21.35 38.757l-46.07 79.103-45.47 77.964c-6.25 10.673-17.33 30.908-24.3 40.001-21.93 2.428-48.9-.883-71.93 1.663-1.22-15.783-.12-45.27 0-61.912-12.39-5.233-27.24-12.994-39.47-18.99a8323 8323 0 0 1-80.34-40.099c-10.54 3.716-29.19 15.158-39.45 20.466-25.95 13.433-51.79 28.743-78.04 41.478-1.16 10.505-.86 27.423-.86 38.048l.05 60.301-.03 202.022c-.01 16.01 2.09 74.29-2.69 83.42-30.8 58.83-69.455 125.97-99.566 184.31 3.026 7.59 24.638 43.99 29.962 52.62 14.326 23.24 28.027 50 42.254 72.58-6.71 10.69-11.079 22.61-19.046 35.4l-1.859-.39c-9.924-18.18-21.203-36.63-31.581-54.66a8998 8998 0 0 0-54.369-95.06c-19.299 1.67-53.449.6-73.937.59l-141.781-.01c-25.317 0-57.123-.87-81.888.71 7.877-18.26 41.646-78.26 53.648-93.5 21.046-1.19 53.479-.15 75.245-.1l137.418.07c12.314-.01 58.708.99 67.035-.81 3.116-4.29 5.503-9 7.983-13.67 16.187-30.5 34.563-59.79 50.922-90.2l-98.585-179.41c-14.158-25.75-30.417-58.349-45.5-82.818 4.354-7.123 8.991-16.574 13.191-24.068a5913 5913 0 0 0 30.735-54.435c29.892-52.883 61.651-106.103 91.676-159.005 9.145-16.113 26.713-50.022 36.553-62.625"></path><path fill="rgb(238,186,163)" d="M552.822 627.091c1.337.924 2.085 1.393 2.946 2.904 21.814 38.268 44.366 76.216 66.715 114.173 3.655 6.208 17.929 28.963 19.652 33.693 53.779 86.801 105.926 180.668 158.181 269.079l72.887 124.87c8.283 14.47 24.578 40.61 30.648 54.36l-131.995.23c-21.638.04-51.273.88-72.244-.69-30.018-50.46-66.05-114.57-98.238-162.34l-110.214-189.236c-11.805-20.68-29.649-47.907-39.366-68.639 3.909-11.819 94.516-172.767 101.028-178.404"></path><path fill="rgb(209,145,112)" d="m1009.77 1548.04.41-.68c6.18-10.41 12.81-26.87 18.88-38.25l90.38-166.26c11.81-21.5 23.82-42.89 36.03-64.16 6.3-11.1 12.1-22.87 19.12-33.5 1.68-2.54 4.74-7.57 7.7-8.56 2.63-.87 230.31-.96 242.51.37 15.57 26.32 30.88 52.79 45.91 79.41 4.35 7.83 12.67 20.99 15.61 28.64-9.08 19.04-36.7 67.58-48.87 84.11-18.27 1.75-60.43.82-80.94.47-37.29-.62-81.97 1.54-118.26-.41-24.9 55.52-60.3 110.09-88.1 164.49-2.76 5.42-11.23 5.46-16.67 4.98-41.5-3.65-97.04 4.46-136.544-.77-2.655-4.97-5.346-9.93-8.071-14.87l1.859.39c7.967-12.79 12.336-24.71 19.046-35.4"></path><path fill="rgb(238,186,163)" d="M873.115 380.723c54.251-1.914 116.406-.839 171.205-.537 2.4 1.995 4.84 4.442 6.43 7.153 20.6 35.053 40.09 70.77 60.61 105.876 4.69 8.033 7.73 12.88 11.07 21.693 23.05 1.039 50.41.447 73.78.446l132.61-.1c20.48-.008 41.23-.105 61.72.05 3.58.027 12.05 1.132 14.89 3.035.9.599 4.8 5.996 5.32 7.068 5.25 11.017 70.54 122.457 70.91 126.144-4.86 3.345-120.35-.743-138.03.702-24.17-.895-60.25-.757-84.4-.126-16.83-.763-36.97-.331-54.03-.441-37.78-.395-75.57-.582-113.36-.561-19.61-.089-45.36.462-64.16-1.03-9.02-11.518-23.24-38.763-31.307-52.613l-25.684-44.638c-7.371-12.593-16.215-26.713-22.189-39.819-2.007-1.697-70.861-122.86-75.385-132.302"></path><path fill="rgb(209,145,112)" d="M729.695 626.24c25.467-49.609 59.732-106.5 88.197-155.449l31.922-55.225c4.805-8.353 15.939-30.668 23.301-34.843 4.524 9.442 73.378 130.605 75.385 132.302-14.481 26.138-32.093 55.002-47.388 80.752l-68.398 115.286c-7.31 12.252-33.381 59.306-40.233 66.582-20.095 2.925-145.096-1.155-150.346 2.216-1.723-4.73-15.997-27.485-19.652-33.693-22.349-37.957-44.901-75.905-66.715-114.173-.861-1.511-1.609-1.98-2.946-2.904 4.077-2.201 160.557-1.091 176.873-.851m-128.321 437.13c32.188 47.77 68.22 111.88 98.238 162.34-2.626 9.51-103.117 181.56-109.846 188.62-3.437-7.07-8.069-13.52-11.902-20.35-26.726-47.67-57.512-94.9-82.907-143.18 4.575-14.77 29.158-55 37.901-70.25 22.398-39.07 45.114-78.72 68.516-117.18m987.496-200.984c19.14.167 35.73 5.276 46.69 22.294 8.57 13.321 12.34 28.99 8.69 44.657a57.43 57.43 0 0 1-26.96 36.116c-28.7 17.016-61.6 2.685-76.72-25.125-11.38-.515-95.39-1.16-101.34 2.976-16.36 11.378-46.46 45.551-63.06 61.776-21.13 20.65-26.98 15.88-56.09 16.27-11.01.03-22.83-.04-33.99-.05h-138.84c-30.27-.17-60.55.05-90.81.67-.02-11.95.5-24.544.83-36.552 34.12 1.311 71.39.649 105.79.647l175.48-.111c22.23-13.639 43.12-41.689 61.63-60.412 7.2-7.287 15-15.828 24.71-19.633 15.81-6.197 90.26-3.525 112.49-3.623 11.47-27.741 20.9-36.218 51.5-39.9m4.64 79.82a25.1 25.1 0 0 0 22-19.64 25.09 25.09 0 0 0-11.87-27.001 25.1 25.1 0 0 0-14.83-3.328c-13.87 1.209-24.11 13.484-22.81 27.349 1.31 13.865 13.65 24.017 27.51 22.62"></path><path fill="rgb(209,145,112)" d="M1615.79 992.429c65 .28 75.03 86.761 18.43 106.981-27.36 9.78-60.59-6.7-69.16-35.32-49.71 2.74-103.67-.98-153.75.93-16.19.62-25.28 18.15-41.99 18.85-23.34.98-47.61.37-71.02.4l-150.05.03c-11.72-.02-82.55.93-88.99-.85-3.32-5.14-2.67-27.18-2.84-34.89 65.53.4 131.05.46 196.58.18l69.34.08c11.09-.02 22.34.05 33.43-.25 15.1.15 27.19-19.9 41.39-20.09 55.79-.75 112.19.98 167.95-.51 9.4-23.11 25.93-33.877 50.68-35.541m-17.22 38.081a24.95 24.95 0 0 0-5.93 20.55 24.88 24.88 0 0 0 12.19 17.57 24.9 24.9 0 0 0 18.63 2.5c11.17-2.89 18.89-13.09 18.64-24.63-.24-11.39-8.18-21.17-19.28-23.73a24.92 24.92 0 0 0-24.25 7.74m-540.91 80.9c8.54 1.2 23.04.7 32.2.67l50.28-.05 178.64-.01c22.15-.03 51.28-2.18 72.92 3.06 19.49 4.72 39.55 38.13 57.13 43.06 18.24 5.12 53.84 2.69 73.3 1.98 7.45-11.7 12.23-23.82 25.68-30.56 46.42-23.24 93.28 17.09 78.32 67.21-.07.28-.14.56-.21.85-13.69 37.25-63.63 48.99-90.45 18.29-5.96-6.81-8.4-11.81-12.31-19.13-20.29 1.33-66.95 2.47-86.74-1.56-17.94-3.64-48.2-45.55-65.69-46.56-19.93-1.15-45.67-.62-66.05-.6l-189.21-.21c-8.17-.01-52.74 2-56.72-.62-3.42-6.46-1.63-27.82-1.09-35.82m502.62 46.78c-9.44 6.65-13.05 18.92-8.72 29.63 4.34 10.7 15.48 17 26.88 15.2a24.83 24.83 0 0 0 15.9-39.56 24.83 24.83 0 0 0-24.31-9.38c-3.51.66-6.83 2.06-9.75 4.11"></path><path fill="rgb(238,222,207)" fill-opacity=".008" d="M1259.23 652.127c24.15-.631 60.23-.769 84.4.126-5.48 1.924-122.26 2.147-133.5 1.091 13.1-1.252 38.13 1.688 49.1-1.217"></path><g id="_ci60r4wf" pointer-events="none" style="mix-blend-mode:multiply"><rect width="100%" height="100%" fill="url(#_diedph97)"></rect></g></svg>
+    </g>
 
-- **OpenAI-compatible API** — `/v1/chat/completions` and `/v1/models` with streaming + non-streaming
-- **Tool calling** — full function/tool schema support with validation, spam detection, and correction feedback
-- **Thinking / reasoning** — `<think>` block handling and emission
-- **Multi-account sessions** — CloakBrowser-backed per-account browser contexts with automatic rotation
-- **Session autoscaling** — concurrent sessions spun up under load
-- **Streaming SSE** — incremental delta emission, heartbeat keep-alive, and content-filter integrity across stream boundaries
-- **Content filter** — strips tool-call artifacts, streaming JSON fragment leaks, and XML leaks while preserving code whitespace
-- **Token estimation** — context window validation with accurate token counting
-- **Rate limiting** — per-account cooldown tracking with configurable throttle
-- **Echo detection** — detects when the model parrots tool results and signals a network-level retry to the OpenAI SDK
-- **Live dashboard** — Astro-powered web UI at `/dashboard` with request logs, account status, and session pool stats
+    <text x="220" y="128" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="64" font-weight="800" fill="url(#textGrad)" letter-spacing="-2">Qwen Gate</text>
+    <text x="222" y="168" font-family="ui-sans-serif, system-ui, -apple-system, sans-serif" font-size="18" fill="#8a7f6f" letter-spacing="1">OPENAI-COMPATIBLE API GATEWAY FOR QWEN MODELS</text>
+    <line x1="222" y1="185" x2="580" y2="185" stroke="#D49A82" stroke-width="1" opacity="0.4"/>
+
+    <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" fill="#1a1615">
+      <rect x="222" y="200" width="80" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="262" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Playwright</text>
+      <rect x="312" y="200" width="75" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="349" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">Hono</text>
+      <rect x="397" y="200" width="85" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="439" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">TypeScript</text>
+      <rect x="492" y="200" width="60" height="24" rx="6" fill="url(#tagBg)" stroke="#C9BFAE" stroke-width="0.5"/>
+      <text x="522" y="216" text-anchor="middle" font-weight="500" fill="#8a7f6f">SSE</text>
+    </g>
+
+    <circle cx="780" cy="60" r="2" fill="#D49A82" opacity="0.4"/>
+    <circle cx="820" cy="90" r="1.5" fill="#C2866E" opacity="0.3"/>
+    <circle cx="760" cy="130" r="2.5" fill="#EAB8A6" opacity="0.3"/>
+    <circle cx="840" cy="160" r="1.5" fill="#D49A82" opacity="0.4"/>
+    <circle cx="800" cy="200" r="2" fill="#C2866E" opacity="0.3"/>
+    <circle cx="850" cy="230" r="1.5" fill="#EAB8A6" opacity="0.2"/>
+
+    <path d="M 20 20 L 20 40" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
+    <path d="M 20 20 L 40 20" stroke="#D49A82" stroke-width="1" opacity="0.3"/>
+    <path d="M 880 280 L 880 260" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
+    <path d="M 880 280 L 860 280" stroke="#C2866E" stroke-width="1" opacity="0.3"/>
+  </svg>
+</p>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/youssefvdel/qwen-gate)](https://github.com/youssefvdel/qwen-gate/releases)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)](https://www.typescriptlang.org/)
+[![Playwright](https://img.shields.io/badge/Powered%20by-Playwright-blueviolet)](https://playwright.dev/)
+
+> **Disclaimer**: This project is for educational and study purposes. It provides access to Qwen models via `chat.qwen.ai` browser automation. Not affiliated with Alibaba Group or Qwen. Users must comply with `chat.qwen.ai`'s terms of service.
+
+---
 
 ## Quick Start
 
 ```bash
+curl -sSL https://raw.githubusercontent.com/youssefvdel/qwen-gate/main/install.sh | bash
+cd qwen-gate
+qg
+```
+
+Then open [http://localhost:26405/dashboard](http://localhost:26405/dashboard) to add accounts and start using the API.
+
+## Features
+
+- **OpenAI-Compatible API** — Drop-in replacement for `/v1/chat/completions` and `/v1/models`. Works with existing OpenAI SDKs, curl, or any HTTP client.
+- **Multi-Account Rotation** — Configure multiple Qwen accounts. Requests are distributed via round-robin with automatic failover and cooldown tracking.
+- **Session Pooling** — Browser sessions are pooled, reused, and autoscaled under load. No per-request login overhead.
+- **Tool Calling** — Full OpenAI-style function calling with JSON Schema validation, echo detection, and spam guards.
+- **Streaming SSE** — Server-Sent Events with heartbeat keep-alive and content filter integrity maintained across stream boundaries.
+- **Content Filter Pipeline** — Strips tool call artifacts, XML leaks, thinking tags, and echo repetitions from model output.
+- **Web Dashboard** — Real-time monitoring with 5 pages: overview, request log, account manager, network debug, and settings.
+- **Stealth Browser Automation** — Uses CloakBrowser with anti-detection patches to maintain session integrity.
+- **Update Notifications** — Automatically checks for new versions on startup and logs a warning when outdated.
+- **No Build Step** — TypeScript executed directly via `tsx`. Run from source with no compilation needed.
+
+## Installation
+
+### One-Command Install (Linux / macOS)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/youssefvdel/qwen-gate/main/install.sh | bash
+```
+
+This clones the repo, installs dependencies, creates `config.json`, and symlinks the `qg` / `qwengate` / `qwen-gate` CLI commands.
+
+### Manual Install
+
+```bash
+git clone https://github.com/youssefvdel/qwen-gate.git
+cd qwen-gate
+cp config.example.jsonc config.json
 npm install
-npm run setup        # interactive config wizard → writes .env
-npm run dev          # starts API + Astro dashboard
 ```
 
-The wizard walks you through setting the port, API key, and browser engine. Visit `http://localhost:26405/v1` once running.
+### Start the Server
 
-## Configuration
-
-Configuration uses `config.json` (created via `npm run setup` or the dashboard settings page). Environment variables still work but `config.json` takes precedence for most values.
-
-```jsonc
-{
-  "PORT": 26405,
-  "HOST": "localhost",
-  "API_KEY": "sk-your-api-key",
-  "BROWSER": "chromium",
-  "BROWSER_HEADLESS": true,
-  "LOG_LEVEL": "info",
-  "LOG_FORMAT": "text",
-  "LOG_MAX_ENTRIES": 20,
-  "DASHBOARD": true,
-  "TOOL_CALLING": true,
-  "CONTENT_FILTER": true,
-  "ECHO_DETECTOR": true,
-  "ECHO_JACCARD_THRESHOLD": 0.9,
-  "RATE_LIMIT_COOLDOWN_MS": 120000,
-  "RETRY_ENABLED": true,
-  "RETRY_MAX_ATTEMPTS": 3,
-  "DELETE_SESSION": true
-}
+```bash
+qg
 ```
 
-### Server
+Or:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `26405` | Proxy server port |
-| `HOST` | `localhost` | Bind host. Use `0.0.0.0` to expose on all interfaces. |
-| `API_KEY` | *(empty)* | Protects `/v1/*` endpoints. Clients send as `Authorization: Bearer <key>`. Leave empty for no auth. |
+```bash
+npm start
+```
 
-### Echo Detector
+The server starts on [http://localhost:26405](http://localhost:26405).
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ECHO_DETECTOR` | `true` | Enable the streaming echo detector. When enabled, if the model repeats tool output verbatim mid-stream, the connection drops and the SDK retries on a fresh session with a correction prompt. Set `false` to disable. |
-| `ECHO_JACCARD_THRESHOLD` | `0.9` | Bidirectional shingle containment threshold (0.0–1.0). Higher = stricter detection. At 0.9, output must share ≥90% of 5-gram shingles with a tool result line in both directions to trigger. |
-| `ECHO_MIN_LINE_LENGTH` | `20` | Minimum line length in characters for echo comparison. Shorter lines are skipped (too few shingles for reliable matching). |
-| `ECHO_MIN_UNIQUE_SHINGLES` | `8` | Minimum unique 5-gram shingles required for a line to be checked. |
+### Add Accounts
 
-### Browser Engine
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BROWSER` | `chromium` | Browser backend: `chromium` (bundled), `firefox`, `chrome`, or `edge` (system installs). |
-
-### Qwen Account Management
-
-Accounts are **not** configured via env vars. They live in persistent storage (`data/accounts.json`) and are managed via the `/accounts` API or the dashboard UI.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RATE_LIMIT_COOLDOWN_MS` | `120000` | Cooldown duration (ms) when an account is rate-limited. |
-| `QWEN_FETCH_TIMEOUT_MS` | `30000` | Timeout (ms) for Qwen API fetch requests. |
-| `AUTH_REFRESH_BEFORE_MS` | `300000` | Refresh the auth token this many ms before it expires (default 5 min). |
-| `AUTH_TOKEN_MAX_AGE_MS` | `28800000` | Force a token refresh when the token is older than this (default 8 h). |
-| `DELETE_SESSION` | `true` | Delete chat sessions on Qwen's backend when the pool releases them. Set to `false` to keep history for debugging. |
-
-### Output / Pipeline Control
-
-These control how the Qwen response is transformed before being sent back to the client.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TOOL_CALLING` | `true` | Parse tool invocations and apply schema validation. Set `false` to pass Qwen's raw output through unchanged. |
-| `MAX_TOOL_CALLS_PER_RESPONSE` | `3` | Maximum identical `(tool, args)` calls allowed per response before the spam guard kicks in. |
-| `CONTENT_FILTER` | `true` | Strip tool-call artifacts, XML leaks, and thinking block noise. |
-| `CLEAN_OUTPUT` | `true` | Strip backticks and collapse whitespace in parser output (only when `TOOL_CALLING=true`). |
-| `STREAMING` | *(client)* | Force streaming: `true` = always stream, `false` = never stream. Unset = respect the client's `stream` field. |
-| `NON_STREAMING` | *(unset)* | Set to `true` to force non-streaming mode (legacy alias). |
-
-### Dashboard
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DASHBOARD` | `true` | Enable the web dashboard at `/dashboard`. Set `false` to disable. |
-| `ASTRO_PORT` | `4321` | Astro dev server port. |
-
-### Logging
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DEBUG` | *(unset)* | Enable verbose debug logging — shows raw Qwen chunks vs processed output. |
-| `DEBUG_STREAM` | *(unset)* | Debug streaming pipeline only, without full `DEBUG` noise. |
-| `LOG_LEVEL` | `info` | Log level: `debug`, `info`, `warn`, `error`. Automatically set to `debug` if `DEBUG=true`. |
-| `LOG_FORMAT` | `text` | Set to `json` for JSON-lines output (useful for log aggregators). |
-| `LOG_MAX_ENTRIES` | `20` | Max visible entries in the log page / log stream. Controls both in-memory storage and SSE batch size. |
-
-### Upstream Retry
-
-Controls how the gateway retries failed requests to the Qwen API (backoff with jitter).
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `RETRY_ENABLED` | `true` | Master switch for upstream retries. Set `false` to disable. |
-| `RETRY_MAX_ATTEMPTS` | `3` | Maximum retry attempts per upstream request. |
-| `RETRY_BASE_DELAY_MS` | `1000` | Base delay between retries (ms). |
-| `RETRY_MAX_DELAY_MS` | `30000` | Maximum delay between retries (ms). |
-| `RETRY_BACKOFF_MULTIPLIER` | `2` | Exponential backoff multiplier. |
-
-### Testing (internal)
-
-| Variable | Description |
-|----------|-------------|
-| `TEST_MOCK_PLAYWRIGHT` | Set by the test suite to mock Playwright. Do not set in production. |
-| `TEST_SESSION_ID` | Mock session ID returned when `TEST_MOCK_PLAYWRIGHT` is set. |
+1. Open [http://localhost:26405/dashboard/accounts](http://localhost:26405/dashboard/accounts)
+2. Enter your Qwen email and password
+3. Click **Add Account** — the gateway handles login and session persistence
 
 ## Usage
 
-### Streaming chat completion
+### Chat Completion
 
 ```bash
-curl http://localhost:26405/v1/chat/completions \
+curl -X POST http://localhost:26405/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "model": "qwen3-max",
-    "stream": true,
-    "messages": [{"role": "user", "content": "Explain quicksort"}]
+    "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
-### Tool calling
+### Streaming
+
+Set `"stream": true` for SSE:
 
 ```bash
-curl http://localhost:26405/v1/chat/completions \
+curl -X POST http://localhost:26405/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
+  -d '{"model": "qwen3-max", "stream": true, "messages": [{"role": "user", "content": "Count to 5"}]}'
+```
+
+### Tool Calling
+
+```bash
+curl -X POST http://localhost:26405/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "model": "qwen3-max",
-    "messages": [{"role": "user", "content": "What is the weather in Paris?"}],
+    "messages": [{"role": "user", "content": "Weather in Paris?"}],
     "tools": [{
       "type": "function",
       "function": {
         "name": "get_weather",
-        "description": "Get current weather for a city",
         "parameters": {
           "type": "object",
-          "properties": {
-            "city": {"type": "string"}
-          },
+          "properties": {"city": {"type": "string"}},
           "required": ["city"]
         }
       }
@@ -177,259 +175,187 @@ curl http://localhost:26405/v1/chat/completions \
   }'
 ```
 
-### List models
+## Configuration
 
-```bash
-curl http://localhost:26405/v1/models
-```
+All settings in `config.json`. Key options:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `PORT` | `"26405"` | Server port |
+| `API_KEY` | `""` | Bearer token for API auth (empty = no auth) |
+| `BROWSER` | `"chromium"` | Browser engine: `chromium`, `firefox`, `webkit` |
+| `TOOL_CALLING` | `"true"` | Enable tool call parsing |
+| `CLEAN_OUTPUT` | `"true"` | Strip internal artifacts from responses |
+| `ECHO_DETECTOR` | `"true"` | Detect tool-result echo leaks |
+| `SAVE_REQUEST_LOGS` | `"false"` | Save per-request logs to disk |
+| `OPEN_DASHBOARD_ON_START` | `"false"` | Auto-open dashboard in browser |
+| `RATE_LIMIT_COOLDOWN_MS` | `"120000"` | Cooldown after rate limit (2 min) |
+| `RETRY_MAX_ATTEMPTS` | `"3"` | Max retry attempts |
+
+Full reference: [docs/API.md](docs/API.md) and `config.example.jsonc`.
 
 ## Architecture
 
-```
-                    ┌──────────────┐
-                    │  OpenAI      │
-                    │  Client      │
-                    └──────┬───────┘
-                           │  POST /v1/chat/completions
-                           ▼
-            ┌──────────────────────────────────┐
-            │  Hono API Server (PORT=26405)    │
-            │  /v1/chat/completions            │
-            │  /v1/models                      │
-            │  /accounts                       │
-            │  /health  /pool/stats            │
-            │  /log/stream  /system/logs       │
-            └─────────┬───────────┬────────────┘
-                      │           │
-               API    │           │  Dashboard
-                      ▼           ▼
-   ┌────────────────────────┐  ┌──────────────────────────────┐
-   │  Session Pool          │  │  Astro Web Dashboard         │
-   │  ─ autoscaling         │  │  /dashboard                  │
-   │  ─ multi-account       │  │  ├─ /overview    (KPI+pool)  │
-   │  ─ rotation + recycle  │  │  ├─ /logs        (requests)  │
-   └───────────┬────────────┘  │  ├─ /accounts    (CRUD)      │
-               │               │  ├─ /network     (debug)     │
-               ▼               │  └─ /settings    (config)    │
-   ┌────────────────────────┐  └──────────────────────────────┘
-   │  Playwright Handler    │
-   │  req rewrite → response│
-   └───────────┬────────────┘
-               │
-               ▼
-   ┌────────────────────────┐
-   │  Response Pipeline     │
-   │  ToolSpamGuard ·       │
-   │  content filter ·      │
-   │  echo filter ·         │
-   │  streaming deltas ·    │
-   │  token estimation      │
-   └────────────────────────┘
-```
+<p align="center">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 340" width="100%">
+    <defs>
+      <linearGradient id="archBg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#F5F1EA"/>
+        <stop offset="100%" stop-color="#EBE5D9"/>
+      </linearGradient>
+      <linearGradient id="archCard" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E9E2D6"/>
+        <stop offset="100%" stop-color="#DDD4C6"/>
+      </linearGradient>
+      <linearGradient id="gateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#DDD4C6"/>
+        <stop offset="100%" stop-color="#C9BFAE"/>
+      </linearGradient>
+      <filter id="archShadow">
+        <feDropShadow dx="2" dy="2" stdDeviation="4" flood-color="#C9BFAE" flood-opacity="0.3"/>
+      </filter>
+      <marker id="arrowRight" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M 0 0 L 8 3 L 0 6" fill="#5E9D5C" opacity="0.6"/>
+      </marker>
+      <marker id="arrowLeft" markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto">
+        <path d="M 0 0 L 8 3 L 0 6" fill="#C8983A" opacity="0.6"/>
+      </marker>
+    </defs>
 
-### Request Flow
+    <rect width="880" height="340" fill="url(#archBg)" rx="16" stroke="#C9BFAE" stroke-width="1"/>
+    <rect x="2" y="2" width="876" height="336" rx="15" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.4"/>
 
-1. Client POSTs to `/v1/chat/completions` with OpenAI-format payload
-2. Session pool picks an authenticated Playwright session (rotating across accounts)
-3. Outbound browser request is intercepted and rewritten to Qwen's internal format
-4. Response streams back through the pipeline:
-   - **ToolSpamGuard** — sliding-window dedup rejects repeated `(tool, args)` calls and injects correction feedback on the next turn
-   - **Content filter** — strips tool-call artifacts, XML leaks, and streaming JSON fragments while preserving code whitespace
-   - **Echo filter** — detects when the model parrots tool results; aborts the upstream writer so the OpenAI SDK retries on a fresh session with a correction prompt injected
-   - **Streaming deltas** — incremental emission with snapshot diffing; flush path aligns with streaming state to prevent duplication
-5. Final response is formatted as an OpenAI-compatible SSE stream or JSON object
+    <text x="440" y="30" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" fill="#8a7f6f" letter-spacing="2" font-weight="600">ARCHITECTURE</text>
 
-## Dashboard
+    <rect x="30" y="110" width="140" height="100" rx="10" fill="url(#archCard)" stroke="#C9BFAE" stroke-width="1" filter="url(#archShadow)"/>
+    <text x="100" y="145" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#1a1615" font-weight="700">Your App</text>
+    <text x="100" y="165" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">OpenAI SDK</text>
+    <text x="100" y="180" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">curl / fetch</text>
+    <text x="100" y="195" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">any HTTP client</text>
 
-The web dashboard is available at `http://localhost:<PORT>/dashboard` (enabled by default, disable with `DASHBOARD=false`). It auto-refreshes every 2 seconds with live SSE updates as requests stream in.
+    <line x1="170" y1="140" x2="270" y2="140" stroke="#5E9D5C" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowRight)" stroke-dasharray="4 3"/>
+    <text x="220" y="133" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#5E9D5C" opacity="0.8">POST /v1/chat</text>
+    <line x1="270" y1="185" x2="170" y2="185" stroke="#C8983A" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowLeft)" stroke-dasharray="4 3"/>
+    <text x="220" y="200" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#C8983A" opacity="0.8">SSE Stream</text>
 
-Navigate between pages using the sidebar on the left. The sidebar shows a green live indicator when the server is running and displays the server uptime at the bottom.
+    <rect x="270" y="55" width="320" height="230" rx="12" fill="url(#gateGrad)" stroke="#5E9D5C" stroke-width="1.5" filter="url(#archShadow)"/>
+    <text x="430" y="80" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#1a1615" font-weight="700" letter-spacing="-0.5">Qwen Gate</text>
+    <line x1="300" y1="90" x2="560" y2="90" stroke="#C9BFAE" stroke-width="0.5"/>
 
-### Pages
+    <rect x="290" y="102" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="355" y="125" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Hono Router</text>
+    <rect x="440" y="102" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="505" y="125" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Bearer Auth</text>
+    <rect x="290" y="148" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="355" y="171" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Session Pool</text>
+    <rect x="440" y="148" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="505" y="171" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Rate Limiter</text>
+    <rect x="290" y="194" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="355" y="217" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Playwright</text>
+    <rect x="440" y="194" width="130" height="36" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="505" y="217" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#1a1615" font-weight="500">Content Filter</text>
+    <rect x="290" y="240" width="280" height="32" rx="8" fill="#F5F1EA" stroke="#C9BFAE" stroke-width="0.5"/>
+    <text x="430" y="261" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" fill="#8a7f6f" font-weight="500">Tool Registry + JSON Schema Validator</text>
 
-#### Overview (`/dashboard`)
+    <line x1="590" y1="140" x2="700" y2="140" stroke="#5E9D5C" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowRight)" stroke-dasharray="4 3"/>
+    <text x="645" y="133" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#5E9D5C" opacity="0.8">Internal API</text>
+    <line x1="700" y1="185" x2="590" y2="185" stroke="#C8983A" stroke-width="1.5" opacity="0.5" marker-end="url(#arrowLeft)" stroke-dasharray="4 3"/>
+    <text x="645" y="200" text-anchor="middle" font-family="ui-monospace, monospace" font-size="9" fill="#C8983A" opacity="0.8">SSE Chunks</text>
 
-The landing page shows the system status at a glance:
+    <rect x="700" y="110" width="150" height="100" rx="10" fill="url(#archCard)" stroke="#C9BFAE" stroke-width="1" filter="url(#archShadow)"/>
+    <text x="775" y="145" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#1a1615" font-weight="700">chat.qwen.ai</text>
+    <text x="775" y="165" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">Qwen Models</text>
+    <text x="775" y="180" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">Web Interface</text>
+    <text x="775" y="195" text-anchor="middle" font-family="ui-sans-serif, sans-serif" font-size="10" fill="#8a7f6f">(Browser Session)</text>
 
-- **KPI Cards** -- Total Accounts, Authenticated, Active Sessions, Queue depth, Total Requests, and Uptime
-- **Session Pool** -- Active, Waiting, Available, and Total session counts with a utilization bar (color-coded: green below 50%, yellow 50-80%, red above 80%)
-- **Model Health** -- Per-model success/error counts and success rate badges for each Qwen model used
-- **System Logs** -- Recent server log entries with timestamps, level badges (debug/info/warn/error), and category labels
+    <line x1="310" y1="315" x2="340" y2="315" stroke="#5E9D5C" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+    <text x="345" y="319" font-family="ui-sans-serif, sans-serif" font-size="9" fill="#8a7f6f">Request</text>
+    <line x1="400" y1="315" x2="430" y2="315" stroke="#C8983A" stroke-width="1.5" opacity="0.5" stroke-dasharray="4 3"/>
+    <text x="435" y="319" font-family="ui-sans-serif, sans-serif" font-size="9" fill="#8a7f6f">Response</text>
+  </svg>
+</p>
 
-#### Logs (`/dashboard/logs`)
+## Web Dashboard
 
-A live request log that streams entries via SSE as they arrive:
+Accessible at `http://localhost:26405/dashboard`.
 
-- Each entry shows model name, stream mode (SSE vs SYNC), status badge (done/streaming/error), token count, and account email
-- **Input section** (folded by default) -- the full messages array sent by the client, color-coded by role (system, user, tool, assistant)
-- **Raw Output** and **Processed Output** panels displayed side by side for comparison
-- **Tool Calls** section lists every parsed tool invocation with name, arguments, blocked/error/success status, execution time, and result
-- **Chunk Stream** panel (right column) shows every raw chunk from Qwen, color-coded by type (tool vs text) with index labels
-- Errors are highlighted at the top with WARN (echo/loop) or ERROR badges
-- A connection status indicator shows SSE health (Connected/Reconnecting/Disconnected)
-- Load More button reveals older entries beyond the visible limit of 10
-- Clear button to wipe the log
+| Page | Path | Purpose |
+|------|------|---------|
+| **Overview** | `/dashboard` | KPIs, model health, system logs, session pool status |
+| **Logs** | `/dashboard/logs` | Real-time request log with expandable entry details |
+| **Accounts** | `/dashboard/accounts` | Add/remove Qwen accounts, view auth status |
+| **Network** | `/dashboard/network` | Outbound API call inspector |
+| **Settings** | `/dashboard/settings` | Live config editor (changes apply instantly) |
 
-#### Accounts (`/dashboard/accounts`)
+## CLI
 
-Manage Qwen accounts through a form and table interface:
+Three binary aliases: `qg`, `qwengate`, `qwen-gate`.
 
-- **Add Account** form -- enter email and password, then click Add Account. The server attempts an automated login and shows a success or warning toast
-- **Accounts table** -- lists every account with:
-  - Email address
-  - Auth status indicator (green dot = authenticated, red = expired, yellow = throttled, gray = not authenticated)
-  - In-flight request count
-  - Total requests served
-  - Throttle badge with remaining cooldown time
-  - Token TTL countdown
-  - **Remove** button (with confirmation modal) deletes the account and its session data
-  - **Login** button (visible when not authenticated) opens a browser window for manual sign-in; the session is captured automatically once you log in on the Qwen page
-- The table polls every 2 seconds for live updates
-
-#### Network (`/dashboard/network`)
-
-Debug panel that shows all outbound HTTP requests made by the Playwright browser layer to `chat.qwen.ai`:
-
-- Table columns: Time, Method (GET/POST/PUT/DELETE), URL, Status code, Duration
-- Each row is expandable -- click to reveal Request Headers, Request Body, Response Headers, Response Body, and Stream Chunks
-- **Filter controls** at the top: filter by HTTP method, status range (2xx/4xx/5xx), or request category (chat, auth, models, session-create, session-delete, settings, other)
-- Entries show their phase badge (pending/streaming/completed/error)
-- Duration cells are color-coded: green for fast, yellow for slow
-- Shows an empty state message when no data has been recorded yet (normal -- data only appears when requests are actively flowing through the gateway)
-
-#### Settings (`/dashboard/settings`)
-
-Edit all server configuration parameters through a web form:
-
-- Sections match the env var groups: Server, Pipeline, Echo Detection, Auth, Logging, Retry
-- Input types adapt to the setting: text fields, number fields, dropdown selects, and checkboxes
-- Click **Save Changes** to persist. The server applies the new config on the fly -- no restart needed for most values
-- Success/error messages appear inline and as toast notifications
-- The config is stored in `config.json` alongside the project
-
-## CLI Commands
-
-The `qg` CLI is available after installing the package (`npm install -g .` or running via `npx` from the project root). It can also be invoked as `qwengate` or `qwen-gate`.
-
-```
+```text
 Usage: qg [command] [options]
 
 Commands:
-  start              Start the API server (default)
-  login <email>      Authenticate a Qwen account via browser
-  restart            Restart the running server
-  status             Check if the server is running
-  help               Show help message
+  start          Start the API server (default)
+  restart        Restart the running server
+  status         Check if the server is running
+  help           Show help message
 
 Options:
-  --port <n>         Override port (default: from config or 26405)
-  --browser <e>      Browser engine: chromium, firefox, chrome, edge
-  --host <addr>      Bind address (default: from config or localhost)
+  --port <n>     Override port
+  --browser <e>  Browser engine: chromium, firefox, chrome, edge
+  --host <addr>  Bind address
+
+Account management is done via the web dashboard → Accounts page.
 ```
 
-### Examples
-
-**Start the server on the default port:**
+## Updating
 
 ```bash
-qg
-# [qg] Starting server (tsx src/index.tsx)...
+# Re-run the installer (pulls latest + re-installs)
+curl -sSL https://raw.githubusercontent.com/youssefvdel/qwen-gate/main/install.sh | bash
+
+# Or manually
+git pull && npm install && qg restart
 ```
 
-**Start on a specific port with a different browser:**
+The server checks for new GitHub releases on startup and logs a warning in the dashboard when an update is available.
 
-```bash
-qg start --port 8080 --browser firefox
-# [qg] Starting server (tsx src/index.tsx)...
-# [qg] Extra args: --port 8080 --browser firefox
+## Project Structure
+
+```text
+src/
+├── cli.ts                   CLI entry (qg command parser)
+├── index.tsx                Hono server, routing, middleware
+├── routes/                  API route handlers
+│   ├── chat.ts              Chat completions dispatch
+│   ├── chatStreaming.ts     Streaming SSE logic
+│   ├── chatNonStreaming.ts  Non-streaming responses
+│   ├── accounts.ts          Account CRUD API
+│   ├── config.ts            Config read/write API
+│   └── dashboard/           Web dashboard (vanilla HTML/JS)
+├── services/                Business logic
+│   ├── auth.ts              Auth orchestration
+│   ├── accountManager.ts    Account CRUD, round-robin rotation
+│   ├── sessionPool.ts       Session pool with autoscaling
+│   ├── playwright.ts        Browser init & management
+│   ├── qwenModels.ts        Model fetching & mapping
+│   ├── modelRouter.ts       Model routing & fallback
+│   ├── networkDebug.ts      Outbound call capture
+│   ├── logStore.ts          In-memory log store + SSE
+│   └── configService.ts     Config loader
+├── tools/                   Tool calling system
+│   ├── registry.ts          Tool registry
+│   ├── parser.ts            Tool call parsing
+│   ├── guard.ts             Spam/abuse guard
+│   └── schema.ts            JSON Schema validation
+├── utils/                   Shared utilities
+│   ├── xmlStripper.ts       XML/tool call artifact removal
+│   ├── contentFilter.ts     Streaming content filter
+│   ├── retry.ts             Exponential backoff
+│   └── logger.ts            Structured logger
+└── middleware/
+    └── rateLimit.ts         Token bucket rate limiter
 ```
-
-**Login a Qwen account (opens a browser window for manual sign-in):**
-
-```bash
-qg login user@example.com
-# [qg] Authenticating user@example.com...
-# A browser window will open. Log in to chat.qwen.ai, then press Enter.
-# [qg] Login complete. You can now use this account with Qwen Gate.
-```
-
-The login command launches a CloakBrowser persistent context pointing to `chat.qwen.ai/auth`. A browser window opens where you sign in manually. After logging in, press Enter in the terminal. The session cookies are saved automatically. Account credentials can also be added through the Dashboard at `/dashboard/accounts`.
-
-**Check server status:**
-
-```bash
-qg status
-# [qg] Server is running on port 26405 (PID: 12345)
-```
-
-When the server is not running:
-
-```bash
-qg status
-# [qg] Server is not running
-```
-
-**Restart the server:**
-
-```bash
-qg restart
-# [qg] Stopping server...
-# [qg] Starting server (tsx src/index.tsx)...
-```
-
-**Show help:**
-
-```bash
-qg help
-# [qg]
-# [qg] Qwen Gate -- OpenAI-compatible gateway for Qwen AI
-# [qg]
-# [qg] USAGE
-# [qg]   qg [command] [options]
-# ...
-
-## Troubleshooting
-
-### Browser automation fails
-
-The gateway requires a working browser engine to communicate with `chat.qwen.ai`. If you see errors about browser launch failures:
-
-- **Check that Playwright browsers are installed.** Run `npx playwright install chromium` (or `firefox`, `chrome`, `edge` depending on your `BROWSER` setting).
-- **System dependencies may be missing.** On Linux, run `npx playwright install-deps chromium` to install shared library dependencies (libnss3, libatk-bridge, etc.).
-- **CloakBrowser persistent contexts** require a writable profile directory. Make sure the `data/` folder exists and is writable.
-- **Headless mode** is used by default for API requests, but login (`qg login`) always opens a visible window. If you are in a headless server environment, use the `/dashboard/accounts` page to add accounts with credentials instead of the browser-based login flow.
-- **Set `BROWSER_HEADLESS=false`** in config.json if you need to debug the browser behavior visually during API calls.
-
-### Account authentication errors
-
-- **Session expired.** Qwen auth tokens expire after 8 hours by default (configurable via `AUTH_TOKEN_MAX_AGE_MS`). If requests start failing with 401 errors, re-authenticate the account through the Dashboard at `/dashboard/accounts` -- click the Login button next to the affected account.
-- **Invalid credentials.** If automated login fails, the Dashboard will show a "Login failed" toast. Try adding the account again with the correct password, or use the manual browser login flow.
-- **Missing accounts.** The session pool has no sessions to serve requests if no accounts are added. Add at least one account via the Dashboard or the `/accounts` API. Run `curl http://localhost:26405/accounts` to verify.
-- **Token refresh fails.** The gateway refreshes tokens automatically every 5 minutes before expiry. If this process fails, check the system logs in the Dashboard overview page for refresh errors. Network connectivity to `chat.qwen.ai` is required.
-
-### Rate limiting issues
-
-Qwen's backend may rate-limit accounts when too many requests are sent in a short window:
-
-- **The Dashboard shows a yellow "Throttled" badge** on the Accounts page with a countdown timer. Wait for the cooldown to expire (default: 2 minutes, configurable via `RATE_LIMIT_COOLDOWN_MS`).
-- **The session pool rotates to another account** automatically when one is throttled. If all accounts are throttled, requests queue up (visible on the Overview page Queue KPI).
-- **Reduce concurrency** by lowering the number of parallel requests. The session pool autoscales but each account can only handle one request at a time.
-- **Adjust cooldown timing** by increasing `RATE_LIMIT_COOLDOWN_MS` in the Dashboard Settings page to give accounts more recovery time.
-
-### Network page shows no data
-
-The Network debug panel at `/dashboard/network` displays outbound HTTP requests made by the Playwright browser layer. If it shows an empty state:
-
-- **This is normal when no requests are active.** Data only appears when API calls are flowing through the gateway. Make a test request to `/v1/chat/completions` first.
-- **Network capture is per-session.** If the session pool recycled all sessions before you opened the page, historical data may not be available. The panel shows up to the last 50 entries.
-- **Check that the browser engine is running.** If the session pool shows zero active sessions, no network data will be captured.
-
-### General debugging tips
-
-- **Enable debug logging** by setting `DEBUG=true` in config.json or via the Settings page. This prints raw Qwen chunks alongside processed output.
-- **Stream debugging only** -- set `DEBUG_STREAM=true` for streaming pipeline details without full debug noise.
-- **Check the System Logs panel** on the Dashboard overview page for server-level errors and warnings.
-- **Log format** can be switched to `json` (`LOG_FORMAT=json`) for structured logging compatible with log aggregators like ELK or Datadog.
 
 ## Testing
 
@@ -437,8 +363,17 @@ The Network debug panel at `/dashboard/network` displays outbound HTTP requests 
 npm test
 ```
 
-Uses the `node:test` runner. Tests cover content filtering, tool-call parsing, echo detection, and spam guard behavior. The `TEST_MOCK_PLAYWRIGHT` env var is set internally by the test suite to mock the browser layer.
+Uses the `node:test` runner. Covers content filtering, tool-call parsing, echo detection, and spam guard behavior.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/ARCHITECTURE.md) | System design, component breakdown, data flow |
+| [API Reference](docs/API.md) | Full endpoint documentation |
+| [Deployment](docs/DEPLOYMENT.md) | Production deployment guide |
+| [Development](docs/DEVELOPMENT.md) | Contributing, testing, code conventions |
 
 ## License
 
-[MIT](./LICENSE)
+MIT — see [LICENSE](LICENSE).

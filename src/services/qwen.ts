@@ -5,7 +5,7 @@ import { throttleAccount, pickAccount } from './auth.ts';
 import { createNetworkEntry, recordResponse, recordStreamChunk, completeEntry, errorEntry } from './networkDebug.ts';
 import { config } from './configService.ts';
 
-export { fetchQwenModels, disableNativeTools, disablePersonalization } from './qwenModels.ts';
+export { fetchQwenModels, disableNativeTools, disablePersonalization, setCustomInstruction, configureAccount, deleteAllChats } from './qwenModels.ts';
 
 export class RetryableQwenStreamError extends Error {
   readonly retryAfterMs: number;

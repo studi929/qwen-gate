@@ -1,0 +1,53 @@
+{
+  // ── Server ───────────────────────────────────────────────
+  "PORT": "26405", // Server port number
+  "HOST": "localhost", // Server host address
+
+  // ── Security ─────────────────────────────────────────────
+  "API_KEY": "", // API key for authenticating requests (empty = no auth)
+
+  // ── Browser ──────────────────────────────────────────────
+  "BROWSER": "chromium", // Browser type: "chromium" | "firefox" | "webkit"
+
+  // ── Pipeline ─────────────────────────────────────────────
+  "TOOL_CALLING": "true", // Enable OpenAI-compatible tool calling
+  "CLEAN_OUTPUT": "true", // Strip tool call artifacts and filter content output
+  "STREAMING_MODE": "auto", // Streaming: "auto" | "stream" | "non-stream"
+
+  // ── Echo Detection ───────────────────────────────────────
+  "ECHO_DETECTOR": "true", // Detect when model echoes back tool results
+  "ECHO_JACCARD_THRESHOLD": "0.9", // Similarity threshold for echo detection (0-1)
+  "ECHO_MIN_LINE_LENGTH": "20", // Min line length for echo comparison
+  "ECHO_MIN_UNIQUE_SHINGLES": "8", // Min unique shingles needed for echo detection
+
+  // ── Logging ──────────────────────────────────────────────
+  "LOG_LEVEL": "info", // Log level: "debug" | "info" | "warn" | "error"
+  "LOG_FORMAT": "json", // Log format: "json" | "text"
+  "MAX_LOGS": "50", // Max log entries visible in the logs page
+  "SAVE_REQUEST_LOGS": "false", // Save per-request logs to disk (logs/requests/)
+  "OPEN_DASHBOARD_ON_START": "false", // Open dashboard in browser on server start
+
+  // ── Qwen API ─────────────────────────────────────────────
+  "QWEN_FETCH_TIMEOUT_MS": "30000", // Timeout for Qwen API requests in ms
+
+  // ── Auth ─────────────────────────────────────────────────
+  "AUTH_TOKEN_MAX_AGE_MS": "28800000", // Max age for auth tokens (8 hours)
+  "AUTH_REFRESH_BEFORE_MS": "300000", // Refresh token this early before expiry (5 min)
+
+  // ── Session ──────────────────────────────────────────────
+  "DELETE_SESSION": "true", // Delete Playwright session after use
+
+  // ── Rate Limiting ────────────────────────────────────────
+  "RATE_LIMIT_COOLDOWN_MS": "120000", // Cooldown after rate limit hit (2 min)
+
+  // ── Retry ────────────────────────────────────────────────
+  "RETRY_ENABLED": "true", // Enable retry on failed requests
+  "RETRY_MAX_ATTEMPTS": "3", // Max retry attempts
+  "RETRY_BASE_DELAY_MS": "1000", // Initial retry delay in ms
+  "RETRY_MAX_DELAY_MS": "30000", // Max retry delay in ms (cap)
+  "RETRY_BACKOFF_MULTIPLIER": "2", // Delay multiplier per retry attempt
+
+  // ── System Prompt ────────────────────────────────────────
+  "CUSTOM_INSTRUCTION": "", // Custom system prompt override (requires USE_CUSTOM_INSTRUCTION=true)
+  "USE_CUSTOM_INSTRUCTION": "false", // Set "true" to use CUSTOM_INSTRUCTION instead of built-in default prompt
+}

@@ -31,12 +31,11 @@ export interface NonStreamingContext {
   sessionHeaders: any;
   toolCalling: boolean;
   cleanOutput: boolean;
-  contentFiltering: boolean;
   toolResultContents: string[];
 }
 
 export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promise<Response> {
-  const { c, logId, completionId, body, finalPrompt, session, stream, resolvedEmail, sessionHeaders, toolCalling, cleanOutput, contentFiltering, toolResultContents } = ctx;
+  const { c, logId, completionId, body, finalPrompt, session, stream, resolvedEmail, sessionHeaders, toolCalling, cleanOutput, toolResultContents } = ctx;
   let nextParentId = ctx.initialParentId;
 
   const reader = stream.getReader();
@@ -50,7 +49,6 @@ export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promi
     let targetResponseId: string | null = null;
     const toolParser = new StreamingToolParser();
     if (!toolCalling) toolParser.passThrough = true;
-    if (!cleanOutput) toolParser.skipPreProcess = true;
     const toolCallsOut: any[] = [];
     const correctionPrompts: string[] = [];
     const toolSpamGuard = new ToolSpamGuard();
@@ -131,7 +129,7 @@ export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promi
               reasoningBuffer += vStr;
             } else {
               logStore.addRawChunk(logId, vStr);
-              if (config.get('DEBUG') && (vStr.includes('"name"'))) {
+              if ((vStr.includes('"name"'))) {
                 logDebug('QWEN RAW CHUNK (non-streaming)', vStr);
               }
               const { toolCalls, thinking, text: parserText } = toolParser.feed(vStr);
@@ -211,7 +209,7 @@ export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promi
       completion_tokens_details: { reasoning_tokens: reasoningTokensEstimate },
       prompt_tokens_details: { cached_tokens: 0 }
     };
-    const { cleanText: baseFilteredContent, thinking: filteredReasoning } = contentFiltering
+    const { cleanText: baseFilteredContent, thinking: filteredReasoning } = cleanOutput
       ? filterContent(lastFullContent)
       : { cleanText: lastFullContent, thinking: '' };
     if (filteredReasoning) {
@@ -246,7 +244,7 @@ export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promi
       if (correctionPrompts.length > 0) entry.errors.push(...correctionPrompts);
     });
 
-    if (config.get('DEBUG')) {
+    if (false) {
       logDebug('OUTGOING RESPONSE', {
         finish_reason: toolCallsOut.length ? 'tool_calls' : 'stop',
         content: lastFullContent.length > 500 ? lastFullContent.substring(0, 500) + '...' : lastFullContent,
@@ -261,8 +259,6 @@ export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promi
     }
     sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
     nonStreamReleased = true;
-    const logEntry = logStore.getRecent(1).find(e => e.id === logId);
-    if (logEntry) logStore.persistRequest(logEntry);
     return c.json({
       id: completionId,
       object: 'chat.completion',

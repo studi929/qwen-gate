@@ -114,7 +114,7 @@ export async function loginFresh(email: string, password: string): Promise<AuthS
   return fetchResult;
 }
 
-export async function initAuth(): Promise<void> {
+export async function initAuth(onAccountReady?: (email: string) => Promise<void>): Promise<void> {
   if (initDone) return;
   initDone = true;
 
@@ -169,6 +169,14 @@ export async function initAuth(): Promise<void> {
           acct.state = newState;
           await saveCookies(acct.email, newState.token, newState.refreshToken, newState.expiresAt);
         }
+      }
+    }
+
+    if (acct.state?.token && onAccountReady) {
+      try {
+        await onAccountReady(acct.email);
+      } catch (err: any) {
+        logStore.log('warn', 'auth', `Post-login config failed for ${acct.email}: ${err.message}`);
       }
     }
 

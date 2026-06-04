@@ -163,6 +163,7 @@ export class StreamingEchoFilter {
    */
   reset(): void {
     this.confirmedLength = 0;
+    this.fingerprints = [];
   }
 
   /**

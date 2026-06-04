@@ -4,86 +4,20 @@ export const settingsHtml = `<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Qwen Gate — Settings</title>
-<script></script>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
-:root{--bg-primary:#F5F1EA;--bg-card:#E9E2D6;--bg-elevated:#DDD4C6;--border:#C9BFAE;--text-primary:#1a1615;--text-secondary:#8a7f6f;--text-display:#4a4540;--accent:#5E9D5C;--accent-soft:rgba(94,157,92,0.2);--success:#3D8B3D;--success-soft:rgba(61,139,61,0.15);--warning:#C8983A;--warning-soft:rgba(200,152,58,0.15);--danger:#C96B6B;--danger-soft:rgba(201,107,107,0.15);--radius:16px;--radius-sm:10px;--sidebar-width:220px;--font:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--display:'Poppins',sans-serif;--mono:'JetBrains Mono','SF Mono',Monaco,Consolas,monospace;--clay-shadow:6px 6px 12px rgba(0,0,0,0.06),-2px -2px 6px rgba(255,255,255,0.5);--clay-shadow-sm:3px 3px 6px rgba(0,0,0,0.04),-1px -1px 3px rgba(255,255,255,0.4);--clay-puff:inset 2px 2px 4px rgba(255,255,255,0.6),inset -2px -2px 4px rgba(0,0,0,0.04)}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
-body{font-family:var(--font);background:var(--bg-primary);color:var(--text-primary);line-height:1.5;min-height:100vh}
+  <link rel="stylesheet" href="/dashboard/static/shared.css">
+  <link rel="stylesheet" href="/dashboard/static/settings.css">
 
-/* Sidebar Live Indicator */
-.live-indicator{display:flex;align-items:center;gap:6px;font-size:0.7rem;color:var(--success);text-transform:uppercase;letter-spacing:0.05em;font-weight:500}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite;display:inline-block}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.85)}}
 
-/* Bold/Display text */
-.sidebar-header h1{color:var(--text-display)}
-
-/* Dashboard Layout */
-.dashboard-layout{display:flex;min-height:100vh}
-.sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
-.sidebar-header{padding:20px 16px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
-.sidebar-header h1{font-size:1rem;font-family:var(--display);font-weight:700;color:var(--text-primary);letter-spacing:-0.01em}
-.sidebar-nav{flex:1;padding:8px;display:flex;flex-direction:column;gap:2px}
-.sidebar-footer{padding:14px 16px;border-top:1px solid var(--border);font-size:0.75rem;color:var(--text-secondary);font-family:var(--mono)}
-.nav-link{display:flex;align-items:center;gap:10px;padding:8px 12px;border:none;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font-size:0.8125rem;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;font-family:var(--font);width:100%;text-align:left;text-decoration:none}
-.nav-link:hover{color:var(--text-primary);background:var(--bg-elevated);box-shadow:var(--clay-puff)}
-.nav-link.active{background:var(--accent);color:#fff;box-shadow:var(--clay-shadow-sm)}
-.nav-link svg{flex-shrink:0}
-.main-content{flex:1;margin-left:var(--sidebar-width);padding:24px;width:calc(100% - var(--sidebar-width))}
-
-/* Header */
-.settings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.settings-header h1{font-size:1.25rem;font-weight:700;font-family:var(--display);color:var(--text-primary);letter-spacing:-0.01em}
-.save-btn{padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);font-size:0.875rem;font-weight:500;cursor:pointer;font-family:var(--font);transition:opacity 0.2s;box-shadow:var(--clay-shadow-sm)}
-.save-btn:hover{opacity:0.9}
-.save-btn:disabled{opacity:0.5;cursor:not-allowed}
-
-/* Sections */
-.settings-sections{display:flex;flex-direction:column;gap:12px}
-.settings-section{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px 20px;margin:0;box-shadow:var(--clay-shadow)}
-.settings-section-title{font-size:0.95rem;font-weight:600;color:var(--text-primary);margin:0 0 4px}
-.settings-section-desc{font-size:0.75rem;color:var(--text-secondary);margin:0 0 14px;line-height:1.45}
-.settings-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px}
-
-/* Field */
-.settings-field{display:flex;flex-direction:column;gap:3px}
-.settings-field label{font-size:0.68rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.04em}
-.settings-field input[type="text"],.settings-field input[type="number"],.settings-field input[type="password"]{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-elevated);font-size:0.8rem;color:var(--text-primary);transition:border-color 0.15s;font-family:var(--mono);box-shadow:var(--clay-puff)}
-.settings-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-.settings-field input[type="number"]{-moz-appearance:textfield}
-.settings-field input[type="number"]::-webkit-inner-spin-button,.settings-field input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-.settings-field select{padding:7px 28px 7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-elevated);font-size:0.8rem;color:var(--text-primary);cursor:pointer;transition:border-color 0.15s;font-family:var(--font);appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;box-shadow:var(--clay-puff)}
-.settings-field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
-
-/* Checkbox */
-.settings-checkbox{display:flex;align-items:center;gap:8px;font-size:0.8125rem;color:var(--text-primary);cursor:pointer;padding:4px 0;user-select:none}
-.settings-checkbox input[type="checkbox"]{width:16px;height:16px;border-radius:4px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
-
-/* Message */
-.settings-message{padding:10px 14px;border-radius:var(--radius-sm);font-size:0.8rem;font-weight:500;margin:12px 0}
-.settings-message.success{background:var(--success-soft);color:var(--success)}
-.settings-message.error{background:var(--danger-soft);color:var(--danger)}
-
-/* Toast */
-.toast-container{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;box-shadow:var(--clay-shadow);animation:slideIn 0.3s ease;font-size:0.8125rem;max-width:380px}
-.toast.success{border-left:3px solid var(--success)}
-.toast.error{border-left:3px solid var(--danger)}
-.toast.warning{border-left:3px solid var(--warning)}
-@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-
-@media(max-width:768px){.settings-fields{grid-template-columns:1fr}.settings-header{flex-direction:column;align-items:flex-start;gap:12px}}
-</style>
 </head>
 <body>
 
 <div class="dashboard-layout">
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h1>Qwen Gate</h1>
-      <div class="live-indicator"><span class="live-dot"></span>Live</div>
+      <h1 style="display:flex;align-items:center;gap:8px">
+      <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" preserveAspectRatio="none" style="display: block;" version="1.1" viewBox="0 0 2000 2000"><path fill="rgb(209,145,112)" d="M1025.63 674.049c33.95-1.481 79.95-.116 114.68-.11l227.23.062c29.41.142 58.82.034 88.22-.324 10.69-.173 22.25.375 32.61-.524l-1.3 3.155c-4.77 11.786-14.73 27.248-21.35 38.757l-46.07 79.103-45.47 77.964c-6.25 10.673-17.33 30.908-24.3 40.001-21.93 2.428-48.9-.883-71.93 1.663-1.22-15.783-.12-45.27 0-61.912-12.39-5.233-27.24-12.994-39.47-18.99a8323 8323 0 0 1-80.34-40.099c-10.54 3.716-29.19 15.158-39.45 20.466-25.95 13.433-51.79 28.743-78.04 41.478-1.16 10.505-.86 27.423-.86 38.048l.05 60.301-.03 202.022c-.01 16.01 2.09 74.29-2.69 83.42-30.8 58.83-69.455 125.97-99.566 184.31 3.026 7.59 24.638 43.99 29.962 52.62 14.326 23.24 28.027 50 42.254 72.58-6.71 10.69-11.079 22.61-19.046 35.4l-1.859-.39c-9.924-18.18-21.203-36.63-31.581-54.66a8998 8998 0 0 0-54.369-95.06c-19.299 1.67-53.449.6-73.937.59l-141.781-.01c-25.317 0-57.123-.87-81.888.71 7.877-18.26 41.646-78.26 53.648-93.5 21.046-1.19 53.479-.15 75.245-.1l137.418.07c12.314-.01 58.708.99 67.035-.81 3.116-4.29 5.503-9 7.983-13.67 16.187-30.5 34.563-59.79 50.922-90.2l-98.585-179.41c-14.158-25.75-30.417-58.349-45.5-82.818 4.354-7.123 8.991-16.574 13.191-24.068a5913 5913 0 0 0 30.735-54.435c29.892-52.883 61.651-106.103 91.676-159.005 9.145-16.113 26.713-50.022 36.553-62.625"></path><path fill="rgb(238,186,163)" d="M552.822 627.091c1.337.924 2.085 1.393 2.946 2.904 21.814 38.268 44.366 76.216 66.715 114.173 3.655 6.208 17.929 28.963 19.652 33.693 53.779 86.801 105.926 180.668 158.181 269.079l72.887 124.87c8.283 14.47 24.578 40.61 30.648 54.36l-131.995.23c-21.638.04-51.273.88-72.244-.69-30.018-50.46-66.05-114.57-98.238-162.34l-110.214-189.236c-11.805-20.68-29.649-47.907-39.366-68.639 3.909-11.819 94.516-172.767 101.028-178.404"></path><path fill="rgb(209,145,112)" d="m1009.77 1548.04.41-.68c6.18-10.41 12.81-26.87 18.88-38.25l90.38-166.26c11.81-21.5 23.82-42.89 36.03-64.16 6.3-11.1 12.1-22.87 19.12-33.5 1.68-2.54 4.74-7.57 7.7-8.56 2.63-.87 230.31-.96 242.51.37 15.57 26.32 30.88 52.79 45.91 79.41 4.35 7.83 12.67 20.99 15.61 28.64-9.08 19.04-36.7 67.58-48.87 84.11-18.27 1.75-60.43.82-80.94.47-37.29-.62-81.97 1.54-118.26-.41-24.9 55.52-60.3 110.09-88.1 164.49-2.76 5.42-11.23 5.46-16.67 4.98-41.5-3.65-97.04 4.46-136.544-.77-2.655-4.97-5.346-9.93-8.071-14.87l1.859.39c7.967-12.79 12.336-24.71 19.046-35.4"></path><path fill="rgb(238,186,163)" d="M873.115 380.723c54.251-1.914 116.406-.839 171.205-.537 2.4 1.995 4.84 4.442 6.43 7.153 20.6 35.053 40.09 70.77 60.61 105.876 4.69 8.033 7.73 12.88 11.07 21.693 23.05 1.039 50.41.447 73.78.446l132.61-.1c20.48-.008 41.23-.105 61.72.05 3.58.027 12.05 1.132 14.89 3.035.9.599 4.8 5.996 5.32 7.068 5.25 11.017 70.54 122.457 70.91 126.144-4.86 3.345-120.35-.743-138.03.702-24.17-.895-60.25-.757-84.4-.126-16.83-.763-36.97-.331-54.03-.441-37.78-.395-75.57-.582-113.36-.561-19.61-.089-45.36.462-64.16-1.03-9.02-11.518-23.24-38.763-31.307-52.613l-25.684-44.638c-7.371-12.593-16.215-26.713-22.189-39.819-2.007-1.697-70.861-122.86-75.385-132.302"></path><path fill="rgb(209,145,112)" d="M729.695 626.24c25.467-49.609 59.732-106.5 88.197-155.449l31.922-55.225c4.805-8.353 15.939-30.668 23.301-34.843 4.524 9.442 73.378 130.605 75.385 132.302-14.481 26.138-32.093 55.002-47.388 80.752l-68.398 115.286c-7.31 12.252-33.381 59.306-40.233 66.582-20.095 2.925-145.096-1.155-150.346 2.216-1.723-4.73-15.997-27.485-19.652-33.693-22.349-37.957-44.901-75.905-66.715-114.173-.861-1.511-1.609-1.98-2.946-2.904 4.077-2.201 160.557-1.091 176.873-.851m-128.321 437.13c32.188 47.77 68.22 111.88 98.238 162.34-2.626 9.51-103.117 181.56-109.846 188.62-3.437-7.07-8.069-13.52-11.902-20.35-26.726-47.67-57.512-94.9-82.907-143.18 4.575-14.77 29.158-55 37.901-70.25 22.398-39.07 45.114-78.72 68.516-117.18m987.496-200.984c19.14.167 35.73 5.276 46.69 22.294 8.57 13.321 12.34 28.99 8.69 44.657a57.43 57.43 0 0 1-26.96 36.116c-28.7 17.016-61.6 2.685-76.72-25.125-11.38-.515-95.39-1.16-101.34 2.976-16.36 11.378-46.46 45.551-63.06 61.776-21.13 20.65-26.98 15.88-56.09 16.27-11.01.03-22.83-.04-33.99-.05h-138.84c-30.27-.17-60.55.05-90.81.67-.02-11.95.5-24.544.83-36.552 34.12 1.311 71.39.649 105.79.647l175.48-.111c22.23-13.639 43.12-41.689 61.63-60.412 7.2-7.287 15-15.828 24.71-19.633 15.81-6.197 90.26-3.525 112.49-3.623 11.47-27.741 20.9-36.218 51.5-39.9m4.64 79.82a25.1 25.1 0 0 0 22-19.64 25.09 25.09 0 0 0-11.87-27.001 25.1 25.1 0 0 0-14.83-3.328c-13.87 1.209-24.11 13.484-22.81 27.349 1.31 13.865 13.65 24.017 27.51 22.62"></path><path fill="rgb(209,145,112)" d="M1615.79 992.429c65 .28 75.03 86.761 18.43 106.981-27.36 9.78-60.59-6.7-69.16-35.32-49.71 2.74-103.67-.98-153.75.93-16.19.62-25.28 18.15-41.99 18.85-23.34.98-47.61.37-71.02.4l-150.05.03c-11.72-.02-82.55.93-88.99-.85-3.32-5.14-2.67-27.18-2.84-34.89 65.53.4 131.05.46 196.58.18l69.34.08c11.09-.02 22.34.05 33.43-.25 15.1.15 27.19-19.9 41.39-20.09 55.79-.75 112.19.98 167.95-.51 9.4-23.11 25.93-33.877 50.68-35.541m-17.22 38.081a24.95 24.95 0 0 0-5.93 20.55 24.88 24.88 0 0 0 12.19 17.57 24.9 24.9 0 0 0 18.63 2.5c11.17-2.89 18.89-13.09 18.64-24.63-.24-11.39-8.18-21.17-19.28-23.73a24.92 24.92 0 0 0-24.25 7.74m-540.91 80.9c8.54 1.2 23.04.7 32.2.67l50.28-.05 178.64-.01c22.15-.03 51.28-2.18 72.92 3.06 19.49 4.72 39.55 38.13 57.13 43.06 18.24 5.12 53.84 2.69 73.3 1.98 7.45-11.7 12.23-23.82 25.68-30.56 46.42-23.24 93.28 17.09 78.32 67.21-.07.28-.14.56-.21.85-13.69 37.25-63.63 48.99-90.45 18.29-5.96-6.81-8.4-11.81-12.31-19.13-20.29 1.33-66.95 2.47-86.74-1.56-17.94-3.64-48.2-45.55-65.69-46.56-19.93-1.15-45.67-.62-66.05-.6l-189.21-.21c-8.17-.01-52.74 2-56.72-.62-3.42-6.46-1.63-27.82-1.09-35.82m502.62 46.78c-9.44 6.65-13.05 18.92-8.72 29.63 4.34 10.7 15.48 17 26.88 15.2a24.83 24.83 0 0 0 15.9-39.56 24.83 24.83 0 0 0-24.31-9.38c-3.51.66-6.83 2.06-9.75 4.11"></path><path fill="rgb(238,222,207)" fill-opacity=".008" d="M1259.23 652.127c24.15-.631 60.23-.769 84.4.126-5.48 1.924-122.26 2.147-133.5 1.091 13.1-1.252 38.13 1.688 49.1-1.217"></path><g id="_ci60r4wf" pointer-events="none" style="mix-blend-mode:multiply"><rect width="100%" height="100%" fill="url(#_diedph97)"></rect></g></svg>
+        Qwen Gate
+      </h1>
     </div>
     <nav class="sidebar-nav">
       <a href="/dashboard" class="nav-link">
@@ -107,7 +41,7 @@ body{font-family:var(--font);background:var(--bg-primary);color:var(--text-prima
         <span>Settings</span>
       </a>
     </nav>
-    <div class="sidebar-footer" id="uptimeDisplay">—</div>
+    <div class="sidebar-footer"><span class="live-indicator"><span class="live-dot"></span>Live</span></div>
   </aside>
   <main class="main-content">
 
@@ -121,209 +55,19 @@ body{font-family:var(--font);background:var(--bg-primary);color:var(--text-prima
 
 <div class="toast-container" id="toastContainer"></div>
 
+<div class="modal-overlay" id="confirmModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header" id="modalHeader">Warning</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
   </main>
 </div>
 
-<script>
-var API_KEY = window.API_KEY || '';
 
-/* ── Helpers ── */
-function escHtml(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function showToast(message, type) {
-  var container = document.getElementById('toastContainer');
-  var toast = document.createElement('div');
-  toast.className = 'toast ' + (type || 'info');
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(function() { if (toast.parentNode) toast.remove(); }, 3500);
-}
-
-var settingsData = {};
-
-var SETTINGS_SECTIONS = [
-  { title: 'Server', desc: 'Network binding, browser engine, and dashboard settings.', fields: [
-    { key: 'PORT', label: 'PORT', type: 'number' },
-    { key: 'HOST', label: 'HOST', type: 'text' },
-    { key: 'API_KEY', label: 'API_KEY', type: 'password' },
-    { key: 'BROWSER', label: 'BROWSER', type: 'select', options: [
-      { value: 'chromium', label: 'Chromium' },
-      { value: 'firefox', label: 'Firefox' },
-      { value: 'chrome', label: 'Chrome' },
-      { value: 'edge', label: 'Edge' }
-    ]},
-    { key: 'BROWSER_HEADLESS', label: 'BROWSER_HEADLESS', type: 'checkbox' }
-  ]},
-  { title: 'Pipeline', desc: 'Output transformation, streaming, and tool-call behaviour.', fields: [
-    { key: 'TOOL_CALLING', label: 'TOOL_CALLING', type: 'checkbox' },
-    { key: 'CLEAN_OUTPUT', label: 'CLEAN_OUTPUT', type: 'checkbox' },
-    { key: 'CONTENT_FILTER', label: 'CONTENT_FILTER', type: 'checkbox' },
-    { key: 'STREAMING', label: 'STREAMING', type: 'select', options: [
-      { value: '', label: 'Default (respect client)' },
-      { value: 'true', label: 'Always stream' },
-      { value: 'false', label: 'Never stream' }
-    ]},
-    { key: 'NON_STREAMING', label: 'NON_STREAMING', type: 'select', options: [
-      { value: '', label: 'Default (respect client)' },
-      { value: 'true', label: 'Always non-streaming' }
-    ]},
-    { key: 'MAX_TOOL_CALLS_PER_RESPONSE', label: 'MAX_TOOL_CALLS_PER_RESPONSE', type: 'number' }
-  ]},
-  { title: 'Echo Detection', desc: 'Detects when the model parrots tool results and triggers a retry.', fields: [
-    { key: 'ECHO_DETECTOR', label: 'ECHO_DETECTOR', type: 'checkbox' },
-    { key: 'ECHO_JACCARD_THRESHOLD', label: 'ECHO_JACCARD_THRESHOLD', type: 'number', step: '0.1' },
-    { key: 'ECHO_MIN_LINE_LENGTH', label: 'ECHO_MIN_LINE_LENGTH', type: 'number' },
-    { key: 'ECHO_MIN_UNIQUE_SHINGLES', label: 'ECHO_MIN_UNIQUE_SHINGLES', type: 'number' }
-  ]},
-  { title: 'Auth', desc: 'Qwen fetch timeout, token expiry, session cleanup, and rate limiting.', fields: [
-    { key: 'QWEN_FETCH_TIMEOUT_MS', label: 'QWEN_FETCH_TIMEOUT_MS', type: 'number' },
-    { key: 'AUTH_TOKEN_MAX_AGE_MS', label: 'AUTH_TOKEN_MAX_AGE_MS', type: 'number' },
-    { key: 'AUTH_REFRESH_BEFORE_MS', label: 'AUTH_REFRESH_BEFORE_MS', type: 'number' },
-    { key: 'DELETE_SESSION', label: 'DELETE_SESSION', type: 'checkbox' },
-    { key: 'RATE_LIMIT_COOLDOWN_MS', label: 'RATE_LIMIT_COOLDOWN_MS', type: 'number' }
-  ]},
-  { title: 'Logging', desc: 'Log levels, format, and retention.', fields: [
-    { key: 'DEBUG', label: 'DEBUG', type: 'checkbox' },
-    { key: 'DEBUG_STREAM', label: 'DEBUG_STREAM', type: 'checkbox' },
-    { key: 'LOG_LEVEL', label: 'LOG_LEVEL', type: 'select', options: [
-      { value: 'debug', label: 'debug' },
-      { value: 'info', label: 'info' },
-      { value: 'warn', label: 'warn' },
-      { value: 'error', label: 'error' }
-    ]},
-    { key: 'LOG_FORMAT', label: 'LOG_FORMAT', type: 'select', options: [
-      { value: 'text', label: 'text' },
-      { value: 'json', label: 'json' }
-    ]},
-    { key: 'LOG_MAX_ENTRIES', label: 'LOG_MAX_ENTRIES', type: 'number' }
-  ]},
-  { title: 'Retry', desc: 'Upstream retry with exponential backoff and jitter.', fields: [
-    { key: 'RETRY_ENABLED', label: 'RETRY_ENABLED', type: 'checkbox' },
-    { key: 'RETRY_MAX_ATTEMPTS', label: 'RETRY_MAX_ATTEMPTS', type: 'number' },
-    { key: 'RETRY_BASE_DELAY_MS', label: 'RETRY_BASE_DELAY_MS', type: 'number' },
-    { key: 'RETRY_MAX_DELAY_MS', label: 'RETRY_MAX_DELAY_MS', type: 'number' },
-    { key: 'RETRY_BACKOFF_MULTIPLIER', label: 'RETRY_BACKOFF_MULTIPLIER', type: 'number', step: '0.1' }
-  ]}
-];
-
-/* ── Render ── */
-function renderSettingsForm() {
-  var container = document.getElementById('settingsSections');
-  var html = '';
-  for (var s = 0; s < SETTINGS_SECTIONS.length; s++) {
-    var section = SETTINGS_SECTIONS[s];
-    html += '<fieldset class="settings-section">'
-      + '<div class="settings-section-title">' + escHtml(section.title) + '</div>'
-      + '<p class="settings-section-desc">' + escHtml(section.desc) + '</p>'
-      + '<div class="settings-fields">';
-    for (var f = 0; f < section.fields.length; f++) {
-      var field = section.fields[f];
-      var val = settingsData[field.key] !== undefined ? settingsData[field.key] : '';
-      html += renderSettingsField(field, val);
-    }
-    html += '</div></fieldset>';
-  }
-  container.innerHTML = html;
-}
-
-function renderSettingsField(field, val) {
-  if (field.type === 'checkbox') {
-    var checked = val === 'true' ? ' checked' : '';
-    return '<label class="settings-checkbox">'
-      + '<input type="checkbox" data-key="' + field.key + '"' + checked + ' onchange="onCheckboxChange(this)">'
-      + '<span>' + escHtml(field.label) + '</span></label>';
-  }
-  if (field.type === 'select') {
-    var opts = '';
-    for (var o = 0; o < field.options.length; o++) {
-      var opt = field.options[o];
-      var sel = opt.value === val ? ' selected' : '';
-      opts += '<option value="' + escHtml(opt.value) + '"' + sel + '>' + escHtml(opt.label) + '</option>';
-    }
-    return '<div class="settings-field">'
-      + '<label for="cfg-' + field.key + '">' + escHtml(field.label) + '</label>'
-      + '<select id="cfg-' + field.key + '" data-key="' + field.key + '" onchange="onFieldChange(this)">' + opts + '</select></div>';
-  }
-  var inputType = field.type || 'text';
-  var stepAttr = field.step ? ' step="' + field.step + '"' : '';
-  return '<div class="settings-field">'
-    + '<label for="cfg-' + field.key + '">' + escHtml(field.label) + '</label>'
-    + '<input type="' + inputType + '" id="cfg-' + field.key + '" data-key="' + field.key + '" value="' + escHtml(val) + '"' + stepAttr + ' oninput="onFieldChange(this)"></div>';
-}
-
-/* ── Change tracking ── */
-function onFieldChange(el) {
-  settingsData[el.getAttribute('data-key')] = el.value;
-}
-function onCheckboxChange(el) {
-  var key = el.getAttribute('data-key');
-  settingsData[key] = el.checked ? 'true' : '';
-}
-
-/* ── Load ── */
-async function loadSettings() {
-  try {
-    var headers = {};
-    if (API_KEY) headers['Authorization'] = 'Bearer ' + API_KEY;
-    var res = await fetch('/api/config', { headers: headers });
-    if (!res.ok) return;
-    var data = await res.json();
-    if (data && data.config) {
-      settingsData = {};
-      var keys = Object.keys(data.config);
-      for (var i = 0; i < keys.length; i++) {
-        settingsData[keys[i]] = data.config[keys[i]];
-      }
-    }
-    renderSettingsForm();
-  } catch(e) {
-    /* silent */
-  }
-}
-
-/* ── Save ── */
-async function saveSettings() {
-  var btn = document.getElementById('settingsSaveBtn');
-  btn.disabled = true;
-  btn.textContent = 'Saving...';
-  var msgEl = document.getElementById('settingsMessage');
-  try {
-    var headers = { 'Content-Type': 'application/json' };
-    if (API_KEY) headers['Authorization'] = 'Bearer ' + API_KEY;
-    var res = await fetch('/api/config', {
-      method: 'PUT',
-      headers: headers,
-      body: JSON.stringify(settingsData)
-    });
-    var result = await res.json();
-    if (!res.ok) {
-      msgEl.innerHTML = '<div class="settings-message error">' + escHtml(result.error || 'Save failed (' + res.status + ')') + '</div>';
-    } else {
-      if (result.config) {
-        var keys = Object.keys(result.config);
-        for (var i = 0; i < keys.length; i++) {
-          settingsData[keys[i]] = result.config[keys[i]];
-        }
-        renderSettingsForm();
-      }
-      msgEl.innerHTML = '<div class="settings-message success">Settings saved successfully.</div>';
-      setTimeout(function() { msgEl.innerHTML = ''; }, 4000);
-    }
-  } catch(e) {
-    msgEl.innerHTML = '<div class="settings-message error">' + escHtml(e.message) + '</div>';
-  }
-  btn.disabled = false;
-  btn.textContent = 'Save Changes';
-}
-
-/* ── Init ── */
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadSettings);
-} else {
-  loadSettings();
-}
-</script>
+  <script src="/dashboard/static/shared.js"></script>
+  <script src="/dashboard/static/settings.js"></script>
 </body>
 </html>`;

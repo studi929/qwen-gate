@@ -2,6 +2,7 @@ import { chromium, firefox, webkit, BrowserContext, Page, Cookie, Browser } from
 import { launch as cloakLaunch } from 'cloakbrowser';
 import crypto from 'crypto';
 import { getTokenWithAccount, pickAccount } from "./auth.ts";
+import { logStore } from './logStore.ts';
 export { getProfileDir, openBrowserProfile, refreshViaProfile, autoFillLogin } from './browserProfiles.ts';
 export type { LoginResult, BrowserProfileOptions } from './browserProfiles.ts';
 export type BrowserType = 'chromium' | 'firefox' | 'webkit' | 'chrome' | 'edge';
@@ -253,7 +254,7 @@ export async function refreshAccountCookies(email: string): Promise<void> {
       const postCookies = await context.cookies();
       const hasPostAuth = postCookies.some(c => c.name.toLowerCase().includes('token') || c.name.toLowerCase().includes('session'));
       if (!hasPostAuth) {
-        console.warn(`[AccountContext] ${email} still has no auth cookie after navigation - token invalid, marking unavailable`);
+        logStore.log('warn', 'account', `${email} still has no auth cookie after navigation - token invalid, marking unavailable`);
         const { throttleAccount } = await import('./auth.ts');
         throttleAccount(email, 120_000);
         accCtx.cookies = {};

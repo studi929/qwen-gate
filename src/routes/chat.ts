@@ -31,12 +31,11 @@ export async function chatCompletions(c: Context) {
   try {
     const body: OpenAIRequest = await c.req.json();
     let isStream = body.stream ?? false;
-    if (config.get("STREAMING") === "true") isStream = true;
-    else if (config.get("STREAMING") === "false") isStream = false;
-    else if (config.get("NON_STREAMING") === "true") isStream = false;
+    const streamMode = config.get("STREAMING_MODE", "auto");
+    if (streamMode === "stream") isStream = true;
+    else if (streamMode === "non-stream") isStream = false;
     const toolCalling = config.get("TOOL_CALLING", "true") !== "false";
-    const cleanOutput = toolCalling && config.get("CLEAN_OUTPUT", "true") !== "false";
-    const contentFiltering = config.get("CONTENT_FILTER", "true") !== "false";
+    const cleanOutput = config.get("CLEAN_OUTPUT", "true") !== "false";
 
     const messages = body.messages || [];
     const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
@@ -148,7 +147,6 @@ export async function chatCompletions(c: Context) {
         sessionHeaders,
         toolCalling,
         cleanOutput,
-        contentFiltering,
         toolResultContents,
       });
     }
@@ -167,7 +165,6 @@ export async function chatCompletions(c: Context) {
       sessionHeaders,
       toolCalling,
       cleanOutput,
-      contentFiltering,
       toolResultContents,
     });
   } catch (err: any) {

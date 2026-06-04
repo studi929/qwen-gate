@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, unlink
 import type { AccountEntry } from './auth.ts';
 import { loginFresh, saveCookies, loadSavedCookies, accounts } from './auth.ts';
 import { config } from './configService.ts';
+import { logStore } from './logStore.ts';
 export const COOKIE_DIR = 'qwen_profile/cookies';
 const ACCOUNTS_FILE = 'qwen_profile/accounts.json';
 export function getCookieFilePath(email: string): string {
@@ -317,7 +318,7 @@ export function throttleAccount(email: string, durationMs?: number): void {
   const cooldown = durationMs || DEFAULT_THROTTLE_MS;
   acct.throttledUntil = Date.now() + cooldown;
   const remaining = Math.ceil(cooldown / 1000);
-  console.warn(`[Auth] Throttled ${email} for ${remaining}s`);
+      logStore.log('warn', 'auth', `Throttled ${email} for ${remaining}s`);
 }
 export function isAccountThrottled(email: string): boolean {
   const acct = getAccountByEmail(email);

@@ -13,7 +13,7 @@ import modelSpecs from "../models.json" with { type: "json" };
 import type { ModelSpec } from "../utils/types.ts";
 
 export function logDebug(label: string, data: any) {
-  if (!config.get('DEBUG')) return;
+  if (false) return;
   const _prefix = `[DEBUG ${new Date().toISOString()}]`;
   if (typeof data === "string") {
     const _truncated =
@@ -43,7 +43,7 @@ export function streamDebugLog(
   stage: string,
   data: string | Record<string, unknown>,
 ) {
-  if (!config.get('DEBUG_STREAM')) return;
+  if (false) return;
   if (stage !== "RAW_CHUNK") return;
   const payload = typeof data === "string" ? data : JSON.stringify(data);
   try {
@@ -153,10 +153,12 @@ export function getSnapshotDelta(
 }
 
 export function cleanThinkTags(t: string): string {
-  return t.replace(
+  let s = t.replace(
     /<\/?(?:think|thinking|thought|tool_call|tool_use|function_call|tool)>/gi,
     "",
   );
+  s = s.replace(/<\/tool(?:_result)?/gi, "");
+  return s;
 }
 
 export function truncateToolResult(
@@ -444,57 +446,6 @@ export class ToolSpamGuard {
 
 export const pendingCorrections = new Map<string, string[]>();
 
-export const TOOL_FORMAT_INSTRUCTION = `
-## TOOL DISCIPLINE — HIGHEST PRIORITY
-
-You are a precise tool-calling assistant. Follow these rules:
-
-### 1. TOOL SELECTION
-- Only call tools explicitly listed in your available_tools.
-- Never invent new tool names or parameters.
-- If uncertain about a parameter, ask for clarification instead of guessing.
-
-### 2. OUTPUT FORMAT
-When calling a tool, output ONLY a single line of raw JSON:
-{"name": "read_file", "arguments": {"path": "src/main.ts"}}
-{"name": "glob", "arguments": {"pattern": "**/*.ts"}}
-{"name": "bash", "arguments": {"command": "ls -la"}}
-
-Rules:
-- "name" must be a plain string — the tool name
-- "arguments" must be a JSON object — not a string, not a number
-- Output each tool call on its own line, one JSON object per line
-- Never wrap tool calls in fences, backticks, or XML tags
-- Never output raw JSON with explanatory text around it
-
-### 3. TOOL USAGE
-You have a rich set of tools available. Call as many as needed to accomplish the task.
-- Each tool call must be valid JSON with "name" and "arguments" fields on a single line.
-- Prefer combining operations when it saves turns: one well-crafted "bash" command beats three separate tool calls.
-- There is no hard limit on tool calls. Use them as needed, but be efficient.
-- If a tool call fails validation, retry once with corrected parameters.
-
-### 4. ERROR RECOVERY
-If a tool call fails validation:
-- Retry once with corrected parameters
-- If it fails again, report the error clearly using the field-path format: "arguments.path: expected string, got number"
-- Do not silently ignore errors
-
-### 5. PRIVATE REASONING
-Your private reasoning is never shown to the user — answer directly.
-Do not prefix answers with "Thinking:", "I am", "Let me", or any reasoning text.
-
-### 6. TOOL CALLING CYCLE — READ BEFORE CALLING
-Calling a tool is a TWO-STEP process: (1) call the tool, (2) READ the result before deciding what to do next.
-
-- After calling a tool, you will receive the result inside <tool_result> tags.
-- READ the entire result before making your next move.
-- If the result answers the user's question — STOP calling tools and respond to the user.
-- If the result is incomplete or ambiguous — call ONE more tool to clarify.
-- NEVER call multiple tools in a row without reading each result first.
-- NEVER repeat the same tool call with identical arguments.
-`;
-
 export function parseQwenErrorPayload(
   raw: string,
 ): { message: string; status: ContentfulStatusCode } | null {
@@ -669,7 +620,7 @@ export function processToolCallsThroughGuard(
           args: JSON.stringify(tc.arguments),
         });
       });
-      if (config.get('DEBUG')) {
+if (false) {
         logDebug("PARSED TOOL CALL", {
           name: tc.name,
           arguments: tc.arguments,
@@ -831,12 +782,7 @@ export function buildPromptAndSystem(
     }
   }
 
-  if (toolCalling) {
-    systemPrompt += `\n\nCRITICAL: Output tool calls as pure JSON objects only. No wrappers, no fences, no markdown. Example: {"name": "read", "arguments": {"path": "file.txt"}}\n\n`;
-  }
-
   if (body.tools && Array.isArray(body.tools) && body.tools.length > 0) {
-    if (toolCalling) systemPrompt += TOOL_FORMAT_INSTRUCTION;
     const formattedTools = body.tools.map((t: any) => ({
       name: t.function.name,
       description:
@@ -846,7 +792,7 @@ export function buildPromptAndSystem(
     }));
     const toolsJson = JSON.stringify(formattedTools, null, 2);
 
-    systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\nIMPORTANT: When calling a tool, output ONLY raw JSON with no surrounding text:\n{"name": "tool_name", "arguments": {"param": "value"}}\n\nNever wrap tool calls in fences or backticks.\n\n`;
+    systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\n`;
 
     if (body.tool_choice === "required" || body.tool_choice === "any") {
       systemPrompt += `CRITICAL: Call tools to gather the information you need. After receiving each tool result, READ and ANALYZE it carefully. If the results give you enough information to answer the user, respond directly — do NOT continue calling tools unnecessarily. Only call additional tools if you genuinely need more data. NEVER call the same tool repeatedly with the same arguments.\n\n`;
@@ -934,6 +880,8 @@ export function createLogEntry(
     rawBodyStr.length > maxRequestBody
       ? rawBodyStr.substring(0, maxRequestBody) + "... [truncated]"
       : rawBodyStr;
+  // Persist full request body to disk (no truncation)
+  logStore.saveRequestInput(logId, body);
   return logEntry;
 }
 
@@ -969,8 +917,8 @@ export function getModelSpecs(body: any): {
     .replace(/-no-thinking$/, "");
   const specs = (modelSpecs as Record<string, ModelSpec>)[modelId];
   return {
-    maxContext: specs?.max_context || 131072,
-    maxOutput: specs?.max_output || 8192,
+    maxContext: specs?.max_context || 250000,
+    maxOutput: specs?.max_output || 65000,
   };
 }
 
@@ -991,7 +939,7 @@ export function logPromptToQwen(
       (prompt.length > 200 ? prompt.substring(0, 200) + "..." : prompt),
   };
 
-  if (config.get('DEBUG')) {
+  if (false) {
     logDebug("PROMPT TO QWEN", {
       systemPromptLength: systemPrompt.length,
       promptLength: prompt.length,
@@ -1078,7 +1026,7 @@ export function logIncomingRequest(
   isStream: boolean,
   messages: any[],
 ): void {
-  if (config.get('DEBUG')) {
+  if (false) {
     logDebug("INCOMING REQUEST", {
       model: body.model,
       stream: isStream,

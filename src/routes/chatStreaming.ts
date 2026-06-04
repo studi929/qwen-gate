@@ -36,12 +36,11 @@ export interface StreamingContext {
   sessionHeaders: any;
   toolCalling: boolean;
   cleanOutput: boolean;
-  contentFiltering: boolean;
   toolResultContents: string[];
 }
 
 export async function handleStreamingRequest(ctx: StreamingContext): Promise<Response> {
-  const { c, logId, completionId, body, finalPrompt, session, stream, qwenAbortController, resolvedEmail, sessionHeaders, toolCalling, cleanOutput, contentFiltering, toolResultContents } = ctx;
+  const { c, logId, completionId, body, finalPrompt, session, stream, qwenAbortController, resolvedEmail, sessionHeaders, toolCalling, cleanOutput, toolResultContents } = ctx;
   let nextParentId = ctx.initialParentId;
 
   c.header('Content-Type', 'text/event-stream');
@@ -118,7 +117,7 @@ let lastFullContent = '';
 let lastRawContent = '';
     let lastFilteredSnapshot = '';
     let lastThinkingSnapshot = '';
-    const enableContentFiltering = contentFiltering;
+    const enableContentFiltering = cleanOutput;
     const streamFilter = new StreamingContentFilter(enableContentFiltering);
     const echoDetectorEnabled = config.get('ECHO_DETECTOR', 'true') !== 'false';
     const streamingEchoFilter = new StreamingEchoFilter(echoDetectorEnabled ? toolResultContents : []);
@@ -126,7 +125,6 @@ let lastRawContent = '';
     let targetResponseId: string | null = null;
     const toolParser = new StreamingToolParser();
     if (!toolCalling) toolParser.passThrough = true;
-    if (!cleanOutput) toolParser.skipPreProcess = true;
 
     let buffer = '';
     let completionTokens = 0;
@@ -216,7 +214,7 @@ _inThinkingState = false;
 
               logStore.addRawChunk(logId, vStr);
               streamDebugLog(completionId, 'RAW_CHUNK', vStr);
-              if (config.get('DEBUG') && (vStr.includes('"name"'))) {
+              if ((vStr.includes('"name"'))) {
                 logDebug('QWEN RAW CHUNK (streaming)', vStr);
               }
               let feedStr = vStr;
@@ -245,7 +243,7 @@ _inThinkingState = false;
                 });
 
               }
-              if (toolCalls.length && config.get('DEBUG')) {
+              if (toolCalls.length && false) {
                 logDebug('PARSED TOOL CALLS (streaming)', toolCalls.map(tc => ({ name: tc.name, arguments: tc.arguments })));
               }
 
@@ -469,7 +467,7 @@ const upstreamError = parseQwenErrorPayload(buffer);
     }
 
     const { text: remainingText, toolCalls: remainingToolCalls, thinking: remainingThinking } = toolParser.flush();
-    if (config.get('DEBUG')) {
+    if (false) {
       if (remainingText) logDebug('STREAMING FLUSH TEXT', remainingText.length > 500 ? remainingText.substring(0, 500) : remainingText);
       if (remainingToolCalls.length) logDebug('STREAMING FLUSH TOOL CALLS', remainingToolCalls.map(tc => ({ name: tc.name, arguments: tc.arguments })));
       logDebug('STREAMING FINISH REASON', toolParser.getEmittedToolCallCount() > 0 ? 'tool_calls' : 'stop');
@@ -629,8 +627,6 @@ const upstreamError = parseQwenErrorPayload(buffer);
       try { _cleanupReader.releaseLock(); } catch {
       }
       sessionPool.release(_cleanupChatId, _cleanupParentId, _cleanupHeaders, _cleanupEmail);
-      const entry = logStore.getRecent(1).find(e => e.id === logId);
-      if (entry) logStore.persistRequest(entry);
     }, 200);
 
     } finally {
@@ -641,8 +637,6 @@ const upstreamError = parseQwenErrorPayload(buffer);
         try { streamReader.releaseLock(); } catch {
         }
         sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail);
-        const entry = logStore.getRecent(1).find(e => e.id === logId);
-        if (entry) logStore.persistRequest(entry);
       }
     }
   });

@@ -38,42 +38,45 @@ npm install --prefix "$DIR"
 ok "Dependencies installed"
 
 info "CloakBrowser binary will auto-download on first launch"
-ok "Browser ready (auto-download)"
 
-# ── Environment ────────────────────────────────────────────────────
+# ── Configuration ──────────────────────────────────────────────────
 
-if [ ! -f "$DIR/.env" ]; then
-  cp "$DIR/.env.example" "$DIR/.env"
-  ok "Created .env from .env.example"
+if [ ! -f "$DIR/config.json" ]; then
+  cp "$DIR/config.example.jsonc" "$DIR/config.json"
+  info "Created config.json from example — edit it before starting"
 else
-  ok ".env already exists — skipping"
+  ok "config.json already exists"
 fi
 
-# ── CLI symlink ────────────────────────────────────────────────────
+# ── CLI symlinks ───────────────────────────────────────────────────
 
 BIN_DIR="$HOME/.local/bin"
 mkdir -p "$BIN_DIR"
 chmod +x "$DIR/bin/qg"
+
 ln -sf "$(pwd)/$DIR/bin/qg" "$BIN_DIR/qg"
+ln -sf "$(pwd)/$DIR/bin/qg" "$BIN_DIR/qwengate"
+ln -sf "$(pwd)/$DIR/bin/qg" "$BIN_DIR/qwen-gate"
 
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
   printf '\n\033[1;33m⚠ %s is not in your PATH\033[0m\n' "$BIN_DIR"
   printf '  Add this to your shell profile:\n'
   printf '  \033[1mexport PATH="%s:$PATH"\033[0m\n\n' "$BIN_DIR"
 fi
-ok "CLI installed as 'qg' (symlink → $BIN_DIR/qg)"
+ok "CLI installed as 'qg', 'qwengate', 'qwen-gate'"
 
 # ── Done ───────────────────────────────────────────────────────────
 
-PORT=$(grep -E '^\s*PORT=' "$DIR/.env" | head -1 | cut -d= -f2 | tr -d ' ')
 PORT="${PORT:-26405}"
 
 printf '\n\033[1;32m╔══════════════════════════════════════════════╗\033[0m\n'
 printf '\033[1;32m║       Qwen Gate installed successfully      ║\033[0m\n'
 printf '\033[1;32m╚══════════════════════════════════════════════╝\033[0m\n\n'
 printf '  Start:     \033[1mqg\033[0m\n'
-printf '  Login:     \033[1mqg login <email>\033[0m\n'
 printf '  Restart:   \033[1mqg restart\033[0m\n'
+printf '  Status:    \033[1mqg status\033[0m\n'
 printf '  API:       http://localhost:%s/v1\n' "$PORT"
-printf '  Dashboard: http://localhost:%s/log\n' "$PORT"
+printf '  Dashboard: http://localhost:%s/dashboard\n' "$PORT"
+printf '\n'
+printf '  Add your Qwen accounts via the Dashboard → Accounts page.\n'
 printf '\n'
