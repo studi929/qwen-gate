@@ -146,12 +146,9 @@ app.use("/log*", async (c, next) => {
 
 const serveHtml = (html: string) => (c: any) => {
   const apiKey = config.get("API_KEY");
-  const output = apiKey
-    ? html.replace(
-        "<script>",
-        `<script>\nwindow.API_KEY = '${apiKey.replace(/'/g, "\\'")}';\n`,
-      )
-    : html;
+  const appVersion = "0.2.0";
+  const scriptInjection = `<script>\nwindow.APP_VERSION = '${appVersion}';\n${apiKey ? `window.API_KEY = '${apiKey.replace(/'/g, "\\'")}';\n` : ""}`;
+  const output = html.replace("<script>", scriptInjection);
   return c.html(output);
 };
 
