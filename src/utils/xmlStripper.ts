@@ -89,6 +89,12 @@ export function stripToolCallArtifacts(text: string): string {
   text = text.replace(/"arguments"\s*:\s*\{\s*\}/g, '');
   text = text.replace(/,\s*"arguments"\s*:/g, '');
   text = text.replace(/"[a-z_]+(?:\.[a-z_]+)*"(?=\s*,\s*"arguments")/g, '');
+  text = text.replace(/\{\s*"(?:name|function)"[^}]*\{[\s\S]*?\}\s*\}/g, '');
+  text = text.replace(/\{\s*":\s*\{[\s\S]*?\}\s*\}/g, '');
+  text = text.replace(
+    /\{\s*"(?:filePath|content|command|pattern|oldString|newString|query|mode|action|description|email|password|url|format|limit|include|path|status|priority|name|arguments)"[\s\S]*?\}/g,
+    '',
+  );
   text = text.replace(/read"\s*,\s*"arguments"\s*:\s*\}/g, '');
   text = text.replace(/","arguments"\s*:\s*\}/g, '');
   text = text.replace(/"[a-z_]+",\s*"arguments"\s*:\s*\}/g, '');
