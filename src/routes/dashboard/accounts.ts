@@ -54,6 +54,7 @@ export const accountsHtml = `<!DOCTYPE html>
         <span class="panel-title">Add Account</span>
       </div>
       <div class="panel-body open">
+        <div style="font-size:0.75rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;background:var(--bg-elevated);padding:10px 14px;border-radius:var(--radius-sm)"><strong>⚠️ Best practice:</strong> Use <strong>3+ accounts</strong> for round-robin rotation to bypass cooldown limits. Do <strong>not</strong> use your personal Qwen account — create dedicated accounts.</div>
         <form class="account-form" id="addForm">
           <input type="email" class="account-input" id="emailInput" placeholder="Email" required autocomplete="email">
           <input type="password" class="account-input" id="passwordInput" placeholder="Password" required autocomplete="new-password">

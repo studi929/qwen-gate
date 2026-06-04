@@ -91,6 +91,8 @@ The server starts on [http://localhost:26405](http://localhost:26405).
 
 ### Add Accounts
 
+> **⚠️ Best practice:** Use **3+ accounts** for round-robin rotation to bypass cooldown limits. Do **not** use your personal Qwen account — create dedicated accounts.
+
 1. Open [http://localhost:26405/dashboard/accounts](http://localhost:26405/dashboard/accounts)
 2. Enter your Qwen email and password
 3. Click **Add Account** — the gateway handles login and session persistence
