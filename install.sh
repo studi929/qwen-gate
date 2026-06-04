@@ -39,7 +39,7 @@ ok "Repository ready at $INSTALL_DIR"
 # ── Install dependencies ────────────────────────────────────────────
 
 info "Installing dependencies (this may take a minute)..."
-npm install --prefix "$INSTALL_DIR" || fail "npm install failed — check Node.js/npm version"
+(cd "$INSTALL_DIR" && npm install) || fail "npm install failed — check Node.js/npm version"
 ok "Dependencies installed"
 
 info "CloakBrowser binary will auto-download on first launch"
