@@ -5,7 +5,7 @@
  *
  * System-level logging has been extracted to SystemLogger (systemLogger.ts).
  */
-import { appendFileSync, mkdirSync, writeFileSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   recordModelError as _recordModelError,
@@ -99,9 +99,8 @@ export class RequestLogStore extends SystemLogger {
   private requestDirMap: Map<string, string> = new Map();
 
   /**
-   * Enable per-request file logging. Each request gets its own folder
-   * under `dirPath/<timestamp>/` containing:
-   *   input.json, raw_output.txt, processed_output.txt, chunk_stream.txt
+   * Enable per-request file logging. Each request gets a single JSON file
+   * under `dirPath/<date>/<timestamp>_<id>.json`.
    */
   enableRequestFileLogging(dirPath: string): void {
     try {
@@ -116,38 +115,8 @@ export class RequestLogStore extends SystemLogger {
     return this.requestLogDir;
   }
 
-  private ensureRequestDir(id: string): string | null {
-    if (!this.requestLogDir) return null;
-    let ts = this.requestDirMap.get(id);
-    if (!ts) {
-      const d = new Date();
-      const y = d.getFullYear();
-      const M = d.getMonth() + 1;
-      const day = d.getDate();
-      const h = d.getHours();
-      const min = d.getMinutes();
-      const s = d.getSeconds();
-      ts = y + "-" + M + "-" + day + "_" + h + "-" + min + "-" + s;
-      this.requestDirMap.set(id, ts);
-    }
-    const dir = join(this.requestLogDir, ts);
-    try {
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-      return dir;
-    } catch {
-      return null;
-    }
-  }
-
-  saveRequestInput(id: string, body: unknown): void {
-    if (config.get("SAVE_REQUEST_LOGS") !== "true") return;
-    const dir = this.ensureRequestDir(id);
-    if (!dir) return;
-    try {
-      writeFileSync(join(dir, "input.json"), JSON.stringify(body, null, 2));
-    } catch {
-      /* disk write best-effort */
-    }
+  saveRequestInput(_id: string, _body: unknown): void {
+    // No-op — input is included in the single JSON log file at completion
   }
 
   createEntry(
@@ -234,18 +203,6 @@ export class RequestLogStore extends SystemLogger {
         }
       }
     });
-    // Persist to disk: append every chunk (no truncation) to chunk_stream.txt and raw_output.txt
-    if (config.get("SAVE_REQUEST_LOGS") === "true") {
-      const dir = this.ensureRequestDir(id);
-      if (dir) {
-        try {
-          appendFileSync(join(dir, "chunk_stream.txt"), chunk + "\n");
-          appendFileSync(join(dir, "raw_output.txt"), chunk);
-        } catch {
-          /* disk write best-effort */
-        }
-      }
-    }
   }
   addProcessedOutput(id: string, content: string): void {
     this.updateEntry(id, (entry) => {
@@ -258,17 +215,6 @@ export class RequestLogStore extends SystemLogger {
         }
       }
     });
-    // Persist to disk: append processed content (no truncation)
-    if (config.get("SAVE_REQUEST_LOGS") === "true") {
-      const dir = this.ensureRequestDir(id);
-      if (dir) {
-        try {
-          appendFileSync(join(dir, "processed_output.txt"), content);
-        } catch {
-          /* disk write best-effort */
-        }
-      }
-    }
   }
   recordAmplificationEvent(
     logId: string,
@@ -386,6 +332,50 @@ export class RequestLogStore extends SystemLogger {
         entry.finalResponse.finishReason = options.finishReason;
       }
     });
+    if (config.get("SAVE_REQUEST_LOGS") === "true") {
+      this.saveRequestLog(id);
+    }
+  }
+
+  private saveRequestLog(id: string): void {
+    if (!this.requestLogDir) return;
+    const entry = this.entryMap.get(id);
+    if (!entry) return;
+    const d = new Date(entry.timestamp);
+    const y = d.getFullYear();
+    const M = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const h = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    const s = String(d.getSeconds()).padStart(2, "0");
+    const dateStr = `${y}-${M}-${day}`;
+    const timeStr = `${h}-${min}-${s}`;
+    const dir = join(this.requestLogDir, dateStr);
+    try {
+      mkdirSync(dir, { recursive: true });
+      const payload = {
+        id: entry.id,
+        date: dateStr,
+        time: timeStr,
+        model: entry.model,
+        turnId: entry.turnId || "",
+        raw_output: entry.rawFullContent || "",
+        processed_output: {
+          content: entry.processedApiOutput || "",
+          tool_calls: (entry.parsedToolCalls || []).map((tc) => {
+            let args: unknown = tc.args;
+            try { args = JSON.parse(tc.args); } catch { /* keep string */ }
+            return { name: tc.name, arguments: args };
+          }),
+        },
+        chunks: entry.qwenRawChunks || [],
+        input: entry.clientRequest || {},
+      };
+      const fileName = `${timeStr}.json`;
+      writeFileSync(join(dir, fileName), JSON.stringify(payload, null, 2));
+    } catch {
+      /* disk write best-effort */
+    }
   }
 }
 
