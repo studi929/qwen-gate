@@ -351,12 +351,12 @@ export async function loginToQwen(email: string, password: string): Promise<bool
 }
 async function captureBxHeaders(accCtx: AccountContext): Promise<void> {
   try {
-    await accCtx.page.evaluate(async () => {
-      await fetch(`${QWEN_BASE_URL}/api/v2/models`, {
+    await accCtx.page.evaluate(async (baseUrl) => {
+      await fetch(`${baseUrl}/api/v2/models`, {
         method: 'GET',
         headers: { 'accept': 'application/json', 'source': 'web' },
       }).catch(() => {});
-    });
+    }, QWEN_BASE_URL);
     await sleep(500);
   } catch (err: any) {
     console.warn(`[AccountContext] bx-header capture fetch failed: ${err.message}`);
