@@ -128,6 +128,9 @@ async function setupSession(
 
 export async function chatCompletions(c: Context) {
   const logId = uuidv4();
+  const parsed = await parseRequestBody(c);
+  const { body, isStream } = parsed;
+  logStore.createEntry(logId, body.model, isStream);
   try {
     const parsed = await parseRequestBody(c);
     const { body, isStream, toolCalling, cleanOutput, messages, contextCheck } =
