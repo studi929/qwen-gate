@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { resolve } from "path";
 import { readFileSync, existsSync } from "fs";
-import { config } from "../../services/configService.ts";
+import { config, isValidKey } from "../../services/configService.ts";
 import { logStore } from "../../services/logStore.ts";
 import { sessionPool } from "../../services/sessionPool.ts";
 import {
@@ -252,4 +252,39 @@ export function registerDashboardRoutes(app: Hono): void {
   });
   app.get("/log/stream", logStreamHandler);
   app.get("/metrics/uptime", (c) => c.json({ uptimeSeconds: logStore.getUptimeSeconds() }));
+
+  app.get("/api/config", (c) => {
+    const apiKey = config.get("API_KEY");
+    if (apiKey) {
+      const authHeader = c.req.header("authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ") || authHeader.slice(7) !== apiKey) {
+        return c.json({ error: "unauthorized" }, 401);
+      }
+    }
+    return c.json({ config: config.getAll() });
+  });
+
+  app.put("/api/config", async (c) => {
+    const apiKey = config.get("API_KEY");
+    if (apiKey) {
+      const authHeader = c.req.header("authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ") || authHeader.slice(7) !== apiKey) {
+        return c.json({ error: "unauthorized" }, 401);
+      }
+    }
+    try {
+      const body = await c.req.json();
+      let changed = false;
+      for (const key of Object.keys(body)) {
+        if (typeof body[key] === "string" && isValidKey(key)) {
+          config.set(key as any, body[key]);
+          changed = true;
+        }
+      }
+      if (changed) config.save();
+      return c.json({ config: config.getAll() });
+    } catch {
+      return c.json({ error: "invalid request body" }, 400);
+    }
+  });
 }

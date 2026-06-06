@@ -1,11 +1,9 @@
 var settingsData = {};
 
 var SETTINGS_SECTIONS = [
-  { title: 'Server', desc: 'Network binding and browser engine settings.', fields: [
+  { title: 'Server', desc: 'Port, security, and browser engine settings.', fields: [
     { key: 'PORT', label: 'PORT', type: 'number' },
-    { key: 'HOST', label: 'HOST', type: 'text' },
     { key: 'API_KEY', label: 'API_KEY', type: 'password' },
-    { key: 'OPEN_DASHBOARD_ON_START', label: 'OPEN_DASHBOARD_ON_START', type: 'checkbox' },
     { key: 'BROWSER', label: 'BROWSER', type: 'select', options: [
       { value: 'chromium', label: 'Chromium' },
       { value: 'firefox', label: 'Firefox' },
@@ -37,26 +35,9 @@ var SETTINGS_SECTIONS = [
   { title: 'Rate Limiting', desc: 'Cooldowns and throttling to prevent account bans.', fields: [
     { key: 'RATE_LIMIT_COOLDOWN_MS', label: 'RATE_LIMIT_COOLDOWN_MS', type: 'number' }
   ]},
-  { title: 'Logging', desc: 'Log verbosity, format, and storage.', fields: [
+  { title: 'Logging', desc: 'Per-request log storage and retention.', fields: [
     { key: 'SAVE_REQUEST_LOGS', label: 'SAVE_REQUEST_LOGS', type: 'checkbox' },
-    { key: 'LOG_LEVEL', label: 'LOG_LEVEL', type: 'select', options: [
-      { value: 'info', label: 'Info' },
-      { value: 'debug', label: 'Debug' },
-      { value: 'warn', label: 'Warn' },
-      { value: 'error', label: 'Error' }
-    ]},
-    { key: 'LOG_FORMAT', label: 'LOG_FORMAT', type: 'select', options: [
-      { value: 'text', label: 'Text' },
-      { value: 'json', label: 'JSON' }
-    ]},
     { key: 'MAX_LOGS', label: 'MAX_LOGS', type: 'number' }
-  ]},
-  { title: 'Retry', desc: 'Automatic retry behaviour on failed requests.', fields: [
-    { key: 'RETRY_ENABLED', label: 'RETRY_ENABLED', type: 'checkbox' },
-    { key: 'RETRY_MAX_ATTEMPTS', label: 'RETRY_MAX_ATTEMPTS', type: 'number' },
-    { key: 'RETRY_BASE_DELAY_MS', label: 'RETRY_BASE_DELAY_MS', type: 'number' },
-    { key: 'RETRY_MAX_DELAY_MS', label: 'RETRY_MAX_DELAY_MS', type: 'number' },
-    { key: 'RETRY_BACKOFF_MULTIPLIER', label: 'RETRY_BACKOFF_MULTIPLIER', type: 'number', step: '0.1' }
   ]},
   { title: 'System & Accounts', desc: 'System prompts and account management actions.', fields: [
     { key: 'USE_CUSTOM_INSTRUCTION', label: 'USE_CUSTOM_INSTRUCTION', type: 'checkbox' },
