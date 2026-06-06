@@ -319,19 +319,21 @@ export class RequestLogStore extends SystemLogger {
   }
   finalizeRequest(
     id: string,
-    options: {
-      latencyMs: number;
-      tokens: { prompt: number; completion: number; total: number };
-      finishReason: string;
+    options?: {
+      latencyMs?: number;
+      tokens?: { prompt: number; completion: number; total: number };
+      finishReason?: string;
     },
   ): void {
-    this.updateEntry(id, (entry) => {
-      entry.latency_ms = options.latencyMs;
-      entry.tokens = options.tokens;
-      if (entry.finalResponse) {
-        entry.finalResponse.finishReason = options.finishReason;
-      }
-    });
+    if (options) {
+      this.updateEntry(id, (entry) => {
+        if (options.latencyMs !== undefined) entry.latency_ms = options.latencyMs;
+        if (options.tokens) entry.tokens = options.tokens;
+        if (options.finishReason && entry.finalResponse) {
+          entry.finalResponse.finishReason = options.finishReason;
+        }
+      });
+    }
     if (config.get("SAVE_REQUEST_LOGS") === "true") {
       this.saveRequestLog(id);
     }

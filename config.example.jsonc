@@ -1,7 +1,6 @@
 {
   // ── Server ───────────────────────────────────────────────
   "PORT": "26405", // Server port number
-  "HOST": "localhost", // Server host address
 
   // ── Security ─────────────────────────────────────────────
   "API_KEY": "", // API key for authenticating requests (empty = no auth)
@@ -21,11 +20,8 @@
   "ECHO_MIN_UNIQUE_SHINGLES": "8", // Min unique shingles needed for echo detection
 
   // ── Logging ──────────────────────────────────────────────
-  "LOG_LEVEL": "info", // Log level: "debug" | "info" | "warn" | "error"
-  "LOG_FORMAT": "json", // Log format: "json" | "text"
   "MAX_LOGS": "50", // Max log entries visible in the logs page
   "SAVE_REQUEST_LOGS": "false", // Save per-request logs to disk (logs/requests/)
-  "OPEN_DASHBOARD_ON_START": "false", // Open dashboard in browser on server start
 
   // ── Qwen API ─────────────────────────────────────────────
   "QWEN_FETCH_TIMEOUT_MS": "30000", // Timeout for Qwen API requests in ms
@@ -39,13 +35,6 @@
 
   // ── Rate Limiting ────────────────────────────────────────
   "RATE_LIMIT_COOLDOWN_MS": "120000", // Cooldown after rate limit hit (2 min)
-
-  // ── Retry ────────────────────────────────────────────────
-  "RETRY_ENABLED": "true", // Enable retry on failed requests
-  "RETRY_MAX_ATTEMPTS": "3", // Max retry attempts
-  "RETRY_BASE_DELAY_MS": "1000", // Initial retry delay in ms
-  "RETRY_MAX_DELAY_MS": "30000", // Max retry delay in ms (cap)
-  "RETRY_BACKOFF_MULTIPLIER": "2", // Delay multiplier per retry attempt
 
   // ── System Prompt ────────────────────────────────────────
   "CUSTOM_INSTRUCTION": "", // Custom system prompt override (requires USE_CUSTOM_INSTRUCTION=true)

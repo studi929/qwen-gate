@@ -229,5 +229,7 @@ export async function handlePostStreamCompletion(
     };
   });
 
+  logStore.finalizeRequest(logId);
+
   scheduleCleanup(reader, heartbeatInterval, chatId, streamState.nextParentId, sessionHeaders, email, sessionPool);
 }

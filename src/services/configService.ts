@@ -3,7 +3,6 @@ import { resolve } from 'node:path';
 
 export interface ConfigSchema {
   PORT: string;
-  HOST: string;
   API_KEY: string;
   BROWSER: string;
   TOOL_CALLING: string;
@@ -19,23 +18,14 @@ export interface ConfigSchema {
   AUTH_REFRESH_BEFORE_MS: string;
   DELETE_SESSION: string;
   RATE_LIMIT_COOLDOWN_MS: string;
-  LOG_LEVEL: string;
-  LOG_FORMAT: string;
   MAX_LOGS: string;
-  RETRY_ENABLED: string;
-  RETRY_MAX_ATTEMPTS: string;
-  RETRY_BASE_DELAY_MS: string;
-  RETRY_MAX_DELAY_MS: string;
-  RETRY_BACKOFF_MULTIPLIER: string;
   CUSTOM_INSTRUCTION: string;
   USE_CUSTOM_INSTRUCTION: string;
   SAVE_REQUEST_LOGS: string;
-  OPEN_DASHBOARD_ON_START: string;
 }
 
 export const DEFAULT_CONFIG: ConfigSchema = {
   PORT: '26405',
-  HOST: 'localhost',
   API_KEY: '',
   BROWSER: 'chromium',
   TOOL_CALLING: 'true',
@@ -51,18 +41,10 @@ export const DEFAULT_CONFIG: ConfigSchema = {
   AUTH_REFRESH_BEFORE_MS: '300000',
   DELETE_SESSION: 'true',
   RATE_LIMIT_COOLDOWN_MS: '120000',
-  LOG_LEVEL: 'info',
-  LOG_FORMAT: 'json',
   MAX_LOGS: '50',
-  RETRY_ENABLED: 'true',
-  RETRY_MAX_ATTEMPTS: '3',
-  RETRY_BASE_DELAY_MS: '1000',
-  RETRY_MAX_DELAY_MS: '30000',
-  RETRY_BACKOFF_MULTIPLIER: '2',
   CUSTOM_INSTRUCTION: '',
   USE_CUSTOM_INSTRUCTION: 'false',
   SAVE_REQUEST_LOGS: 'false',
-  OPEN_DASHBOARD_ON_START: 'false',
 };
 
 const CONFIG_KEYS = new Set<string>(Object.keys(DEFAULT_CONFIG));

@@ -33,7 +33,7 @@ test('load - creates config.json with defaults when missing', () => {
   assert.equal(existsSync(path), true, 'config.json should have been created');
   const written = JSON.parse(readFileSync(path, 'utf-8'));
   assert.equal(written.PORT, DEFAULT_CONFIG.PORT);
-  assert.equal(written.HOST, DEFAULT_CONFIG.HOST);
+  assert.equal(written.BROWSER, DEFAULT_CONFIG.BROWSER);
   assert.equal(written.API_KEY, DEFAULT_CONFIG.API_KEY);
 
   try { unlinkSync(path); } catch { /* cleanup */ }
@@ -112,13 +112,13 @@ test('save - writes to config.json', () => {
   writeFileSync(path, JSON.stringify({}), 'utf-8');
   const svc = new ConfigService(path);
 
-  svc.set('HOST', 'save-test-host');
+  svc.set('BROWSER', 'firefox');
   svc.set('PORT', '77777');
   svc.save();
 
   const raw = readFileSync(path, 'utf-8');
   const parsed = JSON.parse(raw);
-  assert.equal(parsed.HOST, 'save-test-host');
+  assert.equal(parsed.BROWSER, 'firefox');
   assert.equal(parsed.PORT, '77777');
 
   try { unlinkSync(path); } catch { /* cleanup */ }
@@ -126,16 +126,16 @@ test('save - writes to config.json', () => {
 
 test('getAll - returns all keys', () => {
   const path = tmpFile('getall');
-  writeFileSync(path, JSON.stringify({ PORT: '99999', HOST: 'getall-host' }), 'utf-8');
+  writeFileSync(path, JSON.stringify({ PORT: '99999', API_KEY: 'test-key' }), 'utf-8');
   const svc = new ConfigService(path);
 
   const all = svc.getAll();
   const keys = Object.keys(all);
   assert.ok(keys.length > 0, 'should return keys');
   assert.ok(keys.includes('PORT'), 'should include PORT');
-  assert.ok(keys.includes('HOST'), 'should include HOST');
+  assert.ok(keys.includes('API_KEY'), 'should include API_KEY');
   assert.equal(all.PORT, '99999');
-  assert.equal(all.HOST, 'getall-host');
+  assert.equal(all.API_KEY, 'test-key');
 
   try { unlinkSync(path); } catch { /* cleanup */ }
 });

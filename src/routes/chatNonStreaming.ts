@@ -271,11 +271,14 @@ async function processContentChunks(state: StreamProcessorState, ctx: NonStreami
 
   const upstreamError = parseQwenErrorPayload(state.buffer);
   if (upstreamError) {
+    logStore.finalizeRequest(logId);
     return c.json({ error: { message: upstreamError.message } }, upstreamError.status);
   }
 
   flushAndDetectLoops(state, logId);
-  return buildResponseFromState(state, ctx);
+  const response = buildResponseFromState(state, ctx);
+  logStore.finalizeRequest(logId);
+  return response;
 }
 
 export async function handleNonStreamingRequest(ctx: NonStreamingContext): Promise<Response> {
