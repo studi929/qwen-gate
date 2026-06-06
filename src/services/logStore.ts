@@ -350,9 +350,7 @@ export class RequestLogStore extends SystemLogger {
     const s = String(d.getSeconds()).padStart(2, "0");
     const dateStr = `${y}-${M}-${day}`;
     const timeStr = `${h}-${min}-${s}`;
-    const dir = join(this.requestLogDir, dateStr);
     try {
-      mkdirSync(dir, { recursive: true });
       const payload = {
         id: entry.id,
         date: dateStr,
@@ -371,8 +369,8 @@ export class RequestLogStore extends SystemLogger {
         chunks: entry.qwenRawChunks || [],
         input: entry.clientRequest || {},
       };
-      const fileName = `${timeStr}.json`;
-      writeFileSync(join(dir, fileName), JSON.stringify(payload, null, 2));
+      const fileName = `${dateStr}_${timeStr}.json`;
+      writeFileSync(join(this.requestLogDir, fileName), JSON.stringify(payload, null, 2));
     } catch {
       /* disk write best-effort */
     }
