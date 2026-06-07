@@ -467,4 +467,53 @@ describe('StreamingToolParser flush leak vector', () => {
     assert.strictEqual(parser.getEmittedToolCallCount(), 1,
       'Streaming final finish_reason depends on emitted count after flush');
   });
+
+  it('S13: Kilo XML function_calls block is extracted as tool call', () => {
+    const parser = new StreamingToolParser();
+    const xml = '<function_calls>\n' +
+      '<invoke name="bash">\n' +
+      '<parameter name="command">cd /home/honi-claw/QuantumTrader/dashboard && npm run build 2>&1 | tail -20</parameter>\n' +
+      '<parameter name="description">Rebuild frontend with fix</parameter>\n' +
+      '<parameter name="timeout">60000</parameter>\n' +
+      '</invoke>\n' +
+      '</function_calls>';
+
+    const result = parser.feed(xml);
+    const flush = parser.flush();
+    const calls = [...result.toolCalls, ...flush.toolCalls];
+    const text = result.text + flush.text;
+
+    assert.strictEqual(calls.length, 1, 'Expected XML invoke to become one tool call');
+    assert.strictEqual(calls[0].name, 'bash');
+    assert.strictEqual(calls[0].arguments.command, 'cd /home/honi-claw/QuantumTrader/dashboard && npm run build 2>&1 | tail -20');
+    assert.strictEqual(calls[0].arguments.description, 'Rebuild frontend with fix');
+    assert.strictEqual(calls[0].arguments.timeout, 60000);
+    assert.ok(!text.includes('<function_calls>'), 'XML tool block leaked into text');
+  });
+
+  it('S14: split Kilo XML function_calls block is buffered until complete', () => {
+    const parser = new StreamingToolParser();
+    const chunks = [
+      '<function_',
+      'calls>\n<invoke name="bash">\n',
+      '<parameter name="command">date</parameter>\n',
+      '</invoke>\n</function_calls>',
+    ];
+
+    const calls: any[] = [];
+    let text = '';
+    for (const chunk of chunks) {
+      const result = parser.feed(chunk);
+      calls.push(...result.toolCalls);
+      text += result.text;
+    }
+    const flush = parser.flush();
+    calls.push(...flush.toolCalls);
+    text += flush.text;
+
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].name, 'bash');
+    assert.strictEqual(calls[0].arguments.command, 'date');
+    assert.ok(!text.includes('<function_'), 'Partial XML tag leaked into text');
+  });
 });

@@ -27,12 +27,34 @@ export class StreamingToolParser {
     while (offset < this.buffer.length) {
       const nextBraceQuote = this.buffer.indexOf('{"', offset);
       const nextBraceBracket = this.buffer.indexOf('[{', offset);
+      const nextFunctionCalls = this.buffer.indexOf('<function_calls>', offset);
       let jsonStart = -1;
       let isArray = false;
       if (nextBraceQuote !== -1 && (nextBraceBracket === -1 || nextBraceQuote <= nextBraceBracket)) {
         jsonStart = nextBraceQuote;
       } else if (nextBraceBracket !== -1) { jsonStart = nextBraceBracket; isArray = true; }
+      if (nextFunctionCalls !== -1 && (jsonStart === -1 || nextFunctionCalls < jsonStart)) {
+        if (this.textEmissionBoundary < nextFunctionCalls) {
+          result.text += this.buffer.substring(this.textEmissionBoundary, nextFunctionCalls);
+          this.textEmissionBoundary = nextFunctionCalls;
+        }
+        const xmlResult = this.extractXmlToolCalls(nextFunctionCalls);
+        if (!xmlResult) { break; }
+        result.toolCalls.push(...xmlResult.toolCalls);
+        this.emittedCount += xmlResult.toolCalls.length;
+        offset = xmlResult.endOffset;
+        this.textEmissionBoundary = offset;
+        continue;
+      }
       if (jsonStart === -1) {
+        const partialXmlStart = this.findPartialXmlStart();
+        if (partialXmlStart !== -1) {
+          if (this.textEmissionBoundary < partialXmlStart) {
+            result.text += this.buffer.substring(this.textEmissionBoundary, partialXmlStart);
+            this.textEmissionBoundary = partialXmlStart;
+          }
+          break;
+        }
         if (this.textEmissionBoundary < this.buffer.length) {
           result.text += this.buffer.substring(this.textEmissionBoundary);
           this.textEmissionBoundary = this.buffer.length;
@@ -102,6 +124,49 @@ export class StreamingToolParser {
       if (toolCalls.length > 0) return { toolCalls, endOffset: startIdx + arrayEnd };
     } catch { /* Array parse failed */ }
     return null;
+  }
+  private extractXmlToolCalls(startIdx: number): { toolCalls: ParsedToolCall[]; endOffset: number } | null {
+    const closeTag = '</function_calls>';
+    const endIdx = this.buffer.indexOf(closeTag, startIdx);
+    if (endIdx === -1) return null;
+    const endOffset = endIdx + closeTag.length;
+    const block = this.buffer.substring(startIdx, endOffset);
+    const toolCalls: ParsedToolCall[] = [];
+    const invokeRe = /<invoke\s+name="([^"]+)"\s*>([\s\S]*?)<\/invoke>/g;
+    let match: RegExpExecArray | null;
+    while ((match = invokeRe.exec(block))) {
+      const name = match[1].trim();
+      if (!name) continue;
+      const args: Record<string, unknown> = {};
+      const params = match[2];
+      const paramRe = /<parameter\s+name="([^"]+)"\s*>([\s\S]*?)<\/parameter>/g;
+      let param: RegExpExecArray | null;
+      while ((param = paramRe.exec(params))) {
+        const key = param[1].trim();
+        if (!key) continue;
+        const rawValue = this.decodeXml(param[2].trim());
+        args[key] = /^-?\d+(?:\.\d+)?$/.test(rawValue) ? Number(rawValue) : rawValue;
+      }
+      toolCalls.push({ id: `call_${crypto.randomUUID()}`, name, arguments: args });
+    }
+    return { toolCalls, endOffset };
+  }
+  private decodeXml(text: string): string {
+    return text
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  }
+  private findPartialXmlStart(): number {
+    const tag = '<function_calls>';
+    const max = Math.min(tag.length - 1, this.buffer.length);
+    for (let len = max; len > 0; len--) {
+      const suffix = this.buffer.substring(this.buffer.length - len);
+      if (tag.startsWith(suffix)) return this.buffer.length - len;
+    }
+    return -1;
   }
   private compactBuffer(offset: number): void {
     if (this.textEmissionBoundary > MAX_BUFFER_SIZE) {
