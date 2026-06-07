@@ -454,4 +454,17 @@ describe('StreamingToolParser flush leak vector', () => {
     assert.ok(!allText.includes('"description"'),
       `JSON key 'description' leaked as text: ${JSON.stringify(allText)}`);
   });
+
+  it('S12: emitted tool-call count survives flush for streaming finish_reason', () => {
+    const parser = new StreamingToolParser();
+    const result = parser.feed('{"name": "bash", "arguments": {"command": "date"}}');
+
+    assert.strictEqual(result.toolCalls.length, 1);
+    assert.strictEqual(parser.getEmittedToolCallCount(), 1);
+
+    parser.flush();
+
+    assert.strictEqual(parser.getEmittedToolCallCount(), 1,
+      'Streaming final finish_reason depends on emitted count after flush');
+  });
 });

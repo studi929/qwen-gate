@@ -158,7 +158,6 @@ export class StreamingToolParser {
       result.text += remaining;
     }
     this.buffer = '';
-    this.emittedCount = 0;
     this.textEmissionBoundary = 0;
     return result;
   }
