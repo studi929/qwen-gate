@@ -11,6 +11,7 @@ export interface ParserResult {
 }
 const MAX_BUFFER_SIZE = 65536;
 const TRIM_KEEP_CONTEXT = 4096;
+const XML_TOOL_TAGS = ['bash', 'read', 'write', 'edit', 'grep', 'glob', 'task', 'question', 'webfetch', 'skill', 'todowrite'];
 export class StreamingToolParser {
   private buffer = '';
   private emittedCount = 0;
@@ -28,12 +29,27 @@ export class StreamingToolParser {
       const nextBraceQuote = this.buffer.indexOf('{"', offset);
       const nextBraceBracket = this.buffer.indexOf('[{', offset);
       const nextFunctionCalls = this.buffer.indexOf('<function_calls>', offset);
+      const nextSingleXml = this.findNextSingleXmlStart(offset);
       let jsonStart = -1;
       let isArray = false;
       if (nextBraceQuote !== -1 && (nextBraceBracket === -1 || nextBraceQuote <= nextBraceBracket)) {
         jsonStart = nextBraceQuote;
       } else if (nextBraceBracket !== -1) { jsonStart = nextBraceBracket; isArray = true; }
-      if (nextFunctionCalls !== -1 && (jsonStart === -1 || nextFunctionCalls < jsonStart)) {
+      const nextXmlStart = this.firstIndex(nextFunctionCalls, nextSingleXml);
+      if (nextXmlStart !== -1 && (jsonStart === -1 || nextXmlStart < jsonStart)) {
+        if (nextXmlStart === nextSingleXml) {
+          if (this.textEmissionBoundary < nextSingleXml) {
+            result.text += this.buffer.substring(this.textEmissionBoundary, nextSingleXml);
+            this.textEmissionBoundary = nextSingleXml;
+          }
+          const xmlResult = this.extractSingleXmlToolCall(nextSingleXml);
+          if (!xmlResult) { break; }
+          result.toolCalls.push(...xmlResult.toolCalls);
+          this.emittedCount += xmlResult.toolCalls.length;
+          offset = xmlResult.endOffset;
+          this.textEmissionBoundary = offset;
+          continue;
+        }
         if (this.textEmissionBoundary < nextFunctionCalls) {
           result.text += this.buffer.substring(this.textEmissionBoundary, nextFunctionCalls);
           this.textEmissionBoundary = nextFunctionCalls;
@@ -150,6 +166,47 @@ export class StreamingToolParser {
       toolCalls.push({ id: `call_${crypto.randomUUID()}`, name, arguments: args });
     }
     return { toolCalls, endOffset };
+  }
+  private extractSingleXmlToolCall(startIdx: number): { toolCalls: ParsedToolCall[]; endOffset: number } | null {
+    const open = this.buffer.substring(startIdx).match(/^<([A-Za-z][A-Za-z0-9_]*)>/);
+    if (!open) return null;
+    const rawTag = open[1];
+    const name = this.xmlToolName(rawTag);
+    if (!name) return null;
+    const closeTag = `</${rawTag}>`;
+    const endIdx = this.buffer.indexOf(closeTag, startIdx + open[0].length);
+    if (endIdx === -1) return null;
+    const endOffset = endIdx + closeTag.length;
+    const inner = this.buffer.substring(startIdx + open[0].length, endIdx);
+    const args: Record<string, unknown> = {};
+    const paramRe = /<(?:parameter|param)\s+name="([^"]+)"\s*>([\s\S]*?)<\/(?:parameter|param)>/g;
+    let param: RegExpExecArray | null;
+    while ((param = paramRe.exec(inner))) {
+      const key = param[1].trim();
+      if (!key) continue;
+      const rawValue = this.decodeXml(param[2].trim());
+      args[key] = /^-?\d+(?:\.\d+)?$/.test(rawValue) ? Number(rawValue) : rawValue;
+    }
+    return { toolCalls: [{ id: `call_${crypto.randomUUID()}`, name, arguments: args }], endOffset };
+  }
+  private xmlToolName(rawTag: string): string | null {
+    if (/^ToolRead$/i.test(rawTag)) return 'read';
+    const lower = rawTag.toLowerCase();
+    return XML_TOOL_TAGS.includes(lower) ? lower : null;
+  }
+  private findNextSingleXmlStart(offset: number): number {
+    const re = /<([A-Za-z][A-Za-z0-9_]*)>/g;
+    re.lastIndex = offset;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(this.buffer))) {
+      if (this.xmlToolName(match[1])) return match.index;
+    }
+    return -1;
+  }
+  private firstIndex(a: number, b: number): number {
+    if (a === -1) return b;
+    if (b === -1) return a;
+    return Math.min(a, b);
   }
   private decodeXml(text: string): string {
     return text

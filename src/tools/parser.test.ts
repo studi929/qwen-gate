@@ -516,4 +516,46 @@ describe('StreamingToolParser flush leak vector', () => {
     assert.strictEqual(calls[0].arguments.command, 'date');
     assert.ok(!text.includes('<function_'), 'Partial XML tag leaked into text');
   });
+
+  it('S15: Kilo ToolRead XML block is extracted as read tool call', () => {
+    const parser = new StreamingToolParser();
+    const xml = '<ToolRead>\n' +
+      '<parameter name="filePath">C:\\Dev\\m3uchecker2\\Views\\PlayerOverlayWindow.xaml</parameter>\n' +
+      '<parameter name="offset">218</parameter>\n' +
+      '<parameter name="limit">50</parameter>\n' +
+      '</ToolRead>';
+
+    const result = parser.feed(xml);
+    const flush = parser.flush();
+    const calls = [...result.toolCalls, ...flush.toolCalls];
+    const text = result.text + flush.text;
+
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].name, 'read');
+    assert.strictEqual(calls[0].arguments.filePath, 'C:\\Dev\\m3uchecker2\\Views\\PlayerOverlayWindow.xaml');
+    assert.strictEqual(calls[0].arguments.offset, 218);
+    assert.strictEqual(calls[0].arguments.limit, 50);
+    assert.ok(!text.includes('<ToolRead>'), 'ToolRead XML leaked into text');
+  });
+
+  it('S16: lowercase XML tool block with param tags is extracted', () => {
+    const parser = new StreamingToolParser();
+    const xml = '<read>\n' +
+      '<param name="filePath">C:\\Dev\\m3uchecker2\\Views\\PlayerOverlayWindow.xaml</param>\n' +
+      '<param name="limit">50</param>\n' +
+      '<param name="offset">218</param>\n' +
+      '</read>';
+
+    const result = parser.feed(xml);
+    const flush = parser.flush();
+    const calls = [...result.toolCalls, ...flush.toolCalls];
+    const text = result.text + flush.text;
+
+    assert.strictEqual(calls.length, 1);
+    assert.strictEqual(calls[0].name, 'read');
+    assert.strictEqual(calls[0].arguments.filePath, 'C:\\Dev\\m3uchecker2\\Views\\PlayerOverlayWindow.xaml');
+    assert.strictEqual(calls[0].arguments.limit, 50);
+    assert.strictEqual(calls[0].arguments.offset, 218);
+    assert.ok(!text.includes('<read>'), 'lowercase XML tool block leaked into text');
+  });
 });
