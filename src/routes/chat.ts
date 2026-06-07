@@ -4,7 +4,6 @@ import { OpenAIRequest } from "../utils/types.ts";
 import { config } from "../services/configService.ts";
 import { logStore } from "../services/logStore.ts";
 import { modelRouter } from "../services/modelRouter.ts";
-import { pickAccount } from "../services/auth.ts";
 import { checkContextWindow, estimateTokens } from "../utils/tokenEstimator.ts";
 import { handleStreamingRequest } from "./chatStreaming.ts";
 import { handleNonStreamingRequest } from "./chatNonStreaming.ts";
@@ -106,11 +105,8 @@ export async function chatCompletions(c: Context) {
 
     const isThinkingModel = !body.model.includes("no-thinking");
 
-    const selectedAccount = pickAccount();
-    const accountEmail = selectedAccount?.email;
-
     let sessionResult = await acquireSessionWithCorrections(
-      accountEmail,
+      undefined,
       systemPrompt,
       prompt,
     );

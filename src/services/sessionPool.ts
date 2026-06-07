@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { getBasicHeaders } from './playwright.ts';
-import { pickAccount, incrementInFlight, decrementInFlight, incrementTotalRequests, getAccountByEmail } from './auth.ts';
+import { pickAccount, incrementInFlight, decrementInFlight, incrementTotalRequests, getAccountByEmail, throttleAccount, getAllAccountEmails } from './auth.ts';
 import { createNetworkEntry, recordResponse, completeEntry, errorEntry } from './networkDebug.ts';
 import { logStore } from './logStore.js';
 import { config } from './configService.ts';
@@ -34,6 +34,12 @@ interface WaiterEntry {
   timer: ReturnType<typeof setTimeout>;
 }
 
+export function formatQwenEnvelopeError(json: any): string {
+  const code = json?.data?.code || json?.code || 'unknown';
+  const details = json?.data?.details || json?.details || json?.message || '';
+  return details ? `${code}: ${details}` : String(code);
+}
+
 export class SessionPool {
   private waiting: Array<WaiterEntry> = [];
   private activeSessions = new Set<string>();
@@ -57,36 +63,49 @@ export class SessionPool {
       return { chatId: mockId, parentId: null, inUse: true, accountEmail: 'mock@test' };
     }
 
-    // If no email specified, pick the best account
-    const resolvedEmail = email || pickAccount()?.email;
+    const maxAttempts = email ? 1 : Math.max(1, getAllAccountEmails().length);
+    let lastErr: unknown;
 
-    // Mark account as in-flight before starting async ops (runs synchronously, no race)
-    if (resolvedEmail) {
-      incrementInFlight(resolvedEmail);
-    }
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // If no email specified, pick the best account after any previous throttling.
+      const resolvedEmail = email || pickAccount()?.email;
 
-    try {
-      const [{ cookie, userAgent, email: actualEmail }, chatId] = await Promise.all([
-        getBasicHeaders(resolvedEmail),
-        this.createSession(resolvedEmail)
-      ]);
-      const entry: PoolEntry = {
-        chatId,
-        parentId: null,
-        inUse: true,
-        cachedHeaders: { cookie, userAgent },
-        accountEmail: actualEmail || resolvedEmail,
-      };
-      this.activeSessions.add(chatId);
-      this.activeCount++;
-      logStore.log('info', 'pool', 'Session acquired' + (entry.accountEmail ? ': ' + entry.accountEmail.split('@')[0] : ''));
-      return entry;
-    } catch (err) {
+      // Mark account as in-flight before starting async ops (runs synchronously, no race)
       if (resolvedEmail) {
-        decrementInFlight(resolvedEmail);
+        incrementInFlight(resolvedEmail);
       }
-      throw err;
+
+      try {
+        const [{ cookie, userAgent, email: actualEmail }, chatId] = await Promise.all([
+          getBasicHeaders(resolvedEmail),
+          this.createSession(resolvedEmail)
+        ]);
+        const entry: PoolEntry = {
+          chatId,
+          parentId: null,
+          inUse: true,
+          cachedHeaders: { cookie, userAgent },
+          accountEmail: actualEmail || resolvedEmail,
+        };
+        this.activeSessions.add(chatId);
+        this.activeCount++;
+        logStore.log('info', 'pool', 'Session acquired' + (entry.accountEmail ? ': ' + entry.accountEmail.split('@')[0] : ''));
+        return entry;
+      } catch (err: any) {
+        lastErr = err;
+        if (resolvedEmail) {
+          decrementInFlight(resolvedEmail);
+          if (!email && /pending activation|Bad_Request|Chats\/new returned no id/i.test(err?.message || '')) {
+            throttleAccount(resolvedEmail, 30 * 60 * 1000);
+            logStore.log('warn', 'pool', `Skipping account ${resolvedEmail}: ${err.message}`);
+            continue;
+          }
+        }
+        throw err;
+      }
     }
+
+    throw lastErr instanceof Error ? lastErr : new Error('Failed to acquire session');
   }
 
   getWaitingCount(): number {
@@ -259,8 +278,9 @@ export class SessionPool {
     }
     const json = await response.json();
     if (!json.data?.id) {
-      errorEntry(debugEntry.id, `Chats/new returned no id`);
-      throw new Error(`Chats/new returned no id: ${JSON.stringify(json).substring(0, 100)}`);
+      const message = formatQwenEnvelopeError(json);
+      errorEntry(debugEntry.id, `Chats/new returned no id: ${message}`);
+      throw new Error(`Chats/new returned no id: ${message}`);
     }
     completeEntry(debugEntry.id);
     return json.data.id;

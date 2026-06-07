@@ -793,6 +793,7 @@ export function buildPromptAndSystem(
     const toolsJson = JSON.stringify(formattedTools, null, 2);
 
     systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\n`;
+    systemPrompt += `Do NOT use Qwen native tools, XML tags, markdown fences, or function-call wrappers. To call a tool, output exactly one plain JSON object and no surrounding text. Format: {"name":"tool_name","arguments":{"param":"value"}}. Example: {"name":"get_weather","arguments":{"city":"Paris"}}\n\n`;
 
     if (body.tool_choice === "required" || body.tool_choice === "any") {
       systemPrompt += `CRITICAL: Call tools to gather the information you need. After receiving each tool result, READ and ANALYZE it carefully. If the results give you enough information to answer the user, respond directly — do NOT continue calling tools unnecessarily. Only call additional tools if you genuinely need more data. NEVER call the same tool repeatedly with the same arguments.\n\n`;

@@ -1,6 +1,8 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdtempSync } from 'fs';
+import { tmpdir } from 'os';
 import path from 'path';
 import crypto from 'crypto';
 
@@ -17,6 +19,8 @@ import {
 } from './auth';
 
 const TEST_COOKIE_DIR = 'qwen_profile/cookies';
+const ORIGINAL_CWD = process.cwd();
+const TEST_CWD = mkdtempSync(path.join(tmpdir(), 'qwen-gate-auth-test-'));
 
 function hashEmail(email: string): string {
   return crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
@@ -59,6 +63,7 @@ describe('account inFlight and totalRequests tracking', () => {
 
 describe('hot-reload: reloadAccounts()', () => {
   before(() => {
+    process.chdir(TEST_CWD);
     cleanupTestCookies();
     clearAuth();
   });
@@ -66,6 +71,8 @@ describe('hot-reload: reloadAccounts()', () => {
   after(() => {
     cleanupTestCookies();
     clearAuth();
+    process.chdir(ORIGINAL_CWD);
+    rmSync(TEST_CWD, { recursive: true, force: true });
   });
 
   test('S1: detects new account file added after init', async () => {
