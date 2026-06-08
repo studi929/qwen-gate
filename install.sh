@@ -33,9 +33,9 @@ info "Installing npm dependencies (this may take a minute)..."
 cd "$INSTALL_DIR" || fail "Cannot cd to $INSTALL_DIR"
 
 if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
-  npm install --no-audit --no-fund
+  npm install
 else
-  npm install --no-audit --no-fund
+  npm install
 fi
 
 if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then

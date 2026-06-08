@@ -14,7 +14,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # ── Ensure dependencies are installed ────────────────────────────────
 # npm is fast when everything is cached — this always ensures deps exist
 
-(cd "$PROJECT_ROOT" && npm install --no-audit --no-fund --silent) </dev/null || {
+(cd "$PROJECT_ROOT" && npm install) </dev/null || {
   echo "[qg] npm install failed. Run 'npm install' manually in $PROJECT_ROOT" >&2
   exit 1
 }
