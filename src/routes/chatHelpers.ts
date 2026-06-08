@@ -60,10 +60,12 @@ export function buildQwenMessages(
   let userTurns = 0;
   const turnToolResults: Array<{ turn: number; content: string }> = [];
 
-  for (let i = 0; i < messages.length; i++) {
+  // Limit messages to last 20 to avoid Qwen's "too many messages" error
+  const MAX_MESSAGES = 20;
+  const startIdx = Math.max(0, messages.length - MAX_MESSAGES);
+  for (let i = startIdx; i < messages.length; i++) {
     const msg = messages[i];
 
-    // Extract content string
     let contentStr = "";
     if (Array.isArray(msg.content)) {
       contentStr = msg.content
@@ -107,7 +109,6 @@ export function buildQwenMessages(
             `\n\n[TRUNCATED: input exceeded ${charLimit} characters (model: ${body.model}, available tokens: ${availableTokens})]`
           : sanitized;
 
-      // Build feature_config with tool definitions in local_mcp
       const featureConfig: Record<string, any> = {
         thinking_enabled: true,
         output_schema: "phase",
