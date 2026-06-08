@@ -85,8 +85,10 @@ export function buildPromptAndSystem(
       const truncated = compressToolResult(contentStr || "");
       const callId = msg.tool_call_id || `anon_${i}`;
       const canary = `[tc-${randomUUID().substring(0, 8)}]`;
+      const inner = JSON.stringify({ success: true, stdout: truncated, stderr: "", command: toolName || "" });
+      const qwenResult = JSON.stringify([{ type: "text", text: `${canary}\n${inner}` }]);
+      prompt += `${qwenResult}\n\n`;
       const canaryContent = `${canary}\n${truncated}`;
-      prompt += `<tool_result name="${toolName || "tool"}" call_id="${callId}">\n${canaryContent}\n</tool_result>\n\n`;
       turnToolResults.push({ turn: userTurns, content: canaryContent });
     }
   }
