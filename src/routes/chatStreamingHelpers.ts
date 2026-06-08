@@ -175,6 +175,11 @@ export async function processStreamData(
       // Extract and emit local MCP tool calls before breaking the stream
       if (deltaPhase === 'local_tool') {
         const localToolCalls = extractLocalMcpToolCalls(data);
+        logStore.updateEntry(logId, entry => {
+          for (const tc of localToolCalls) {
+            entry.parsedToolCalls.push({ name: tc.name, args: JSON.stringify(tc.arguments) });
+          }
+        });
         for (let i = 0; i < localToolCalls.length; i++) {
           await writeToolCallEvent(streamWriter, completionId, model, localToolCalls[i], i, logStore, logId);
         }
@@ -245,6 +250,11 @@ export async function processStreamData(
   // Keep state.lastFullContent raw so partial <function=...> survives for the next chunk
   const { toolCalls: xmlToolCalls } = parseXmlToolCalls(state.lastFullContent);
   if (xmlToolCalls.length > 0) {
+    logStore.updateEntry(logId, entry => {
+      for (const tc of xmlToolCalls) {
+        entry.parsedToolCalls.push({ name: tc.name, args: JSON.stringify(tc.parameters) });
+      }
+    });
     for (const [i, tc] of xmlToolCalls.entries()) {
       const parsed = xmlToolCallToParsed(tc, i);
       await writeToolCallEvent(streamWriter, completionId, model, parsed, i, logStore, logId);
