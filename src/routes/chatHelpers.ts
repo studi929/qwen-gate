@@ -55,7 +55,6 @@ export function buildQwenMessages(
   const model = (body.model || "").replace("-no-thinking", "");
   const resolvedClientName = clientName || "gateway";
 
-  // Build a single flat prompt string with all messages
   const segments: string[] = [];
   let accumulatedSystemContent = "";
   let hasSystemContent = false;
@@ -189,13 +188,14 @@ export function buildQwenMessages(
     featureConfig.local_mcp = localMcp;
   }
 
+  // Single message with all history flattened (Qwen API only accepts 1 message)
   const prompt = segments.join("\n\n");
   const qwenMessages: QwenMessage[] = [{
     fid: randomUUID(),
     parentId: null,
     childrenIds: [],
     role: "user",
-    content: prompt,
+    content: prompt || "\n",
     user_action: "chat",
     files: [],
     timestamp,
