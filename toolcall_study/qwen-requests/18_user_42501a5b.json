@@ -2,22 +2,22 @@
   "stream": true,
   "version": "2.1",
   "incremental_output": true,
-  "chat_id": "a585c684-5309-498f-9c73-e2f6872f799d",
+  "chat_id": "42501a5b-bb59-46ad-ba6d-6c575396d9cd",
   "chat_mode": "normal",
   "model": "qwen3.7-max",
-  "parent_id": "cba94bcb-caf8-49be-9591-e362f1d379f6",
+  "parent_id": null,
   "messages": [
     {
-      "fid": "c2d13fa1-97c9-4af8-b303-20549354a81f",
-      "parentId": "cba94bcb-caf8-49be-9591-e362f1d379f6",
+      "fid": "cdb70f5f-0cb2-4282-b211-555b96134864",
+      "parentId": null,
       "childrenIds": [
-        "85e763cb-47e3-41de-8ab2-7bc4eb3b07a7"
+        "e1ea207a-2da9-4b1b-bd70-fe9ff9616a2a"
       ],
       "role": "user",
-      "content": "list files in /tmp using bash",
+      "content": "run bash command to show files in /tmp",
       "user_action": "chat",
       "files": [],
-      "timestamp": 1780917505,
+      "timestamp": 1780919125,
       "models": [
         "qwen3.7-max"
       ],
@@ -894,12 +894,8 @@
           "subChatType": "t2t"
         }
       },
-      "sub_chat_type": "t2t",
-      "parent_id": "cba94bcb-caf8-49be-9591-e362f1d379f6"
+      "sub_chat_type": "t2t"
     }
   ],
-  "timestamp": 1780917506,
-  "tools": [],
-  "tool_choice": "auto",
-  "parallel_tool_calls": true
+  "timestamp": 1780919126
 }
