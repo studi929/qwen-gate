@@ -145,7 +145,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   // Enable per-request file logging
-  logStore.enableRequestFileLogging(resolve(process.cwd(), "logs"));
+  logStore.enableRequestFileLogging(resolve(process.cwd(), "logs", "gate"));
 
   const port = parseInt(config.get("PORT"), 10) || 26405;
 
