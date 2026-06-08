@@ -8,10 +8,11 @@ import { launchPersistentContext as cloakPersistentContext } from 'cloakbrowser'
 import path from 'path';
 import { mkdirSync } from 'fs';
 import type { Cookie } from 'playwright';
+import { projectPath } from '../utils/paths.ts';
 
 export function getProfileDir(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  const dir = path.join(process.cwd(), 'qwen_profile', 'chromium-profiles', safe);
+  const dir = projectPath('qwen_profile', 'chromium-profiles', safe);
   mkdirSync(dir, { recursive: true });
   return dir;
 }

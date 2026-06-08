@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ParsedToolCall } from '../types/openai.ts';
 import type { QwenPayload } from './qwen.ts';
+import { projectPath } from '../utils/paths.ts';
 
-const LOG_DIR = join(process.cwd(), 'logs', 'qwen');
+const LOG_DIR = projectPath('logs', 'qwen');
 
 function ensureDir(): void {
   if (!existsSync(LOG_DIR)) {

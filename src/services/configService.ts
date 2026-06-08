@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { projectPath } from '../utils/paths.ts';
 
 export interface ConfigSchema {
   PORT: string;
@@ -58,10 +59,7 @@ export function isValidKey(key: string): key is keyof ConfigSchema {
 }
 
 function getConfigFilePath(): string {
-  const cwd = typeof process !== 'undefined' && typeof process.cwd === 'function'
-    ? process.cwd()
-    : '.';
-  return resolve(cwd, 'config.json');
+  return projectPath('config.json');
 }
 
 export class ConfigService {

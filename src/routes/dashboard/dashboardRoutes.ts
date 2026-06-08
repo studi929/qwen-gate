@@ -12,6 +12,7 @@ import {
   initAuth,
 } from "../../services/auth.ts";
 import { checkApiKeyAuth, safeCompare } from "../../utils/auth.ts";
+import { projectPath } from "../../utils/paths.ts";
 import {
   deleteAllChats,
   configureAccount,
@@ -34,7 +35,7 @@ const serveHtml = (html: string) => (c: any) => {
 function dashboardStaticHandler(c: any) {
   const file = c.req.param("file");
   if (!/^[a-z0-9_-]+\.(css|js)$/i.test(file)) return c.json({ error: "Invalid file" }, 400);
-  const DASHBOARD_STATIC = resolve(process.cwd(), "src", "routes", "dashboard", "public");
+  const DASHBOARD_STATIC = projectPath("src", "routes", "dashboard", "public");
   const filePath = resolve(DASHBOARD_STATIC, file);
   if (!filePath.startsWith(DASHBOARD_STATIC) || !existsSync(filePath)) return c.json({ error: "Not found" }, 404);
   const ext = file.endsWith(".css") ? "text/css" : "application/javascript";

@@ -10,6 +10,7 @@ import { loginFresh, saveCookies, loadSavedCookies, accounts, type AccountEntry 
 import { configureAccount } from './qwenModels.ts';
 import { config } from './configService.ts';
 import { logStore } from './logStore.ts';
+import { projectPath } from '../utils/paths.ts';
 export const COOKIE_DIR = 'qwen_profile/cookies';
 const ACCOUNTS_FILE = 'qwen_profile/accounts.json';
 export function getCookieFilePath(email: string): string {
@@ -18,7 +19,7 @@ export function getCookieFilePath(email: string): string {
 }
 function getProfileDirForEmail(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  return path.join(process.cwd(), 'qwen_profile', 'chromium-profiles', safe);
+  return projectPath('qwen_profile', 'chromium-profiles', safe);
 }
 export interface CookieData {
   email: string;
