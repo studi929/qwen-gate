@@ -18,8 +18,8 @@ import { config } from "./services/configService.ts";
 import { startAutoCleanup, stopAutoCleanup, rateLimitMiddleware } from "./middleware/rateLimit.ts";
 import { debugNetworkApp } from "./routes/debugNetwork.ts";
 import { registerDashboardRoutes } from "./routes/dashboard/dashboardRoutes.ts";
+import { projectPath } from "./utils/paths.ts";
 import { fileURLToPath } from "url";
-import { resolve } from "path";
 
 console.clear();
 process.stdout.write("\x1bc\x1b[3J\x1b[2J\x1b[H");
@@ -153,7 +153,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   // Enable per-request file logging
-  logStore.enableRequestFileLogging(resolve(process.cwd(), "logs", "gate"));
+  logStore.enableRequestFileLogging(projectPath("logs", "gate"));
 
   const port = parseInt(config.get("PORT"), 10) || 26405;
 

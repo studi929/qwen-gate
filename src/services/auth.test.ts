@@ -1,8 +1,9 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, mkdtempSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { tmpdir } from 'os';
 
 // We test hot-reload via reloadAccounts() which re-scans COOKIE_DIR
 // and merges new accounts while preserving existing counters.
@@ -15,8 +16,9 @@ import {
   reloadAccounts,
   clearAuth,
 } from './auth.js';
+import { COOKIE_DIR } from './accountManager.js';
 
-const TEST_COOKIE_DIR = 'qwen_profile/cookies';
+const TEST_COOKIE_DIR = mkdtempSync(path.join(tmpdir(), 'qwen-gate-test-cookies-'));
 
 function hashEmail(email: string): string {
   return crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');

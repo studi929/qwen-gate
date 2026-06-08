@@ -11,8 +11,8 @@ import { configureAccount } from './qwenModels.ts';
 import { config } from './configService.ts';
 import { logStore } from './logStore.ts';
 import { projectPath } from '../utils/paths.ts';
-export const COOKIE_DIR = 'qwen_profile/cookies';
-const ACCOUNTS_FILE = 'qwen_profile/accounts.json';
+export const COOKIE_DIR = projectPath('qwen_profile', 'cookies');
+const ACCOUNTS_FILE = projectPath('qwen_profile', 'accounts.json');
 export function getCookieFilePath(email: string): string {
   const hash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
   return path.join(COOKIE_DIR, `${hash}.json`);
