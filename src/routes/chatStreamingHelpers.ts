@@ -71,7 +71,7 @@ export async function handleToolCalls(
       });
       continue;
     }
-    await writeToolCallEvent(streamWriter, completionId, model, tc, baseIndex + i);
+    await writeToolCallEvent(streamWriter, completionId, model, tc, baseIndex + i, logStore, logId);
   }
   return allValid;
 }
@@ -176,7 +176,7 @@ export async function processStreamData(
       if (deltaPhase === 'local_tool') {
         const localToolCalls = extractLocalMcpToolCalls(data);
         for (let i = 0; i < localToolCalls.length; i++) {
-          await writeToolCallEvent(streamWriter, completionId, model, localToolCalls[i], i);
+          await writeToolCallEvent(streamWriter, completionId, model, localToolCalls[i], i, logStore, logId);
         }
         if (ctx.qwenLogFile && localToolCalls.length > 0) {
           logQwenSSE(ctx.qwenLogFile, ctx.sseEventCount || 0, localToolCalls.length, localToolCalls);
@@ -247,7 +247,7 @@ export async function processStreamData(
   if (xmlToolCalls.length > 0) {
     for (const [i, tc] of xmlToolCalls.entries()) {
       const parsed = xmlToolCallToParsed(tc, i);
-      await writeToolCallEvent(streamWriter, completionId, model, parsed, i);
+      await writeToolCallEvent(streamWriter, completionId, model, parsed, i, logStore, logId);
     }
   }
 

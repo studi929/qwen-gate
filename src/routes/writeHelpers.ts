@@ -81,14 +81,23 @@ export async function writeContentDelta(
  */
 export async function writeToolCallEvent(
   streamWriter: any, completionId: string, model: string, tc: any, index: number,
+  logStore?: { addProcessedOutput: (id: string, c: string) => void },
+  logId?: string,
 ) {
+  const toolCallEvent = {
+    index,
+    id: tc.id,
+    type: 'function',
+    function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
+  };
+  
+  if (logStore && logId) {
+    const toolCallLog = `\n[TOOL_CALL] ${tc.name}(${JSON.stringify(tc.arguments)})`;
+    logStore.addProcessedOutput(logId, toolCallLog);
+  }
+  
   await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({
-    tool_calls: [{
-      index,
-      id: tc.id,
-      type: 'function',
-      function: { name: tc.name, arguments: JSON.stringify(tc.arguments) },
-    }],
+    tool_calls: [toolCallEvent],
   })]));
 }
 
