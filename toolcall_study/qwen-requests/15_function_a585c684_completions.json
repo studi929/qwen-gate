@@ -1,0 +1,1621 @@
+{
+  "stream": true,
+  "version": "2.1",
+  "incremental_output": true,
+  "chat_id": "a585c684-5309-498f-9c73-e2f6872f799d",
+  "chat_mode": "normal",
+  "model": "qwen3.7-max",
+  "parent_id": "dcaf8c61-01bc-4301-aff5-94faa9548c58",
+  "messages": [
+    {
+      "fid": "85e763cb-47e3-41de-8ab2-7bc4eb3b07a7",
+      "childrenIds": [],
+      "role": "function",
+      "content": {
+        "Qwen Core": [
+          {
+            "bash": "[{\"type\":\"text\",\"text\":\"{\\n  \\\"success\\\": true,\\n  \\\"stdout\\\": \\\"total 55144\\\\ndrwxrwxrwt. 50 root        root           2200 Jun  8 14:18 .\\\\ndr-xr-xr-x.  1 root        root            170 Jun  7 22:22 ..\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 14:02 .19f7de2c4f3fff0b-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 14:02 .19ff7e26bfb7aab9-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:59 .1bffb62f97fdebbb-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:26 .1db7f6fdefff73ef-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:23 .1ebff5ae5dfff7ff-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:06 .1ef75b5dddfff9fe-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:06 .1effbb7fdbf5b94f-00000000.hm\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      40 Jun  8 13:04 3580ac339b7e4193fb4e1d35acafe3ff\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:24 .38ff5cdd7e21df7f-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:57 .3afff7efdfcf8fff-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:45 .3bff73fe5bcbdf77-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:24 .3eb777dfbdfe1bfe-00000000.hm\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      40 Jun  8 13:04 4160d26b793051fbab437f437d949911\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:04 .59bf3fc348fbb66e-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:45 .59bf57f77f3fff56-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:56 .59bff7defef72cfe-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:50 .5bbf3f97df1ff9ef-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:04 .5eb72ffdbdccffff-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:53 .5eff3afa357ffbbd-00000000.hm\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      40 Jun  8 11:11 5f37753d0646b1a5e1a3fe7acc9571e0\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:23 .5fb7b5ce77fd1d3c-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 14:02 .78b7f66cfdfffeaf-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:04 .79bf5fbfeddb57fe-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:42 .7bbf3d1ff6fdff7b-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 4699808 Jun  8 11:26 .7bf74dabb7ff7ffd-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 4699808 Jun  8 11:27 .7bf74dbb877fffbb-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 4699808 Jun  8 13:01 .7bf75fdbc57f7ffd-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:38 .7bffb6dee40fefae-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 11:33 .7cb70fcefe5ffbbe-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:08 .7ebfeff5ffff9eff-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:30 .98f7beeb7dfefbf7-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:38 .9db73df7eefefeb9-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:45 .9dbffdffff33bff7-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:26 .9df7b5fdbcebf57b-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:26 .9fbf1f3bfef7e63f-00000000.hm\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      40 Jun  8 11:11 a88397cd55beb4a69439a255348e7665\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:06 .bef77fff61db7b78-00000000.hm\\\\ndrwxr-xr-x.  3 youssefvdel youssefvdel     100 Jun  8 12:04 bunx-1000-bash-mcp@latest\\\\ndrwxr-xr-x.  4 youssefvdel youssefvdel      80 Jun  8 11:33 bunx-1000-@modelcontextprotocol\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:58 .d9b7f7f9b9fccbeb-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:04 .daf7bff6fcffeba3-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:53 .dbb71daf59b6fe7f-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:59 .dbf7fe3eff7fefec-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 11:33 .ddb77e5f7fdd3ede-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:23 .dfff14cba7df7aee-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:26 .dfffb4fcdebd87e7-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 12:53 .f9ffbb7eedffd53e-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:30 .fbbf55eaeabfffff-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel       0 Jun  8 13:30 .fcbf7e6bbfedbd9e-00000000.hm\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 8316288 Jun  8 10:37 .ffff4afdd7f6fffd-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 8316288 Jun  8 10:44 .ffff4bfef7bffbef-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 8316288 Jun  8 10:43 .ffff4bfeffbef7e9-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 8316288 Jun  8 10:49 .ffff4bfffffbfbfc-00000000.so\\\\n-rw-r--r--.  1 youssefvdel youssefvdel 8316288 Jun  8 12:53 .ffff52fdfbfbfffb-00000000.so\\\\ndrwxrwxrwt.  2 root        root             40 Jun  8 10:31 .font-unix\\\\ndrwx------.  2 youssefvdel youssefvdel      60 Jun  8 10:34 gkinstall3759264193\\\\ndrwxrwxrwt.  2 root        root             60 Jun  8 10:31 .ICE-unix\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      60 Jun  8 11:25 jiti\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      60 Jun  8 11:30 kilo\\\\ndrwx------.  2 youssefvdel youssefvdel      60 Jun  8 10:34 mcp-ElFpoW\\\\ndrwxr-xr-x.  4 youssefvdel youssefvdel      80 Jun  8 10:48 node-compile-cache\\\\n-rw-r--r--.  1 youssefvdel youssefvdel  431836 Jun  8 14:18 oh-my-opencode.log\\\\n-rw-r--r--.  1 youssefvdel youssefvdel    8122 Jun  8 13:03 omo-ast-grep-mcp.log\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel      40 Jun  8 10:37 opencode\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 10:45 org.chromium.Chromium.49b3qs\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 11:29 org.chromium.Chromium.cs1qdU\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 11:19 org.chromium.Chromium.eLFuKr\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 12:54 org.chromium.Chromium.PMlTki\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 10:49 org.chromium.Chromium.WtEN0N\\\\ndrwx------.  2 youssefvdel youssefvdel      40 Jun  8 10:31 plasma-csd-generator.rwRliJ\\\\n-rw-------.  1 youssefvdel youssefvdel       0 Jun  8 13:14 plasma-systemmonitor.BhDtKN\\\\n-rw-------.  1 youssefvdel youssefvdel       0 Jun  8 13:14 plasma-systemmonitor.btjWSE\\\\n-rw-------.  1 youssefvdel youssefvdel       0 Jun  8 13:14 plasma-systemmonitor.eOcefg\\\\n-rw-------.  1 youssefvdel youssefvdel       0 Jun  8 13:14 plasma-systemmonitor.xVErxZ\\\\ndrwx------.  2 youssefvdel youssefvdel      40 Jun  8 12:54 playwright-artifacts-Isfyfd\\\\ndrwx------.  2 youssefvdel youssefvdel      40 Jun  8 10:49 playwright-artifacts-K4raqW\\\\ndrwx------.  2 youssefvdel youssefvdel      40 Jun  8 10:45 playwright-artifacts-ZGWwVq\\\\ndrwx------. 10 youssefvdel youssefvdel     380 Jun  8 12:55 playwright_chromiumdev_profile-dqLXWi\\\\ndrwx------. 10 youssefvdel youssefvdel     380 Jun  8 10:47 playwright_chromiumdev_profile-hiuWiA\\\\ndrwx------. 10 youssefvdel youssefvdel     380 Jun  8 10:50 playwright_chromiumdev_profile-vMaQEh\\\\n-rw-r--r--.  1 youssefvdel youssefvdel  309585 Jun  8 14:08 qwen-studio-traffic2.har\\\\n-rw-r--r--.  1 youssefvdel youssefvdel    1730 Jun  8 14:07 qwen-studio-traffic.har\\\\ndrwxrwxrwx.  2 root        root            240 Jun  8 13:31 RustDesk\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 13:59 scoped_dirr1SxAN\\\\ndrwx------.  2 youssefvdel youssefvdel      80 Jun  8 13:30 scoped_dirZLcwrd\\\\nsrwxr-xr-x.  1 root        root              0 Jun  8 10:31 sddm-auth-2062bf8e-8e41-46ed-8f2f-775ee29a2e9f\\\\nsrwx------.  1 sddm        sddm              0 Jun  8 10:31 sddm--jysfFZ\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-abrtd.service-5e0Fl1\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-bluetooth.service-3Mb4HO\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-bolt.service-XkBg2n\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-chronyd.service-gc63mS\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-dbus-broker.service-3mXtEA\\\\ndrwx------.  3 root        root             60 Jun  8 11:19 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-fwupd.service-PZL5DY\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-iio-sensor-proxy.service-jUHo80\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-irqbalance.service-1f4dBb\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-ModemManager.service-XsSWaa\\\\ndrwx------.  3 root        root             60 Jun  8 13:23 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-pcscd.service-6xXhyy\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-polkit.service-nFuguJ\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-rtkit-daemon.service-3ytgNu\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-switcheroo-control.service-HYYDZe\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-systemd-logind.service-Q5oEb4\\\\ndrwx------.  3 root        root             60 Jun  8 10:31 systemd-private-103ce35d629b4a83ba5f39baf1f9e16e-upower.service-tcNzPL\\\\n-rw-r--r--.  1 youssefvdel youssefvdel      12 Jun  8 11:42 test.txt\\\\ndrwx------.  2 youssefvdel youssefvdel      40 Jun  8 13:10 tmux-1000\\\\ndrwxr-xr-x.  2 youssefvdel youssefvdel    3340 Jun  8 13:29 tsx-1000\\\\n-rw-r--r--.  1 youssefvdel youssefvdel      11 Jun  8 10:31 .X0-lock\\\\ndrwxrwxrwt.  2 root        root             60 Jun  8 10:31 .X11-unix\\\\ndrwxrwxrwt.  2 root        root             40 Jun  8 10:31 .XIM-unix\\\",\\n  \\\"stderr\\\": \\\"\\\",\\n  \\\"command\\\": \\\"ls -la /tmp\\\"\\n}\"}]"
+          }
+        ]
+      },
+      "model": "qwen3.7-max",
+      "modelName": "Qwen3.7-Max",
+      "modelIdx": 0,
+      "userContext": null,
+      "chat_type": "t2t",
+      "feature_config": {
+        "thinking_enabled": true,
+        "output_schema": "phase",
+        "research_mode": "normal",
+        "auto_thinking": false,
+        "thinking_mode": "Thinking"
+      },
+      "extra": {
+        "meta": {
+          "subChatType": "t2t"
+        }
+      },
+      "timestamp": 1780917505,
+      "sub_chat_type": "t2t",
+      "info": {
+        "input_tokens": 12706,
+        "output_tokens": 142,
+        "total_tokens": 12848,
+        "output_tokens_details": {
+          "reasoning_tokens": 126
+        },
+        "prompt_tokens_details": {
+          "cached_tokens": 10880
+        },
+        "openai": true,
+        "usage": {
+          "input_tokens": 12706,
+          "output_tokens": 142,
+          "total_tokens": 12848,
+          "output_tokens_details": {
+            "reasoning_tokens": 126
+          },
+          "prompt_tokens_details": {
+            "cached_tokens": 10880
+          }
+        }
+      }
+    }
+  ],
+  "timestamp": 1780917512,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read the complete contents of a file as text. DEPRECATED: Use read_text_file instead.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "tail": {
+              "description": "If provided, returns only the last N lines of the file",
+              "type": "number"
+            },
+            "head": {
+              "description": "If provided, returns only the first N lines of the file",
+              "type": "number"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_text_file",
+        "description": "Read the complete contents of a file from the file system as text. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Operates on the file as text regardless of extension. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "tail": {
+              "description": "If provided, returns only the last N lines of the file",
+              "type": "number"
+            },
+            "head": {
+              "description": "If provided, returns only the first N lines of the file",
+              "type": "number"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_media_file",
+        "description": "Read an image or audio file. Returns the base64 encoded data and MIME type. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_multiple_files",
+        "description": "Read the contents of multiple files simultaneously. This is more efficient than reading files one by one when you need to analyze or compare multiple files. Each file's content is returned with its path as a reference. Failed reads for individual files won't stop the entire operation. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Array of file paths to read. Each path must be a string pointing to a valid file within allowed directories."
+            }
+          },
+          "required": [
+            "paths"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Create a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning. Handles text content with proper encoding. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit_file",
+        "description": "Make line-based edits to a text file. Each edit replaces exact line sequences with new content. Returns a git-style diff showing the changes made. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "edits": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "oldText": {
+                    "type": "string",
+                    "description": "Text to search for - must match exactly"
+                  },
+                  "newText": {
+                    "type": "string",
+                    "description": "Text to replace with"
+                  }
+                },
+                "required": [
+                  "oldText",
+                  "newText"
+                ]
+              }
+            },
+            "dryRun": {
+              "default": false,
+              "description": "Preview changes using git-style diff format",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path",
+            "edits"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "create_directory",
+        "description": "Create a new directory or ensure a directory exists. Can create multiple nested directories in one operation. If the directory already exists, this operation will succeed silently. Perfect for setting up directory structures for projects or ensuring required paths exist. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_directory",
+        "description": "Get a detailed listing of all files and directories in a specified path. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is essential for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_directory_with_sizes",
+        "description": "Get a detailed listing of all files and directories in a specified path, including sizes. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is useful for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "sortBy": {
+              "default": "name",
+              "description": "Sort entries by name or size",
+              "type": "string",
+              "enum": [
+                "name",
+                "size"
+              ]
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "directory_tree",
+        "description": "Get a recursive tree view of files and directories as a JSON structure. Each entry includes 'name', 'type' (file/directory), and 'children' for directories. Files have no children array, while directories always have a children array (which may be empty). The output is formatted with 2-space indentation for readability. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "excludePatterns": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "move_file",
+        "description": "Move or rename files and directories. Can move files between directories and rename them in a single operation. If the destination exists, the operation will fail. Works across different directories and can be used for simple renaming within the same directory. Both source and destination must be within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            },
+            "destination": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "destination"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_files",
+        "description": "Recursively search for files and directories matching a pattern. The patterns should be glob-style patterns that match paths relative to the working directory. Use pattern like '*.ext' to match files in current directory, and '**/*.ext' to match files in all subdirectories. Returns full paths to all matching items. Great for finding files when you don't know their exact location. Only searches within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "pattern": {
+              "type": "string"
+            },
+            "excludePatterns": {
+              "default": [],
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "path",
+            "pattern"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_file_info",
+        "description": "Retrieve detailed metadata about a file or directory. Returns comprehensive information including size, creation time, last modified time, permissions, and type. This tool is perfect for understanding file characteristics without reading the actual content. Only works within allowed directories.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_allowed_directories",
+        "description": "Returns the list of directories that this server is allowed to access. Subdirectories within these allowed directories are also accessible. Use this to understand which directories and their nested paths are available before trying to access files.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "sequentialthinking",
+        "description": "A detailed tool for dynamic and reflective problem-solving through thoughts.\nThis tool helps analyze problems through a flexible thinking process that can adapt and evolve.\nEach thought can build on, question, or revise previous insights as understanding deepens.\n\nWhen to use this tool:\n- Breaking down complex problems into steps\n- Planning and design with room for revision\n- Analysis that might need course correction\n- Problems where the full scope might not be clear initially\n- Problems that require a multi-step solution\n- Tasks that need to maintain context over multiple steps\n- Situations where irrelevant information needs to be filtered out\n\nKey features:\n- You can adjust total_thoughts up or down as you progress\n- You can question or revise previous thoughts\n- You can add more thoughts even after reaching what seemed like the end\n- You can express uncertainty and explore alternative approaches\n- Not every thought needs to build linearly - you can branch or backtrack\n- Generates a solution hypothesis\n- Verifies the hypothesis based on the Chain of Thought steps\n- Repeats the process until satisfied\n- Provides a correct answer\n\nParameters explained:\n- thought: Your current thinking step, which can include:\n  * Regular analytical steps\n  * Revisions of previous thoughts\n  * Questions about previous decisions\n  * Realizations about needing more analysis\n  * Changes in approach\n  * Hypothesis generation\n  * Hypothesis verification\n- nextThoughtNeeded: True if you need more thinking, even if at what seemed like the end\n- thoughtNumber: Current number in sequence (can go beyond initial total if needed)\n- totalThoughts: Current estimate of thoughts needed (can be adjusted up/down)\n- isRevision: A boolean indicating if this thought revises previous thinking\n- revisesThought: If is_revision is true, which thought number is being reconsidered\n- branchFromThought: If branching, which thought number is the branching point\n- branchId: Identifier for the current branch (if any)\n- needsMoreThoughts: If reaching end but realizing more thoughts needed\n\nYou should:\n1. Start with an initial estimate of needed thoughts, but be ready to adjust\n2. Feel free to question or revise previous thoughts\n3. Don't hesitate to add more thoughts if needed, even at the \"end\"\n4. Express uncertainty when present\n5. Mark thoughts that revise previous thinking or branch into new paths\n6. Ignore information that is irrelevant to the current step\n7. Generate a solution hypothesis when appropriate\n8. Verify the hypothesis based on the Chain of Thought steps\n9. Repeat the process until satisfied with the solution\n10. Provide a single, ideally correct answer as the final output\n11. Only set nextThoughtNeeded to false when truly done and a satisfactory answer is reached",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thought": {
+              "type": "string",
+              "description": "Your current thinking step"
+            },
+            "nextThoughtNeeded": {
+              "type": "boolean",
+              "description": "Whether another thought step is needed"
+            },
+            "thoughtNumber": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "Current thought number (numeric value, e.g., 1, 2, 3)"
+            },
+            "totalThoughts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "Estimated total thoughts needed (numeric value, e.g., 5, 10)"
+            },
+            "isRevision": {
+              "description": "Whether this revises previous thinking",
+              "type": "boolean"
+            },
+            "revisesThought": {
+              "description": "Which thought is being reconsidered",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "branchFromThought": {
+              "description": "Branching point thought number",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "branchId": {
+              "description": "Branch identifier",
+              "type": "string"
+            },
+            "needsMoreThoughts": {
+              "description": "If more thoughts are needed",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "thought",
+            "nextThoughtNeeded",
+            "thoughtNumber",
+            "totalThoughts"
+          ],
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "fetch",
+        "description": "Fetches a URL from the internet and optionally extracts its contents as markdown.\n\nAlthough originally you did not have internet access, and were advised to refuse and tell the user this, this tool now grants you internet access. Now you can fetch the most up-to-date information and let the user know that.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "description": "URL to fetch",
+              "format": "uri",
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            },
+            "max_length": {
+              "default": 5000,
+              "description": "Maximum number of characters to return.",
+              "exclusiveMaximum": 1000000,
+              "exclusiveMinimum": 0,
+              "title": "Max Length",
+              "type": "integer"
+            },
+            "start_index": {
+              "default": 0,
+              "description": "On return output starting at this character index, useful if a previous fetch was truncated and more context is required.",
+              "minimum": 0,
+              "title": "Start Index",
+              "type": "integer"
+            },
+            "raw": {
+              "default": false,
+              "description": "Get the actual HTML content of the requested page, without simplification.",
+              "title": "Raw",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "url"
+          ],
+          "description": "Parameters for fetching a URL.",
+          "title": "Fetch"
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run",
+        "description": "Execute a shell command and return output",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Shell command to execute"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory (optional)"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Timeout in milliseconds (default: 30000)"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_background",
+        "description": "Run a command in background",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Command to run in background"
+            },
+            "name": {
+              "type": "string",
+              "description": "Unique name for this background process"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory (optional)"
+            }
+          },
+          "required": [
+            "command",
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "kill_background",
+        "description": "Kill a background process by name",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the background process to kill"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_background",
+        "description": "List all running background processes",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Execute shell commands with timeout and working directory support.\n\nUSAGE PATTERNS:\n- Install packages: bash { command: \"npm install\" }\n- Run scripts: bash { command: \"npm run build\" }\n- Check files: bash { command: \"ls -la src/\" }\n- Git ops: bash { command: \"git status\" }\n- File ops: bash { command: \"mkdir -p new/dir\" }\n\nBEST PRACTICES:\n- Always set cwd for project-specific commands\n- Use timeout for long-running commands (default: 30s)\n- For file reading/editing, prefer read_file/edit_file tools\n- Capture output to verify success\n\nCOMMON COMMANDS:\n- \"npm install\", \"npm run build\", \"npm test\"\n- \"git add .\", \"git commit -m 'msg'\", \"git push\"\n- \"ls -la\", \"cat file.txt\", \"grep pattern file\"\n- \"docker build -t app .\", \"docker-compose up\"\n\nRELATED TOOLS:\n- Use before: read_file (verify file exists)\n- Use after: git_status (check changes)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Shell command to execute"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory for command execution"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Timeout in milliseconds (default: 30000)"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read complete file contents with UTF-8 encoding.\n\nUSAGE PATTERNS:\n- Read source code: read_file { path: \"src/index.ts\" }\n- Read config: read_file { path: \"package.json\" }\n- Read docs: read_file { path: \"README.md\" }\n- Read nested: read_file { path: \"src/components/Button.tsx\" }\n\nBEST PRACTICES:\n- ALWAYS read before editing - never assume content\n- Check file exists with bash \"ls\" if unsure\n- For large files, use read_text_file with head/tail limits\n- Read related files together to understand context\n\nWHEN TO USE:\n- Before any edit_file operation\n- Understanding existing code structure\n- Verifying changes after edit\n- Analyzing errors that reference specific files\n\nRELATED TOOLS:\n- Use before: glob_search (find file path)\n- Use after: edit_file (verify changes)\n- Alternative: read_multiple_files (batch read)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Absolute or relative file path to read"
+            },
+            "encoding": {
+              "type": "string",
+              "description": "File encoding (default: utf-8)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Create new file or overwrite existing file completely.\n\nUSAGE PATTERNS:\n- Create new file: write_file { path: \"src/new.ts\", content: \"export const x = 1;\" }\n- Overwrite config: write_file { path: \".env\", content: \"KEY=value\" }\n- Create docs: write_file { path: \"docs/guide.md\", content: \"# Guide\\n\\n...\" }\n- Generate code: write_file { path: \"test.spec.ts\", content: \"describe(...)\" }\n\nBEST PRACTICES:\n- Creates parent directories automatically\n- COMPLETELY OVERWRITES - use edit_file for partial changes\n- Always read existing file first if it might exist\n- Ensure content is complete and valid before writing\n- Use for: new files, regenerating files, full rewrites\n\nWHEN TO USE:\n- Creating new files from scratch\n- Regenerating generated code (dist, build outputs)\n- Replacing entire file content\n- Writing configuration files\n\nWHEN NOT TO USE:\n- Don't use for small changes to existing files (use edit_file)\n- Don't use to append (read + edit_file instead)\n\nRELATED TOOLS:\n- Use before: read_file (check if exists), glob_search (find path)\n- Use after: read_file (verify content), bash (run linter)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path to create or overwrite"
+            },
+            "content": {
+              "type": "string",
+              "description": "Complete file content to write"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "edit_file",
+        "description": "Search and replace text in a file with optional multiple replacements.\n\nUSAGE PATTERNS:\n- Single replace: edit_file { path: \"src.ts\", oldText: \"const x = 1\", newText: \"const x = 2\" }\n- Replace all: edit_file { path: \"src.ts\", oldText: \"oldFunc\", newText: \"newFunc\", replaceAll: true }\n- Fix typo: edit_file { path: \"README.md\", oldText: \"fucntion\", newText: \"function\" }\n- Update import: edit_file { path: \"app.ts\", oldText: \"import A from './a'\", newText: \"import A from './b'\" }\n\nBEST PRACTICES:\n- ALWAYS read_file first to get exact text to replace\n- Include surrounding context (2-3 lines) in oldText for unique match\n- Preserve indentation and formatting in newText\n- Test with small changes first\n- Use replaceAll: true only for systematic renames\n\nCOMMON USE CASES:\n- Fixing bugs in existing code\n- Renaming variables/functions\n- Updating imports\n- Changing configuration values\n- Fixing typos across files\n\nERROR PREVENTION:\n- If oldText not found, error includes first 500 chars of file\n- Solution: read file again, get exact text with correct whitespace\n\nRELATED TOOLS:\n- REQUIRED before: read_file (get exact content)\n- Use after: read_file (verify changes), bash (run tests)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path to edit"
+            },
+            "oldText": {
+              "type": "string",
+              "description": "Exact text to find (include context for unique match)"
+            },
+            "newText": {
+              "type": "string",
+              "description": "Replacement text (preserve formatting)"
+            },
+            "replaceAll": {
+              "type": "boolean",
+              "description": "Replace all occurrences (default: false)"
+            }
+          },
+          "required": [
+            "path",
+            "oldText",
+            "newText"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "glob_search",
+        "description": "Find files by glob pattern with working directory support.\n\nUSAGE PATTERNS:\n- Find TypeScript: glob_search { pattern: \"**/*.ts\" }\n- Find tests: glob_search { pattern: \"**/*.test.ts\" }\n- Find configs: glob_search { pattern: \"**/package.json\" }\n- In specific dir: glob_search { pattern: \"src/**/*.tsx\", cwd: \"/project\" }\n- Absolute paths: glob_search { pattern: \"*.md\", absolute: true }\n\nGLOB PATTERN SYNTAX:\n- \"*\" = any characters except /\n- \"**\" = any characters including / (recursive)\n- \"?\" = single character\n- \"{a,b}\" = match a or b\n- \"!\" = negate pattern\n\nCOMMON PATTERNS:\n- \"**/*.ts\" - all TypeScript files\n- \"src/**/*.tsx\" - TSX files in src\n- \"**/*.test.{ts,js}\" - all test files\n- \"**/README.md\" - all README files\n- \".github/**/*.yml\" - GitHub Actions workflows\n\nBEST PRACTICES:\n- Use specific patterns to reduce results\n- Set cwd for project-specific searches\n- Use absolute: true for full paths\n- Combine with read_file to examine matches\n\nRELATED TOOLS:\n- Use before: list_directory (explore structure)\n- Use after: read_file (examine found files), grep_search (search content)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Glob pattern (e.g., '**/*.ts', 'src/**/*.tsx')"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory for search"
+            },
+            "absolute": {
+              "type": "boolean",
+              "description": "Return absolute paths (default: false)"
+            }
+          },
+          "required": [
+            "pattern"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "grep_search",
+        "description": "Search file contents using ripgrep (rg) or grep with regex support.\n\nUSAGE PATTERNS:\n- Find function: grep_search { pattern: \"function getUser\" }\n- Find imports: grep_search { pattern: \"import.*from.*react\" }\n- Find TODOs: grep_search { pattern: \"TODO|FIXME|HACK\" }\n- In specific dir: grep_search { pattern: \"console.log\", path: \"src/\" }\n- Case sensitive: grep_search { pattern: \"API\", caseSensitive: true }\n- File filter: grep_search { pattern: \"export\", filePattern: \"*.ts\" }\n\nREGEX PATTERNS:\n- \"function\\s+\\w+\" - function declarations\n- \"import\\s+\\{.*\\}\\s+from\" - named imports\n- \"class\\s+\\w+\\s+extends\" - class inheritance\n- \"TODO|FIXME|XXX\" - code markers\n- \"\\berror\\b\" - exact word match\n\nBEST PRACTICES:\n- Use regex for flexible matching\n- Set filePattern to narrow search (e.g., \"*.ts\", \"*.tsx\")\n- Use caseSensitive for acronyms (API, HTTP, URL)\n- Set path to specific directories for faster search\n- Escape special regex chars: . * + ? ^ $ { } ( ) | \\\n\nWHEN TO USE:\n- Finding where a function/class is defined\n- Locating all usages of a variable\n- Searching for error messages in code\n- Finding configuration patterns\n- Code archaeology and understanding\n\nRELATED TOOLS:\n- Use before: glob_search (find which files to search)\n- Use after: read_file (examine specific matches)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Regex pattern to search for"
+            },
+            "path": {
+              "type": "string",
+              "description": "Directory to search (default: .)"
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Case sensitive search (default: false)"
+            },
+            "filePattern": {
+              "type": "string",
+              "description": "File glob filter (e.g., '*.ts', '*.tsx')"
+            }
+          },
+          "required": [
+            "pattern"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "todo_write",
+        "description": "Manage a structured todo list for tracking task progress.\n\nUSAGE PATTERNS:\n- Create todos: todo_write { todos: [{ content: \"Read codebase\", status: \"pending\" }, { content: \"Implement feature\", status: \"pending\" }] }\n- Update progress: todo_write { todos: [{ content: \"Read codebase\", status: \"done\" }, { content: \"Implement feature\", status: \"in_progress\" }] }\n- Add new step: todo_write { todos: [...existing, { content: \"Write tests\", status: \"pending\" }] }\n\nSTATUS VALUES:\n- \"pending\" - not started\n- \"in_progress\" - currently working on\n- \"done\" - completed\n\nBEST PRACTICES:\n- Create todos at start of complex tasks\n- Update status as you progress\n- Keep todos visible in conversation context\n- Use for multi-step workflows\n- Break large tasks into smaller todos\n\nWHEN TO USE:\n- Complex multi-step tasks\n- Tracking progress across turns\n- Planning before implementation\n- Ensuring nothing is forgotten\n- Showing user your plan\n\nEXAMPLE WORKFLOW:\n1. todo_write: Create plan (5 steps)\n2. Update: Step 1 \"in_progress\"\n3. Update: Step 1 \"done\", Step 2 \"in_progress\"\n4. Continue until all \"done\"\n\nRELATED TOOLS:\n- Use with: sequential_thinking (plan steps), bash (execute steps)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "todos": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Task description"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "in_progress",
+                      "done"
+                    ],
+                    "description": "Current status"
+                  }
+                },
+                "required": [
+                  "content",
+                  "status"
+                ]
+              },
+              "description": "Array of todo items"
+            }
+          },
+          "required": [
+            "todos"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "sequential_thinking",
+        "description": " PRIMARY TOOL \u2014 MANDATORY: ALWAYS call this BEFORE using any other tool.\n\n RULE: Never call read_file, write_file, edit_file, bash, or any action tool without first calling sequential_thinking.\n RULE: Think first \u2192 Plan \u2192 Then act. No exceptions.\n\nThis tool ensures you are 100% sure about what you're doing before taking action.\n\nHOW TO USE:\n1. Call sequential_thinking with your analysis of the task\n2. Break down what you need to do step by step\n3. Confirm you understand which tool to use and why\n4. Only THEN call the actual tool (read_file, edit_file, bash, etc.)\n\nEXAMPLE:\nTask: \"Fix the login bug\"\nStep 1: sequential_thinking { thought: \"I need to find the login module first. I'll use glob_search to find auth files.\", thoughtNumber: 1, totalThoughts: 3, nextThoughtNeeded: true }\nStep 2: glob_search { pattern: \"**/*auth*.ts\" }\nStep 3: sequential_thinking { thought: \"Found auth.ts. I need to read it to understand the login flow.\", thoughtNumber: 2, totalThoughts: 3, nextThoughtNeeded: true }\nStep 4: read_file { path: \"src/auth.ts\" }\nStep 5: sequential_thinking { thought: \"Found the bug: null check missing on user object. I'll add it.\", thoughtNumber: 3, totalThoughts: 3, nextThoughtNeeded: false }\nStep 6: edit_file { path: \"src/auth.ts\", oldText: \"...\", newText: \"...\" }\n\nPARAMETERS:\n- thought: Your current thinking step (required)\n- thoughtNumber: Current thought number (required, starts at 1)\n- totalThoughts: Estimated total thoughts (required, can adjust up/down)\n- nextThoughtNeeded: Whether another thought is needed (required)\n- isRevision: Whether this revises previous thinking (optional)\n- revisesThought: Which thought is being reconsidered (optional)\n- branchFromThought: Branching point thought number (optional)\n- branchId: Branch identifier for alternative paths (optional)\n- needsMoreThoughts: If more thoughts needed than totalThoughts (optional)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "thought": {
+              "type": "string",
+              "description": "Your current thinking step"
+            },
+            "nextThoughtNeeded": {
+              "type": "boolean",
+              "description": "Whether another thought is needed"
+            },
+            "thoughtNumber": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Current thought number (starts at 1)"
+            },
+            "totalThoughts": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Estimated total thoughts (adjustable)"
+            },
+            "isRevision": {
+              "type": "boolean",
+              "description": "Whether this revises previous thinking"
+            },
+            "revisesThought": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Which thought number is being reconsidered"
+            },
+            "branchFromThought": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Thought number to branch from"
+            },
+            "branchId": {
+              "type": "string",
+              "description": "Identifier for this branch (e.g., 'alt-1')"
+            },
+            "needsMoreThoughts": {
+              "type": "boolean",
+              "description": "If more thoughts needed than totalThoughts"
+            }
+          },
+          "required": [
+            "thought",
+            "nextThoughtNeeded",
+            "thoughtNumber",
+            "totalThoughts"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "autonomous_agent",
+        "description": "Execute development tasks autonomously with build, test, and fix cycles.\nLike Claude Code or opencode agents with error memory.\n\nUSAGE PATTERNS:\n- Fix tests: autonomous_agent { task: \"Fix failing unit tests in src/\" }\n- Build verify: autonomous_agent { task: \"Build and verify no errors\" }\n- Debug issue: autonomous_agent { task: \"Debug TypeError in API handler\" }\n- Custom commands: autonomous_agent { task: \"Run linting\", buildCommand: \"npm run lint\", testCommand: \"npm run lint\" }\n\nPARAMETERS:\n- task: Task to execute (required) - describe what needs to be done\n- workspaceRoot: Working directory (optional, default: current dir)\n- buildCommand: Build command (optional, default: \"npm run build\")\n- testCommand: Test command (optional, default: \"npm test\")\n- maxIterations: Max fix attempts (optional, default: 10, max: 50)\n\nHOW IT WORKS:\n1. PLAN: Analyzes task and creates approach\n2. BUILD: Runs build command, captures errors\n3. TEST: Runs test command, captures failures\n4. FIX: Attempts to fix detected errors\n5. MEMORY: Remembers failed fixes to avoid repetition\n6. REPEAT: Continues until success or max iterations\n\nERROR MEMORY:\n- Never repeats the same failed fix approach\n- Tracks what was tried and what failed\n- Uses learnings to guide future attempts\n- Persists across agent sessions\n\nBEST PRACTICES:\n- Use for iterative debugging tasks\n- Set specific, clear task descriptions\n- Customize build/test commands for your project\n- Use error_memory_status to see learned lessons\n- Set maxIterations higher for complex bugs\n\nWHEN TO USE:\n- Fixing failing tests\n- Debugging build errors\n- Iterative improvement tasks\n- Complex multi-fix scenarios\n- When manual fixes aren't working\n\nRELATED TOOLS:\n- Use after: error_memory_status (check learned lessons)\n- Use after: clear_error_memory (reset if needed)\n- Use with: sequential_thinking (plan before agent runs)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "string",
+              "description": "Task to execute (e.g., 'Fix failing tests', 'Debug build error')"
+            },
+            "workspaceRoot": {
+              "type": "string",
+              "description": "Working directory (default: current directory)"
+            },
+            "buildCommand": {
+              "type": "string",
+              "description": "Build command (default: 'npm run build')"
+            },
+            "testCommand": {
+              "type": "string",
+              "description": "Test command (default: 'npm test')"
+            },
+            "maxIterations": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Max fix iterations (default: 10)"
+            }
+          },
+          "required": [
+            "task"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "error_memory_status",
+        "description": "Get summary of learned errors and fixes from autonomous agent.\n\nUSAGE PATTERNS:\n- Check status: error_memory_status {}\n- Before debugging: error_memory_status {} (see what's been tried)\n- After failure: error_memory_status {} (review lessons learned)\n\nWHAT IT RETURNS:\n- Total errors tracked\n- Number of errors fixed\n- Number of unresolved errors\n- Summary of learnings from past attempts\n\nBEST PRACTICES:\n- Check before starting debugging session\n- Review after autonomous_agent runs\n- Use to understand what approaches failed\n- Helps avoid repeating mistakes\n\nWHEN TO USE:\n- Before running autonomous_agent\n- After failed fix attempts\n- When debugging seems stuck\n- To understand error history\n\nRELATED TOOLS:\n- Use with: autonomous_agent (check before/after runs)\n- Use before: clear_error_memory (if reset needed)",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "clear_error_memory",
+        "description": "Clear all error memory (removes learned lessons from autonomous agent).\n\nUSAGE PATTERNS:\n- Reset agent: clear_error_memory {}\n- Fresh start: clear_error_memory {} (before new debugging session)\n- After success: clear_error_memory {} (clean slate for next task)\n\nWHAT IT DOES:\n- Removes all stored error records\n- Clears fix attempt history\n- Resets learnings database\n- Agent starts fresh with no prior knowledge\n\nBEST PRACTICES:\n- Use when starting unrelated debugging task\n- Use after successfully completing a task\n- Use if agent is stuck on old approaches\n- Check error_memory_status before clearing\n\nWHEN TO USE:\n- Starting new unrelated debugging session\n- Old learnings no longer relevant\n- Agent repeating unhelpful patterns\n- Memory has grown too large\n\nCAUTION:\n- All learned lessons will be lost\n- Agent may repeat previously failed approaches\n- Consider checking status before clearing\n\nRELATED TOOLS:\n- Use before: error_memory_status (review what will be lost)\n- Use after: autonomous_agent (reset for next task)",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_pdf",
+        "description": "Extract text, metadata, and images from PDF files.\n\nUSAGE PATTERNS:\n- Extract all text: read_pdf { path: \"/path/to/document.pdf\" }\n- Specific pages: read_pdf { path: \"doc.pdf\", pages: \"1-5,10\" }\n- Text only: read_pdf { path: \"doc.pdf\", includeText: true, includeMetadata: false }\n- Metadata only: read_pdf { path: \"doc.pdf\", includeText: false, includeMetadata: true }\n\nPARAMETERS:\n- path: Path to PDF file (required)\n- pages: Pages to extract, e.g., \"1-5,10\" (optional, default: all)\n- includeText: Extract text content (optional, default: true)\n- includeMetadata: Extract metadata (optional, default: true)\n- includeImages: Extract images (optional, default: false)\n\nBEST PRACTICES:\n- Use pages parameter for large PDFs\n- Include metadata for document info\n- Images extraction may be slow\n\nWHEN TO USE:\n- Reading documentation PDFs\n- Extracting content from reports\n- Analyzing research papers\n- Processing forms\n\nRELATED TOOLS:\n- Use before: glob_search (find PDF files)\n- Use after: write_file (save extracted content)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to PDF file"
+            },
+            "pages": {
+              "type": "string",
+              "description": "Pages to extract (e.g., '1-5,10' or '1,3,7-10')"
+            },
+            "includeText": {
+              "type": "boolean",
+              "description": "Extract text content (default: true)"
+            },
+            "includeMetadata": {
+              "type": "boolean",
+              "description": "Extract metadata (default: true)"
+            },
+            "includeImages": {
+              "type": "boolean",
+              "description": "Extract images (default: false)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_skills",
+        "description": "List all installed skills by scanning filesystem for SKILL.md files.\n\nSCANS:\n- ~/.agents/skills/{name}/SKILL.md\n- ~/.config/opencode/skills/{name}/SKILL.md\n- ./skills/{name}/SKILL.md\n- ./.qwen/skills/{name}/SKILL.md\n\nWHAT IT RETURNS:\n- Skill name (from YAML frontmatter or directory name)\n- Description (from frontmatter)\n- Triggers/keywords (from frontmatter)\n- Source location\n\nBEST PRACTICES:\n- Call first to discover available skills\n- Skills provide specialized workflows\n- Use skill_discover for keyword search\n\nRELATED TOOLS:\n- Use before: load_skill (load specific skill)\n- Use before: skill_info (get skill details)\n- Use before: skill_discover (search skills)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "load_skill",
+        "description": "Load a skill's full content by name from filesystem.\n\nWHAT IT DOES:\n- Scans ~/.agents/skills/, ~/.config/opencode/skills/, ./skills/, ./.qwen/skills/\n- Parses YAML frontmatter (name, description, triggers, allowed-tools)\n- Returns full skill instructions (frontmatter metadata + body content)\n\nUSAGE PATTERNS:\n- Load skill: load_skill { name: \"tdd\" }\n\nBEST PRACTICES:\n- List skills first with list_skills\n- Use skill_discover for keyword search\n- Load skill before using its workflow\n\nSKILL SEARCH ORDER:\n1. ~/.agents/skills/{name}/SKILL.md\n2. ~/.config/opencode/skills/{name}/SKILL.md\n3. ./skills/{name}/SKILL.md\n4. ./.qwen/skills/{name}/SKILL.md\n\nRELATED TOOLS:\n- Use before: list_skills (see available skills)\n- Use before: skill_discover (search by keyword)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Skill name (e.g., 'tdd', 'git', 'frontend-design')"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skill_info",
+        "description": "Get metadata for a specific skill (name, description, triggers, source).\n\nUSAGE PATTERNS:\n- Check skill: skill_info { name: \"tdd\" }\n\nWHAT IT RETURNS:\n- Skill name\n- Description\n- Trigger keywords\n- Source file path\n\nBEST PRACTICES:\n- Verify skill exists before loading\n- Check description to understand purpose\n- Review triggers for auto-load behavior\n\nWHEN TO USE:\n- Before load_skill (verify existence)\n- Checking skill metadata\n\nRELATED TOOLS:\n- Use before: list_skills (see all skills)\n- Use before: skill_discover (search skills)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Skill name (e.g., 'tdd', 'git', 'security-review')"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skill_discover",
+        "description": "Search installed skills by keyword matching name, description, or trigger phrases.\n\nUSAGE PATTERNS:\n- Search by topic: skill_discover { query: \"testing\" }\n- Search by trigger: skill_discover { query: \"security\" }\n- Search by name: skill_discover { query: \"browser\" }\n\nWHAT IT RETURNS:\n- Matching skill names\n- Descriptions\n- Trigger keywords\n- Source locations\n\nBEST PRACTICES:\n- Use before load_skill to find relevant skills\n- Broad queries return more results\n- Queries match name, description, and triggers\n\nWHEN TO USE:\n- Finding skills for a specific task\n- Discovering new skills\n- Before load_skill to verify correct name\n\nRELATED TOOLS:\n- Use before: load_skill (load found skill)\n- Use after: list_skills (see all available)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Search keyword to find matching skills (matches name, description, triggers)"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_text_file",
+        "description": "Read complete file contents as text with optional line limits.\n\nUSAGE PATTERNS:\n- Read all: read_text_file { path: \"src/index.ts\" }\n- First 50 lines: read_text_file { path: \"large.log\", head: 50 }\n- Last 20 lines: read_text_file { path: \"output.log\", tail: 20 }\n- Config file: read_text_file { path: \"package.json\" }\n\nPARAMETERS:\n- path: File path to read (required)\n- head: Read only first N lines (optional, mutually exclusive with tail)\n- tail: Read only last N lines (optional, mutually exclusive with head)\n\nBEST PRACTICES:\n- Use head for large files to avoid context overflow\n- Use tail for log files (recent entries)\n- Prefer over read_file when you need line limits\n- UTF-8 encoding assumed\n\nWHEN TO USE:\n- Reading source code\n- Checking config files\n- Examining log files\n- Reading documentation\n\nRELATED TOOLS:\n- Use before: glob_search (find file path)\n- Use with: read_multiple_files (batch read)\n- Alternative: read_file (no line limits)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path to read"
+            },
+            "head": {
+              "type": "number",
+              "description": "Read only first N lines (e.g., 50)"
+            },
+            "tail": {
+              "type": "number",
+              "description": "Read only last N lines (e.g., 20)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_multiple_files",
+        "description": "Read multiple files simultaneously in a single call.\n\nUSAGE PATTERNS:\n- Read related files: read_multiple_files { paths: [\"src/index.ts\", \"src/utils.ts\", \"src/types.ts\"] }\n- Read configs: read_multiple_files { paths: [\"package.json\", \"tsconfig.json\", \".eslintrc.json\"] }\n- Read tests: read_multiple_files { paths: [\"src/a.test.ts\", \"src/b.test.ts\"] }\n\nBEST PRACTICES:\n- Use for reading related files together\n- More efficient than multiple read_file calls\n- Each file content separated by header\n- Failed reads show error inline\n\nOUTPUT FORMAT:\n=== /path/to/file1.ts ===\n<file content>\n\n=== /path/to/file2.ts ===\n<file content>\n\n=== /path/to/file3.ts ===\n Error: File not found\n\nWHEN TO USE:\n- Understanding related modules\n- Reading all config files\n- Comparing similar files\n- Batch reading for context\n\nRELATED TOOLS:\n- Use before: glob_search (find files to read)\n- Alternative: read_file (single file)\n- Alternative: read_text_file (with line limits)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Array of file paths to read"
+            }
+          },
+          "required": [
+            "paths"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_directory",
+        "description": "List directory contents with [FILE] or [DIR] prefixes.\n\nUSAGE PATTERNS:\n- Current dir: list_directory { path: \".\" }\n- Specific dir: list_directory { path: \"src/components\" }\n- Root dir: list_directory { path: \"/\" }\n- Home dir: list_directory { path: \"~\" }\n\nOUTPUT FORMAT:\n[DIR] src\n[DIR] tests\n[FILE] package.json\n[FILE] README.md\n[FILE] tsconfig.json\n\nBEST PRACTICES:\n- Start exploration with directory listing\n- Use before glob_search (understand structure)\n- Check directory exists before operations\n- Sorted alphabetically\n\nWHEN TO USE:\n- Exploring unknown codebase\n- Finding files in directory\n- Verifying directory structure\n- Before file operations\n\nRELATED TOOLS:\n- Use before: glob_search (narrow search)\n- Use before: read_file (get file path)\n- Use with: list_directory_with_sizes (see sizes)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory path to list (use '.' for current directory)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "create_directory",
+        "description": "Create new directory or ensure it exists (creates parents if needed).\n\nUSAGE PATTERNS:\n- Create single: create_directory { path: \"new-folder\" }\n- Create nested: create_directory { path: \"src/components/buttons\" }\n- Ensure exists: create_directory { path: \"dist/assets\" }\n\nBEST PRACTICES:\n- Creates parent directories automatically (like mkdir -p)\n- Safe to call on existing directories (no error)\n- Use before write_file for new directories\n- No permission errors if directory exists\n\nWHEN TO USE:\n- Creating new folder structure\n- Setting up project directories\n- Before writing files to new paths\n- Ensuring directory exists\n\nRELATED TOOLS:\n- Use before: write_file (create destination)\n- Use after: list_directory (verify creation)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory path to create (parents created automatically)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "move_file",
+        "description": "Move or rename files and directories.\n\nUSAGE PATTERNS:\n- Rename file: move_file { source: \"old-name.txt\", destination: \"new-name.txt\" }\n- Move file: move_file { source: \"src/old.ts\", destination: \"src/new.ts\" }\n- Move to dir: move_file { source: \"file.txt\", destination: \"docs/file.txt\" }\n- Move directory: move_file { source: \"old-folder\", destination: \"new-folder\" }\n\nBEST PRACTICES:\n- Destination parent must exist (create with create_directory first)\n- Overwrites destination if it exists\n- Works for both files and directories\n- Use absolute paths for clarity\n\nWHEN TO USE:\n- Renaming files\n- Reorganizing directory structure\n- Moving files between folders\n- Restructuring projects\n\nCAUTION:\n- Overwrites existing destination files\n- Parent directory must exist\n\nRELATED TOOLS:\n- Use before: create_directory (ensure parent exists)\n- Use after: list_directory (verify move)\n- Use before: delete_file (alternative for removal)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "Source file or directory path"
+            },
+            "destination": {
+              "type": "string",
+              "description": "Destination path (must have existing parent directory)"
+            }
+          },
+          "required": [
+            "source",
+            "destination"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "delete_file",
+        "description": "Delete a file permanently.\n\nUSAGE PATTERNS:\n- Delete file: delete_file { path: \"temp.txt\" }\n- Delete log: delete_file { path: \"logs/error.log\" }\n- Delete build: delete_file { path: \"dist/bundle.js\" }\n\nBEST PRACTICES:\n- VERIFY path before deletion\n- Use get_file_info first to confirm target\n- Check with list_directory\n- Consider moving instead of deleting (move_file)\n\nSAFETY CHECKLIST:\n1. Confirm correct file path\n2. Verify file is not needed\n3. Check no references to file\n4. Consider backup first\n\nWHEN TO USE:\n- Removing temporary files\n- Cleaning build artifacts\n- Deleting obsolete files\n- Removing sensitive data\n\nCAUTION:\n- PERMANENT - cannot be undone\n- No trash/recycle bin\n- Verify path carefully\n\nRELATED TOOLS:\n- Use before: get_file_info (verify target)\n- Use before: list_directory (confirm exists)\n- Alternative: move_file (safer, can recover)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File path to delete"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "delete_directory",
+        "description": "Delete a directory and its contents.\n\nUSAGE PATTERNS:\n- Delete dir: delete_directory { path: \"temp-folder\" }\n- Delete nested: delete_directory { path: \"dist/assets\" }\n- Force delete: delete_directory { path: \"node_modules\", recursive: true }\n\nPARAMETERS:\n- path: Directory path to delete (required)\n- recursive: Delete recursively (optional, default: true)\n\nBEST PRACTICES:\n- VERIFY path before deletion\n- Use list_directory first to see contents\n- Check for important files\n- Consider moving instead of deleting\n\nSAFETY CHECKLIST:\n1. Confirm correct directory path\n2. List contents first (list_directory)\n3. Verify no important files\n4. Check no active processes using files\n\nWHEN TO USE:\n- Cleaning build directories\n- Removing temporary folders\n- Deleting obsolete modules\n- Clearing cache directories\n\nCAUTION:\n- PERMANENT - cannot be undone\n- Deletes ALL contents recursively\n- No trash/recycle bin\n- Verify path carefully\n\nRELATED TOOLS:\n- Use before: list_directory (see contents first)\n- Use before: directory_tree (full structure)\n- Use before: get_file_info (verify target)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Directory path to delete"
+            },
+            "recursive": {
+              "type": "boolean",
+              "description": "Delete recursively (default: true)"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_categories",
+        "description": " PRIMARY: List all available tool categories. Call this FIRST to discover what tools are available.\n\n ALWAYS call sequential_thinking BEFORE using any other tool.\n ALWAYS call list_categories at session start to see available categories.\n\nReturns a list of categories with their purpose and tool count.\nAfter calling this, use load_category to get detailed tool instructions for the category you need.\n\nCATEGORIES:\n- file: Read, write, edit, list, create, delete, move files\n- search: Find files by pattern (glob) or content (grep)\n- time: Get current time, convert between timezones\n- system: Execute shell commands (bash)\n- pdf: Extract text and metadata from PDF files\n- agent: Autonomous agent, error memory, todo tracking\n- skills: List, load, and get info about installed skills\n- core: Core file operations (bash_execute, file_read, file_write, file_edit)\n\nUSAGE:\nlist_categories {}",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "load_category",
+        "description": " Load detailed tool instructions for a specific category.\n\n ALWAYS call sequential_thinking BEFORE using any other tool.\n Call list_categories first to see available categories.\n Then call load_category with the category name to get tool details.\n\nCATEGORIES:\n- file: read_file, write_file, edit_file, list_directory, create_directory, delete_file, move_file, delete_directory, read_text_file, read_multiple_files\n- search: glob_search, grep_search\n- system: bash\n- pdf: read_pdf\n- agent: autonomous_agent, error_memory_status, clear_error_memory, todo_write, sequential_thinking\n- skills: list_skills, load_skill, skill_info, skill_discover\n- core: bash_execute, file_read, file_write, file_edit\n\nUSAGE:\nload_category { category: \"file\" }\nload_category { category: \"search\" }",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "enum": [
+                "file",
+                "search",
+                "system",
+                "pdf",
+                "agent",
+                "skills",
+                "core"
+              ],
+              "description": "Category name to load"
+            }
+          },
+          "required": [
+            "category"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_background",
+        "description": "Run a command in background and return immediately",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Command to run in background"
+            },
+            "name": {
+              "type": "string",
+              "description": "Unique name for this background process"
+            },
+            "cwd": {
+              "type": "string",
+              "description": "Working directory (optional)"
+            }
+          },
+          "required": [
+            "command",
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "kill_background",
+        "description": "Kill a background process by name",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the background process to kill"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_background",
+        "description": "List all running background processes",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "background_task_start",
+        "description": "Run a tool call in the background and return a task ID immediately",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "toolName": {
+              "type": "string",
+              "description": "Name of the tool to execute"
+            },
+            "toolArguments": {
+              "type": "object",
+              "description": "Arguments to pass to the tool"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Optional timeout in milliseconds"
+            }
+          },
+          "required": [
+            "toolName",
+            "toolArguments"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "background_task_status",
+        "description": "Check the status of a background task",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string",
+              "description": "Task ID returned by background_task_start"
+            }
+          },
+          "required": [
+            "taskId"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "background_task_cancel",
+        "description": "Cancel a running background task",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string",
+              "description": "Task ID to cancel"
+            }
+          },
+          "required": [
+            "taskId"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "parallel_execute",
+        "description": "Execute multiple tool calls in parallel and return all results",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "toolName": {
+                    "type": "string",
+                    "description": "Name of the tool to execute"
+                  },
+                  "toolArguments": {
+                    "type": "object",
+                    "description": "Arguments to pass to the tool"
+                  }
+                },
+                "required": [
+                  "toolName",
+                  "toolArguments"
+                ]
+              },
+              "description": "Array of tool calls to execute in parallel"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Optional per-task timeout in milliseconds"
+            }
+          },
+          "required": [
+            "tasks"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lsp_diagnostics",
+        "description": "Run TypeScript type checking on a file or directory using npx tsc --noEmit.\nReturns structured diagnostics with file, line, column, severity, TS code, and message.\n\nPARAMETERS:\n- path: File or directory to check (optional, default: current dir)\n- severity: Filter by severity (optional: \"error\" | \"warning\" | \"all\", default: \"error\")\n\nOUTPUT: { diagnostics: [{ file, line, column, severity, code, message }], total: number }\n\nWHEN TO USE: After edits, before commit, during debugging",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "File or directory path to check (default: current dir)"
+            },
+            "severity": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "all"
+              ],
+              "description": "Filter by severity (default: error)"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lsp_goto_definition",
+        "description": "Find where a symbol at a cursor position is defined.\nReads the file, extracts the symbol under cursor, and searches for definition\npatterns (function, const, class, interface, type, enum) using ripgrep.\n\nPARAMETERS:\n- filePath: Source file containing the symbol (required)\n- line: 1-based line number (required)\n- character: 0-based column position (required)\n\nOUTPUT: { filePath, line, column, symbol }",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Source file containing the symbol"
+            },
+            "line": {
+              "type": "number",
+              "description": "1-based line number"
+            },
+            "character": {
+              "type": "number",
+              "description": "0-based column position"
+            }
+          },
+          "required": [
+            "filePath",
+            "line",
+            "character"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "lsp_find_references",
+        "description": "Find all references to a symbol across the codebase using ripgrep.\nReturns each match with file, line, column, and matching text.\n\nPARAMETERS:\n- symbol: Symbol name to search for (required)\n- path: Directory to search (optional, default: \".\")\n\nOUTPUT: { references: [{ file, line, column, text }], total: number }",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "Symbol name to search for"
+            },
+            "path": {
+              "type": "string",
+              "description": "Directory to search (default: current dir)"
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "spawn_subagent",
+        "description": "Uses your chat.qwen.ai session to call Qwen models as subagents. Requires QWEN_AUTH_TOKEN env var or set_auth_token tool.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "The prompt for the subagent"
+            },
+            "systemPrompt": {
+              "type": "string",
+              "description": "Optional system prompt for the subagent"
+            },
+            "model": {
+              "type": "string",
+              "description": "Model name (default: qwen3.7-max)"
+            },
+            "temperature": {
+              "type": "number",
+              "description": "Temperature for generation (default: 0.7)"
+            },
+            "chatId": {
+              "type": "string",
+              "description": "Optional chat session ID. Auto-fetches first available chat if not provided."
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "function": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "parameters": {
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                }
+              },
+              "description": "Optional array of tool definitions in OpenAI function-calling format. The subagent can invoke these tools to gather information or take actions."
+            }
+          },
+          "required": [
+            "prompt"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "set_auth_token",
+        "description": "Set the QWEN_AUTH_TOKEN for the current session so spawn_subagent can call Qwen models via chat.qwen.ai.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "token": {
+              "type": "string",
+              "description": "Your chat.qwen.ai session auth token"
+            }
+          },
+          "required": [
+            "token"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "add_qwen_account",
+        "description": "Add a Qwen account for multi-account rotation. Token is the chat.qwen.ai session auth token.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "A human-readable label for this account"
+            },
+            "token": {
+              "type": "string",
+              "description": "The chat.qwen.ai session auth token"
+            }
+          },
+          "required": [
+            "label",
+            "token"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_qwen_accounts",
+        "description": "List all configured Qwen accounts with their status (active/cooldown) and last used time.",
+        "parameters": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "remove_qwen_account",
+        "description": "Remove a Qwen account by label.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "Label of the account to remove"
+            }
+          },
+          "required": [
+            "label"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "clear_cooldown",
+        "description": "Clear the cooldown on a Qwen account, making it available for use again.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "Label of the account to clear cooldown for"
+            }
+          },
+          "required": [
+            "label"
+          ]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto",
+  "parallel_tool_calls": true
+}
