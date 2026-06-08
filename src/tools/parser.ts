@@ -78,8 +78,8 @@ export class StreamingToolParser {
         const xmlResult = this.extractFunctionEqToolCall(xmlStart);
         if (!xmlResult) {
           if (this.textEmissionBoundary < this.buffer.length) {
-            result.text += this.buffer.substring(this.textEmissionBoundary);
-            this.textEmissionBoundary = this.buffer.length;
+            result.text += this.buffer.substring(this.textEmissionBoundary, xmlStart);
+            this.textEmissionBoundary = xmlStart;
           }
           break;
         }
@@ -94,8 +94,8 @@ export class StreamingToolParser {
         const xmlResult = this.extractXmlToolCalls(xmlStart);
         if (!xmlResult) {
           if (this.textEmissionBoundary < this.buffer.length) {
-            result.text += this.buffer.substring(this.textEmissionBoundary);
-            this.textEmissionBoundary = this.buffer.length;
+            result.text += this.buffer.substring(this.textEmissionBoundary, xmlStart);
+            this.textEmissionBoundary = xmlStart;
           }
           break;
         }
@@ -110,8 +110,8 @@ export class StreamingToolParser {
         const xmlResult = this.extractSingleXmlToolCall(xmlStart);
         if (!xmlResult) {
           if (this.textEmissionBoundary < this.buffer.length) {
-            result.text += this.buffer.substring(this.textEmissionBoundary);
-            this.textEmissionBoundary = this.buffer.length;
+            result.text += this.buffer.substring(this.textEmissionBoundary, xmlStart);
+            this.textEmissionBoundary = xmlStart;
           }
           break;
         }
@@ -260,11 +260,56 @@ export class StreamingToolParser {
   flush(): ParserResult {
     const result: ParserResult = { text: '', toolCalls: [], thinking: '' };
     if (this.textEmissionBoundary < this.buffer.length) {
-      result.text += this.buffer.substring(this.textEmissionBoundary);
+      const remaining = this.buffer.substring(this.textEmissionBoundary);
+      result.text = this.flushStripXmlX(remaining, result);
     }
     this.buffer = '';
     this.textEmissionBoundary = 0;
     return result;
+  }
+
+  private flushStripXmlX(text: string, result: ParserResult): string {
+    if (!text) return '';
+    let pos = 0;
+    let clean = '';
+    while (pos < text.length) {
+      const funcEq = text.indexOf('<function=', pos);
+      const funcCalls = text.indexOf('<function_calls>', pos);
+      const single = this.findNextSingleXmlStart(pos);
+      let nextXml = -1;
+      let kind: 'fe' | 'fc' | 's' | undefined;
+      const cand: { idx: number; k: typeof kind }[] = [];
+      if (funcEq !== -1) cand.push({ idx: funcEq, k: 'fe' });
+      if (funcCalls !== -1) cand.push({ idx: funcCalls, k: 'fc' });
+      if (single !== -1) cand.push({ idx: single, k: 's' });
+      cand.sort((a, b) => a.idx - b.idx);
+      if (cand.length) { nextXml = cand[0].idx; kind = cand[0].k; }
+      if (nextXml === -1) { clean += text.substring(pos); break; }
+      if (nextXml > pos) clean += text.substring(pos, nextXml);
+      let tc: { toolCalls: ParsedToolCall[]; endOffset: number } | null = null;
+      if (kind === 'fe') tc = this.extractFunctionEqToolCall(nextXml);
+      else if (kind === 'fc') tc = this.extractXmlToolCalls(nextXml);
+      else if (kind === 's') tc = this.extractSingleXmlToolCall(nextXml);
+      if (tc) {
+        result.toolCalls.push(...tc.toolCalls);
+        this.emittedCount += tc.toolCalls.length;
+        pos = tc.endOffset;
+      } else if (kind === 'fe') {
+        const c = text.indexOf('</function>', nextXml + 1);
+        pos = c !== -1 ? c + '</function>'.length : text.length;
+      } else if (kind === 'fc') {
+        const c = text.indexOf('</function_calls>', nextXml + 1);
+        pos = c !== -1 ? c + '</function_calls>'.length : text.length;
+      } else if (kind === 's') {
+        const open = text.substring(nextXml).match(/^<([A-Za-z][A-Za-z0-9_]*)>/);
+        if (open) {
+          const ct = `</${open[1]}>`;
+          const c = text.indexOf(ct, nextXml + open[0].length);
+          pos = c !== -1 ? c + ct.length : text.length;
+        } else { pos = nextXml + 1; }
+      }
+    }
+    return clean;
   }
 
   getEmittedToolCallCount(): number { return this.emittedCount; }

@@ -13,6 +13,10 @@ const TOOL_ECHO_PATTERNS: RegExp[] = [
   /^(?:[Tt]ool|Command|Function)\s+[a-z_]+(?:\.\w+)?\s*[:.].*$/m,
   /\bI(?:'ll|\s+will)\s+(?:use|run|call|invoke|execute)\s+(?:[a-z_]+\s+){0,2}(?:to\s+)/i,
   /\b[Tt]he\s+(?:output|result)\s+(?:shows?|contains?|indicates?|reveals?|displays?|produced|gave|returned)\b/i,
+  /\b<function=[a-zA-Z_][a-zA-Z0-9_]*>/i,
+  /\bI(?:'ll|\s+will)\s+(?:use|run|call|invoke|execute)\s+(?:the\s+)?<function=[a-zA-Z_][a-zA-Z0-9_]*>/i,
+  /\b[Cc]alling\s+(?:the\s+)?<function=[a-zA-Z_][a-zA-Z0-9_]*>/i,
+  /\b[Tt]he\s+<function=[a-zA-Z_][a-zA-Z0-9_]*>\s+(?:tool|function)\s+(?:returned|shows?|found|gave|output(?:ted)?)/i,
 ];
 
 export function stripToolCallArtifacts(text: string): string {
@@ -91,6 +95,24 @@ export function stripToolCallArtifacts(text: string): string {
   // Strip <tool_call> XML wrapping (Qwen flat format)
   text = text.replace(/<tool_call[\s\S]*?<\/tool_call>/g, '');
   text = text.replace(/<\/?tool_call[^>]*>/g, '');
+  // Strip <function=name>...</function> XML (Qwen native tool call format)
+  text = text.replace(/<function=[^>]*>[\s\S]*?<\/function>/g, '');
+  text = text.replace(/<function=[^>]*\/?>/g, '');
+  text = text.replace(/<\/function[^>]*>/g, '');
+  // Strip <function_calls>...</function_calls> XML (Claude format)
+  text = text.replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '');
+  text = text.replace(/<function_calls[^>]*\/?>/g, '');
+  text = text.replace(/<\/function_calls[^>]*>/g, '');
+  // Strip <parameter=KEY>VALUE</parameter> and partial fragments
+  text = text.replace(/<parameter=[^>]*>[\s\S]*?<\/parameter>/g, '');
+  text = text.replace(/<parameter=[^>]*\/?>/g, '');
+  text = text.replace(/<\/parameter[^>]*>/g, '');
+  // Strip trailing partial <function= and </function fragments
+  text = text.replace(/\n?<function=[a-zA-Z_][a-zA-Z0-9_]*[^>]*$/g, '');
+  text = text.replace(/\n?<f(?:u(?:n(?:c(?:t(?:i(?:o(?:n)?)?)?)?)?)?)?=[a-zA-Z_][a-zA-Z0-9_]*[^>]*$/g, '');
+  text = text.replace(/\n?<\/f(?:u(?:n(?:c(?:t(?:i(?:o(?:n)?)?)?)?)?)?)?$/g, '');
+  text = text.replace(/\n?<parameter=[a-zA-Z_][a-zA-Z0-9_]*[^>]*$/g, '');
+  text = text.replace(/\n?<\/p(?:a(?:r(?:a(?:m(?:e(?:t(?:e(?:r)?)?)?)?)?)?)?)?$/g, '');
   text = text.replace(/<\/(?:<\s*\/?[a-z_][^>]*>)[^>]*>/g, '');
   text = text.replace(/<\/(?=<[a-z_/])[^>]*>/g, '');
   text = text.replace(/Tool Response \([^)]+\):[^\n]*(?:\n(?!\s*(?:\n|$)|Tool Response\s*\(|{"name)[^\n]*)*/g, '');
@@ -133,6 +155,17 @@ export function stripStreamingDelta(delta: string): string {
   cleaned = cleaned.replace(/<invoke\s+[^>]*\/?>/g, '');
   cleaned = cleaned.replace(/<\/invoke[^>]*>/g, '');
   cleaned = cleaned.replace(/<\/?tool_call[^>]*>/g, '');
+  cleaned = cleaned.replace(/<function=[^>]*>[\s\S]*?<\/function>/g, '');
+  cleaned = cleaned.replace(/<function=[^>]*\/?>/g, '');
+  cleaned = cleaned.replace(/<\/function[^>]*>/g, '');
+  cleaned = cleaned.replace(/<function_calls[^>]*\/?>/g, '');
+  cleaned = cleaned.replace(/<\/function_calls[^>]*>/g, '');
+  cleaned = cleaned.replace(/<parameter=[^>]*\/?>/g, '');
+  cleaned = cleaned.replace(/<\/parameter[^>]*>/g, '');
+  cleaned = cleaned.replace(/\n?<function?=[a-zA-Z_][a-zA-Z0-9_]*$/g, '');
+  cleaned = cleaned.replace(/\n?<\/f(?:u(?:n(?:c(?:t(?:i(?:o(?:n)?)?)?)?)?)?)?$/g, '');
+  cleaned = cleaned.replace(/\n?<parameter?=[a-zA-Z_][a-zA-Z0-9_]*$/g, '');
+  cleaned = cleaned.replace(/\n?<\/p(?:a(?:r(?:a(?:m(?:e(?:t(?:e(?:r)?)?)?)?)?)?)?)?$/g, '');
   cleaned = cleaned.replace(/(?:^|\s)_?(?:call|result|invoke)>/gm, '');  // split tag remnants: _call> _result> _invoke>
   cleaned = cleaned.replace(/<\/(?:<\s*\/?[a-z_][^>]*>)[^>]*>/g, '');
   cleaned = cleaned.replace(/<\/(?=<[a-z_/])[^>]*>/g, '');
