@@ -153,6 +153,29 @@ export interface StreamProcessingCtx {
 export type ProcessStreamResult = 'continue' | 'break_stream';
 
 /**
+ * Shared content filter pipeline standardizing the order:
+ * cleanTextOfXmlArtifacts → filterContent → cleanThinkTags.
+ * Used in both per-chunk (processStreamData) and flush (handlePostStreamCompletion) paths.
+ */
+export function filterContentPipeline(
+  text: string,
+  enableContentFiltering: boolean,
+): { cleanText: string | null; thinking: string } {
+  if (!text) return { cleanText: null, thinking: '' };
+  const { cleanedText: stripped } = cleanTextOfXmlArtifacts(text);
+  if (!enableContentFiltering) {
+    const cleaned = cleanThinkTags(stripped);
+    return { cleanText: cleaned || null, thinking: '' };
+  }
+  const filtered = filterContent(stripped);
+  const cleaned = cleanThinkTags(filtered.cleanText);
+  return {
+    cleanText: cleaned || null,
+    thinking: filtered.thinking || '',
+  };
+}
+
+/**
  * Process a single parsed SSE data chunk from the stream.
  * Mutates `state` in place and returns a directive:
  *   - 'continue'      → normal processing, keep iterating
@@ -274,35 +297,34 @@ export async function processStreamData(
       });
     }
     
-    for (const [i, tc] of xmlToolCalls.entries()) {
+    for (const [i, tc] of newToolCalls.entries()) {
       const parsed = xmlToolCallToParsed(tc, i);
       await writeToolCallEvent(streamWriter, completionId, model, parsed, i);
     }
   }
 
-  const contentForUser = cleanTextOfXmlArtifacts(state.lastFullContent).cleanedText;
-  const filteredResult = enableContentFiltering
-    ? filterContent(contentForUser)
-    : { cleanText: contentForUser, thinking: '' };
-  const baseFilteredContent = filteredResult.cleanText;
-  const filteredThinking = filteredResult.thinking;
+  // Truncate lastFullContent to prevent unbounded growth (M-10)
+  // Keep last 2000 chars so partial tags survive across chunks
+  if (state.lastFullContent.length > 2000) {
+    state.lastFullContent = state.lastFullContent.slice(-2000);
+  }
+
+  const pipelineResult = filterContentPipeline(state.lastFullContent, enableContentFiltering);
+  const cleanedText = pipelineResult.cleanText;
+  const filteredThinking = pipelineResult.thinking;
 
   if (state.deferredThinkingChunks.length > 0) {
     await writeDeferredThinking(streamWriter, completionId, model, state.deferredThinkingChunks);
     state.deferredThinkingChunks = [];
   }
 
-      if (filteredThinking) {
-        const thinkingDelta = getSnapshotDelta(filteredThinking, state.lastThinkingSnapshot);
-        state.lastThinkingSnapshot = filteredThinking;
-        if (thinkingDelta) {
-          await writeReasoningEvent(streamWriter, completionId, model, thinkingDelta);
-        }
-      }
-
-  const cleanedText = baseFilteredContent
-    ? cleanThinkTags(baseFilteredContent)
-    : null;
+  if (filteredThinking) {
+    const thinkingDelta = getSnapshotDelta(filteredThinking, state.lastThinkingSnapshot);
+    state.lastThinkingSnapshot = filteredThinking;
+    if (thinkingDelta) {
+      await writeReasoningEvent(streamWriter, completionId, model, thinkingDelta);
+    }
+  }
 
   if (cleanedText) {
     // Text-only content (no tool calls): write content delta to SSE + logStore

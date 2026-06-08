@@ -1,3 +1,29 @@
+/* ── Auth helpers ── */
+function getStoredApiKey() {
+  return sessionStorage.getItem('qwen_api_key') || '';
+}
+function setStoredApiKey(key) {
+  if (key) {
+    sessionStorage.setItem('qwen_api_key', key);
+  } else {
+    sessionStorage.removeItem('qwen_api_key');
+  }
+}
+
+// Grab ?token= from the URL on page load and store it
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('token');
+  if (token) {
+    setStoredApiKey(token);
+    // Clean URL (remove token param)
+    var url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    window.history.replaceState({}, '', url.toString());
+  }
+})();
+
+var API_KEY = getStoredApiKey();
 /* ── Helpers ── */
 function escHtml(s) {
   if (s == null) return '';
@@ -8,7 +34,8 @@ function setText(id, val) {
   if (el) el.textContent = val;
 }
 function authHeaders() {
-  return window.API_KEY ? { 'Authorization': 'Bearer ' + window.API_KEY } : {};
+  var key = getStoredApiKey();
+  return key ? { 'Authorization': 'Bearer ' + key } : {};
 }
 function fmtTime(ts) {
   if (!ts) return '—';
@@ -44,4 +71,3 @@ async function apiFetch(url) {
     return await res.json();
   } catch(e) { return null; }
 }
-var API_KEY = window.API_KEY || '';

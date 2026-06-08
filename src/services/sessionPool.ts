@@ -68,7 +68,7 @@ export class SessionPool {
     let lastErr: unknown;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const resolvedEmail = email || pickAccount()?.email;
+      const resolvedEmail = email || (await pickAccount())?.email;
 
       if (resolvedEmail) {
         incrementInFlight(resolvedEmail);
@@ -134,7 +134,7 @@ export class SessionPool {
     });
   }
 
-  release(chatId: string, _newParentId: string | null, cachedHeaders?: { cookie: string; userAgent: string }, accountEmail?: string): void {
+  async release(chatId: string, _newParentId: string | null, cachedHeaders?: { cookie: string; userAgent: string }, accountEmail?: string): Promise<void> {
     // Idempotency guard: if chatId not tracked as active, this session was already released.
     // Prevents double-release from competing cleanup paths (setTimeout + finally).
     if (!this.activeSessions.has(chatId)) {
@@ -150,7 +150,7 @@ export class SessionPool {
     const waiter = this.waiting.shift();
     if (waiter) {
       clearTimeout(waiter.timer);
-      const waiterEmail = accountEmail || pickAccount()?.email;
+      const waiterEmail = accountEmail || (await pickAccount())?.email;
       Promise.all([getBasicHeaders(waiterEmail), this.createSession(waiterEmail)])
         .then(([{ cookie, userAgent, email: actualEmail }, id]) => {
           waiter.resolve({ chatId: id, parentId: _newParentId, inUse: true, cachedHeaders: { cookie, userAgent }, accountEmail: actualEmail || waiterEmail });

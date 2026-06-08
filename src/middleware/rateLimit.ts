@@ -23,6 +23,8 @@ export class TokenBucket {
   private key: string;
   private config: RateLimitConfig;
   private maxTokens: number;
+  /** Promise-chain mutex to serialize concurrent tryConsume calls */
+  private lock: Promise<void> = Promise.resolve();
 
   constructor(key: string, config: Partial<RateLimitConfig> = {}) {
     this.key = key;
@@ -60,18 +62,23 @@ export class TokenBucket {
     
     // Time to accumulate needed tokens: tokens / (requests_per_minute / 60) = seconds
     const tokensPerSecond = this.config.requests_per_minute / 60;
-    return Math.ceil(tokensNeeded / tokensPerSecond);
+    return Math.max(0.1, tokensNeeded / tokensPerSecond);
   }
 
   async tryConsume(tokens: number = this.config.tokens_per_request): Promise<boolean> {
-    const bucket = this.getBucket();
-    this.refill(bucket);
-    
-    if (bucket.tokens >= tokens) {
-      bucket.tokens -= tokens;
-      return true;
-    }
-    return false;
+    return new Promise((resolve) => {
+      this.lock = this.lock.then(() => {
+        const bucket = this.getBucket();
+        this.refill(bucket);
+
+        if (bucket.tokens >= tokens) {
+          bucket.tokens -= tokens;
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
   }
 
   getHeaders(): Record<string, string> {

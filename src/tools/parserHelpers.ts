@@ -53,7 +53,7 @@ export function tryExtractToolCall(remaining: string): ExtractResult {
     const toolCall: ParsedToolCall = {
       id: 'call_' + crypto.randomUUID(),
       name,
-      arguments: args || (() => { const { name: _name, ...rest } = parsed; return rest; })(),
+      arguments: args || {},
     };
     return { textContent, toolCall, remaining: after.substring(jsonEnd), shouldBreak: false };
   } catch {

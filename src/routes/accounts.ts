@@ -2,6 +2,19 @@ import { Hono } from 'hono';
 import { getAccounts, addAccount, removeAccount, getAccountByEmail, loginFresh, saveCookies } from '../services/auth.ts';
 import { openBrowserProfile } from '../services/playwright.ts';
 
+const accountActionRateLimit = new Map<string, number[]>();
+
+function checkRateLimit(key: string, maxPerMinute: number = 10): boolean {
+  const now = Date.now();
+  const window = 60_000;
+  const timestamps = (accountActionRateLimit.get(key) || [])
+    .filter(t => now - t < window);
+  if (timestamps.length >= maxPerMinute) return false;
+  timestamps.push(now);
+  accountActionRateLimit.set(key, timestamps);
+  return true;
+}
+
 export const accountsRouter = new Hono();
 
 accountsRouter.get('/', (c) => {
@@ -20,6 +33,9 @@ accountsRouter.get('/', (c) => {
 
 accountsRouter.post('/', async (c) => {
   try {
+    if (!checkRateLimit('accounts')) {
+      return c.json({ error: 'Rate limit exceeded' }, 429);
+    }
     const body = await c.req.json();
     const { email, password } = body;
 
@@ -63,6 +79,9 @@ accountsRouter.post('/', async (c) => {
  */
 accountsRouter.delete('/:email', async (c) => {
   try {
+    if (!checkRateLimit('accounts')) {
+      return c.json({ error: 'Rate limit exceeded' }, 429);
+    }
     const email = decodeURIComponent(c.req.param('email'));
     await removeAccount(email);
     return c.json({ success: true, email });

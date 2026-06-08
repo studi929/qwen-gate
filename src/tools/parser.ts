@@ -12,7 +12,18 @@ const TRIM_KEEP_CONTEXT = 4096;
 const FUNCTION_PREFIX_RE = /^(?:[A-Z][a-z]+\s+[A-Z][a-z]+-|Qwen\s+Core-)/;
 
 function cleanToolName(raw: string): string {
-  return raw.replace(FUNCTION_PREFIX_RE, '');
+  let name = raw.replace(FUNCTION_PREFIX_RE, '');
+  if (name.startsWith('★-')) name = name.slice(2);
+  return name;
+}
+
+function shouldAutoConvertToNumber(value: string): boolean {
+  if (!/^-?\d+(?:\.\d+)?$/.test(value)) return false;
+  // Don't convert if it has leading zeros (ZIP codes: 00123, phone, etc.)
+  if (value.startsWith('0') && value.length > 1 && value[1] !== '.') return false;
+  // Don't convert very large numbers (precision loss for IDs > 15 digits)
+  if (value.length > 15) return false;
+  return true;
 }
 
 export class StreamingToolParser {
@@ -146,7 +157,7 @@ export class StreamingToolParser {
       const key = param[1].trim();
       if (!key) continue;
       const rawValue = this.decodeXml(param[2].trim());
-      args[key] = /^-?\d+(?:\.\d+)?$/.test(rawValue) ? Number(rawValue) : rawValue;
+      args[key] = shouldAutoConvertToNumber(rawValue) ? Number(rawValue) : rawValue;
     }
     return {
       toolCalls: [{ id: `call_${crypto.randomUUID()}`, name, arguments: args }],
@@ -164,8 +175,9 @@ export class StreamingToolParser {
     const invokeRe = /<invoke\s+name="([^"]+)"\s*>([\s\S]*?)<\/invoke>/g;
     let match: RegExpExecArray | null;
     while ((match = invokeRe.exec(block))) {
-      const name = match[1].trim();
-      if (!name) continue;
+      const rawName = match[1].trim();
+      if (!rawName) continue;
+      const name = cleanToolName(rawName);
       const args: Record<string, unknown> = {};
       const params = match[2];
       const paramRe = /<parameter\s+name="([^"]+)"\s*>([\s\S]*?)<\/parameter>/g;
@@ -174,7 +186,7 @@ export class StreamingToolParser {
         const key = param[1].trim();
         if (!key) continue;
         const rawValue = this.decodeXml(param[2].trim());
-        args[key] = /^-?\d+(?:\.\d+)?$/.test(rawValue) ? Number(rawValue) : rawValue;
+        args[key] = shouldAutoConvertToNumber(rawValue) ? Number(rawValue) : rawValue;
       }
       toolCalls.push({ id: `call_${crypto.randomUUID()}`, name, arguments: args });
     }
@@ -199,13 +211,14 @@ export class StreamingToolParser {
       const key = param[1].trim();
       if (!key) continue;
       const rawValue = this.decodeXml(param[2].trim());
-      args[key] = /^-?\d+(?:\.\d+)?$/.test(rawValue) ? Number(rawValue) : rawValue;
+      args[key] = shouldAutoConvertToNumber(rawValue) ? Number(rawValue) : rawValue;
     }
     return { toolCalls: [{ id: `call_${crypto.randomUUID()}`, name, arguments: args }], endOffset };
   }
 
   private xmlToolName(rawTag: string): string | null {
-    const name = rawTag.toLowerCase();
+    let name = rawTag.toLowerCase();
+    if (name.startsWith('★-')) name = name.slice(2);
     if (name === 'toolread') return 'read';
     return name || null;
   }

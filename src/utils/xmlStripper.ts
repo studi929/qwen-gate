@@ -30,8 +30,8 @@ export function stripToolCallArtifacts(text: string): string {
   text = text.replace(/\n?<tool_?(?:re(?:s(?:ult?)?)?)?(?:\s[^>]*)?$/g, '');
   text = text.replace(/\n?<tool(?:\s[^>]*)?$/g, '');
   text = text.replace(/\n?<to(?:ol?)?$/g, '');
-  // Only strip trailing <t or < if preceded by tool_, tool, to_, etc — never standalone
-  text = text.replace(/\n?(?:<to(?:o(?:l)?)?|<\S*?t)$/g, '');
+  // Only strip trailing tool-related partial tags — never standalone <t
+  text = text.replace(/\n?(?:<\/?(?:tool|tc|function|parameter)[^>]*)$/gi, '');
   text = stripToolEcho(text);
   text = text.replace(/\n{3,}/g, '\n\n');
   return text;

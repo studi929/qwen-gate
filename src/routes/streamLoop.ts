@@ -1,12 +1,10 @@
 import {
   parseQwenErrorPayload,
   getSnapshotDelta,
-  cleanThinkTags,
   checkAmplificationGuard,
   type AmplificationGuardState,
-} from './chatHelpers.ts';
+} from "./chatHelpers.ts";
 import { logStore } from '../services/logStore.ts';
-import { filterContent } from '../utils/contentFilter.ts';
 import { parseXmlToolCalls, cleanTextOfXmlArtifacts } from '../tools/xmlToolParser.ts';
 import {
   writeEvent,
@@ -18,6 +16,7 @@ import {
 import { checkFinalAmplification, scheduleCleanup } from './cleanupHelpers.ts';
 import {
   processStreamData,
+  filterContentPipeline,
   type StreamProcessingState,
   type StreamProcessingCtx,
 } from './chatStreamingHelpers.ts';
@@ -133,11 +132,9 @@ export async function handlePostStreamCompletion(
     : 0;
   const effectiveToolCallCount = Math.max(emittedToolCallCount, finalToolCalls);
 
-  const { cleanText: flushBase, thinking: flushThinking } = (enableContentFiltering && streamState.lastFullContent)
-    ? filterContent(streamState.lastFullContent)
-    : { cleanText: streamState.lastFullContent || '', thinking: '' };
-  const flushXmlStripped = cleanTextOfXmlArtifacts(flushBase).cleanedText;
-  const flushCleaned = cleanThinkTags(flushXmlStripped);
+  const pipelineResult = filterContentPipeline(streamState.lastFullContent, enableContentFiltering);
+  const flushCleaned = pipelineResult.cleanText;
+  const flushThinking = pipelineResult.thinking;
 
   if (flushThinking) {
     const thinkDelta = getSnapshotDelta(flushThinking, streamState.lastThinkingSnapshot);

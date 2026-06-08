@@ -20,6 +20,7 @@ import { debugNetworkApp } from "./routes/debugNetwork.ts";
 import { registerDashboardRoutes } from "./routes/dashboard/dashboardRoutes.ts";
 import { projectPath } from "./utils/paths.ts";
 import { fileURLToPath } from "url";
+import { randomUUID } from "node:crypto";
 
 console.clear();
 process.stdout.write("\x1bc\x1b[3J\x1b[2J\x1b[H");
@@ -35,6 +36,16 @@ console.error = (...args: any[]) => {
   const msg = args.map((a: any) => typeof a === "string" ? a : JSON.stringify(a)).join(" ");
   logStore.log("error", "system", msg);
 };
+
+// Generate default API_KEY if none is configured (prevents auth bypass)
+if (!config.get("API_KEY")) {
+  const defaultKey = randomUUID();
+  process.env.API_KEY = defaultKey;
+  config.set("API_KEY", defaultKey);
+  config.save();
+  console.log(`\n  Generated default API_KEY: ${defaultKey}`);
+  console.log(`  Save this key — you'll need it for API and dashboard access.\n`);
+}
 
 export const app = new Hono();
 

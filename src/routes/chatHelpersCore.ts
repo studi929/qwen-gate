@@ -158,6 +158,20 @@ export class ToolSpamGuard {
 
 export const pendingCorrections = new Map<string, string[]>();
 
+// Prevent unbounded growth: trim oldest entries every 5 minutes
+const MAX_PENDING_CORRECTIONS = 500;
+setInterval(() => {
+  if (pendingCorrections.size > MAX_PENDING_CORRECTIONS) {
+    const toDelete = pendingCorrections.size - MAX_PENDING_CORRECTIONS;
+    let i = 0;
+    for (const key of pendingCorrections.keys()) {
+      if (i >= toDelete) break;
+      pendingCorrections.delete(key);
+      i++;
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
 export function parseQwenErrorPayload(
   raw: string,
 ): { message: string; status: import("hono/utils/http-status").ContentfulStatusCode } | null {

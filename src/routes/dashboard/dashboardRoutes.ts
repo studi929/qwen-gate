@@ -26,8 +26,10 @@ import { settingsHtml } from "./settings.ts";
 import { APP_VERSION } from "../../utils/version.ts";
 
 const serveHtml = (html: string) => (c: any) => {
-  const apiKey = config.get("API_KEY");
-  const scriptInjection = `<script>\nwindow.APP_VERSION = '${APP_VERSION}';\n${apiKey ? `window.API_KEY = '${apiKey.replace(/'/g, "\\'")}';\n` : ""}`;
+  const auth = checkApiKeyAuth(c);
+  if (auth) return auth;
+
+  const scriptInjection = `<script>\nwindow.APP_VERSION = '${APP_VERSION}';\n`;
   const output = html.replace("<script>", scriptInjection);
   return c.html(output);
 };
@@ -106,6 +108,68 @@ async function deleteAllChatsHandler(c: any) {
   });
 }
 
+function sanitizeLogEntry(entry: any): any {
+  const sanitized = { ...entry };
+
+  // Mask email addresses (keep first 3 chars)
+  if (sanitized.accountEmail) {
+    const [local, domain] = sanitized.accountEmail.split('@');
+    sanitized.accountEmail = local.substring(0, 3) + '***@' + (domain || '***');
+  }
+
+  // Mask prompt content that might contain credentials
+  if (sanitized.messages) {
+    sanitized.messages = sanitized.messages.map((m: any) => {
+      if (typeof m.content === 'string' && m.content.length > 200) {
+        return { ...m, content: m.content.substring(0, 200) + '...[truncated]' };
+      }
+      return m;
+    });
+  }
+
+  // Truncate rawRequestBody if present
+  if (sanitized.rawRequestBody) {
+    const rawStr = typeof sanitized.rawRequestBody === 'string'
+      ? sanitized.rawRequestBody
+      : JSON.stringify(sanitized.rawRequestBody);
+    if (rawStr.length > 500) {
+      sanitized.rawRequestBody = rawStr.substring(0, 500) + '...[truncated]';
+    }
+  }
+
+  // Truncate long text fields that may contain sensitive data
+  for (const field of ['rawFullContent', 'processedApiOutput', 'remainingText', 'amplificationTriggeredInput', 'rawResponse', 'input']) {
+    if (typeof sanitized[field] === 'string' && sanitized[field].length > 500) {
+      sanitized[field] = sanitized[field].substring(0, 500) + '...[truncated]';
+    }
+  }
+
+  // Truncate prompt preview
+  if (sanitized.promptToQwen?.preview && typeof sanitized.promptToQwen.preview === 'string') {
+    sanitized.promptToQwen = {
+      ...sanitized.promptToQwen,
+      preview: sanitized.promptToQwen.preview.length > 200
+        ? sanitized.promptToQwen.preview.substring(0, 200) + '...[truncated]'
+        : sanitized.promptToQwen.preview,
+    };
+  }
+
+  // Sanitize client request messages
+  if (sanitized.clientRequest?.messages) {
+    sanitized.clientRequest = {
+      ...sanitized.clientRequest,
+      messages: sanitized.clientRequest.messages.map((m: any) => {
+        if (typeof m.content === 'string' && m.content.length > 200) {
+          return { ...m, content: m.content.substring(0, 200) + '...[truncated]' };
+        }
+        return m;
+      }),
+    };
+  }
+
+  return sanitized;
+}
+
 function systemLogsHandler(c: any) {
   const auth = checkApiKeyAuth(c);
   if (auth) return auth;
@@ -113,7 +177,8 @@ function systemLogsHandler(c: any) {
   const limit = parseInt(c.req.query("limit") || "100", 10);
   const category = c.req.query("category");
   const minLevel = c.req.query("level") as "debug" | "info" | "warn" | "error" | undefined;
-  return c.json(logStore.getSystemLogs({ limit, category, minLevel }));
+  const logs = logStore.getSystemLogs({ limit, category, minLevel });
+  return c.json(logs.map(sanitizeLogEntry));
 }
 
 function modelHealthHandler(c: any) {
@@ -227,7 +292,7 @@ function logJsonHandler(c: any) {
       client_request: e.clientRequest || {},
     };
   });
-  return c.json(serialized);
+  return c.json(serialized.map(sanitizeLogEntry));
 }
 
 export function registerDashboardRoutes(app: Hono): void {

@@ -26,7 +26,10 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
     const name = functionNameFromTag(match[0]);
     if (!name) continue;
 
-    const body = match[0].slice(match[0].indexOf('>') + 1, match[0].lastIndexOf('<'));
+    const closingTag = '</function>';
+    const closingIndex = match[0].lastIndexOf(closingTag);
+    if (closingIndex === -1) continue; // malformed — no closing tag
+    const body = match[0].slice(match[0].indexOf('>') + 1, closingIndex);
 
     const parameters: Record<string, string> = {};
     const paramRe = /<parameter=([^\s>]+)>([\s\S]*?)<\/parameter>/g;

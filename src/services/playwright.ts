@@ -115,7 +115,7 @@ export async function getBasicHeaders(email?: string): Promise<BasicHeaders> {
     }
   }
   let cookieStr = await getCookies(email);
-  const tokenInfo = getTokenWithAccount(email);
+  const tokenInfo = await getTokenWithAccount(email);
   if (tokenInfo) {
     const tokenEntry = `token=${tokenInfo.token}`;
     cookieStr = tokenEntry + (cookieStr ? '; ' + cookieStr : '');
@@ -376,11 +376,11 @@ export async function getQwenHeaders(email?: string): Promise<{ headers: Record<
     };
   }
   await initPlaywright();
-  const targetEmail = email || pickAccount()?.email;
+  const targetEmail = email || (await pickAccount())?.email;
   if (!targetEmail) throw new Error('No account available for header extraction');
   let accCtx = accountContexts.get(targetEmail);
   if (!accCtx) {
-    const tokenInfo = getTokenWithAccount(targetEmail);
+    const tokenInfo = await getTokenWithAccount(targetEmail);
     const initialCookies = tokenInfo?.token ? { token: tokenInfo.token } : undefined;
     accCtx = await createAccountContext(targetEmail, initialCookies);
     await refreshAccountCookies(targetEmail);

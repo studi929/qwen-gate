@@ -56,10 +56,21 @@ export function discoverSavedAccounts(): Array<{ email: string; password: string
   try {
     const diskAccounts: Array<{ email: string; password: string }> = [];
     if (existsSync(COOKIE_DIR)) {
+      const apiKey = config.get("API_KEY");
       const files = readdirSync(COOKIE_DIR).filter((f: string) => f.endsWith('.json'));
       for (const file of files) {
         try {
-          const data: CookieData = JSON.parse(readFileSync(path.join(COOKIE_DIR, file), 'utf-8'));
+          const raw = readFileSync(path.join(COOKIE_DIR, file), 'utf-8');
+          let jsonStr = raw;
+          // Try to decrypt if encrypted; fallback to raw for legacy files
+          if (apiKey && raw.includes(':')) {
+            try {
+              jsonStr = decrypt(raw, apiKey);
+            } catch {
+              // Not encrypted or wrong key — use raw
+            }
+          }
+          const data: CookieData = JSON.parse(jsonStr);
           if (data.email && data.token) {
             diskAccounts.push({ email: data.email, password: '' });
           }
@@ -97,14 +108,60 @@ export function decodeJwt(token: string): Record<string, any> | null {
     return null;
   }
 }
+/* ── AES-256-GCM password encryption ── */
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+
+function deriveKey(apiKey: string): Buffer {
+  return crypto.scryptSync(apiKey, 'qwen-gate-salt', 32);
+}
+
+export function encrypt(plaintext: string, apiKey: string): string {
+  const key = deriveKey(apiKey);
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag();
+  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+}
+
+export function decrypt(encryptedText: string, apiKey: string): string {
+  const parts = encryptedText.split(':');
+  if (parts.length !== 3) return encryptedText;
+  const [ivHex, authTagHex, encrypted] = parts;
+  try {
+    const key = deriveKey(apiKey);
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch {
+    return encryptedText;
+  }
+}
+
+// Backward-compatible aliases for existing callers
+function encryptPassword(password: string, apiKey: string): string {
+  return encrypt(password, apiKey);
+}
+
+function decryptPassword(encryptedText: string, apiKey: string): string {
+  return decrypt(encryptedText, apiKey);
+}
+
 export function saveAccountsToFile(accounts: readonly AccountEntry[]): void {
   const dir = path.dirname(ACCOUNTS_FILE);
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
+  const apiKey = config.get("API_KEY");
   const data: PersistedAccountData[] = accounts
     .filter(a => a.password)
-    .map(a => ({ email: a.email, password: a.password }));
+    .map(a => ({ email: a.email, password: apiKey ? encryptPassword(a.password, apiKey) : a.password }));
   writeFileSync(ACCOUNTS_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 export function loadAccountsFromFile(): Array<{ email: string; password: string }> {
@@ -112,8 +169,12 @@ export function loadAccountsFromFile(): Array<{ email: string; password: string 
     if (!existsSync(ACCOUNTS_FILE)) {
       return [];
     }
+    const apiKey = config.get("API_KEY");
     const data: PersistedAccountData[] = JSON.parse(readFileSync(ACCOUNTS_FILE, 'utf-8'));
-    return data.filter(d => d.email && d.password);
+    return data.filter(d => d.email && d.password).map(d => ({
+      email: d.email,
+      password: apiKey ? decryptPassword(d.password, apiKey) : d.password,
+    }));
   } catch (err: any) {
     console.error('[Auth] Failed to load accounts file:', err.message);
     return [];
@@ -234,6 +295,8 @@ export async function reloadAccounts(): Promise<void> {
 let accountWatcher: FSWatcher | null = null;
 let reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let watcherReady = false;
+/** Promise-chain mutex to prevent TOCTOU races in pickAccount */
+let pickLock: Promise<any> = Promise.resolve();
 /**
  * Set up fs.watch on COOKIE_DIR with 300ms debounce to detect account file changes.
  */
@@ -284,22 +347,36 @@ export function isAvailable(acct: AccountEntry): boolean {
   if (acct.throttledUntil > Date.now()) return false;
   return true;
 }
-export function pickAccount(): AccountEntry | null {
-  const available = accounts.filter(isAvailable);
-  if (available.length === 0) {
-    if (accounts.length === 0) return null;
-    let best: AccountEntry | null = null;
-    for (const acct of accounts) {
-      if (acct.state) {
-        if (!best || acct.throttledUntil < best.throttledUntil) best = acct;
+export function pickAccount(): Promise<AccountEntry | null> {
+  return new Promise((resolve) => {
+    pickLock = pickLock.then(() => {
+      const available = accounts.filter(isAvailable);
+      if (available.length === 0) {
+        if (accounts.length === 0) {
+          resolve(null);
+          return;
+        }
+        let best: AccountEntry | null = null;
+        for (const acct of accounts) {
+          if (acct.state) {
+            if (!best || acct.throttledUntil < best.throttledUntil) best = acct;
+          }
+        }
+        resolve(best);
+        return;
       }
-    }
-    return best;
-  }
-  const idle = available.filter(a => a.inFlight === 0);
-  const candidates = idle.length > 0 ? idle : available;
-  candidates.sort((a, b) => a.totalRequests - b.totalRequests);
-  return candidates[0];
+      const idle = available.filter(a => a.inFlight === 0);
+      const pool = idle.length > 0 ? idle : available;
+      pool.sort((a, b) => {
+        if (a.inFlight !== b.inFlight) return a.inFlight - b.inFlight;
+        return (a.lastUsed || 0) - (b.lastUsed || 0);
+      });
+      const picked = pool[0];
+      picked.inFlight++;
+      picked.lastUsed = Date.now();
+      resolve(picked);
+    });
+  });
 }
 export function incrementInFlight(email: string): void {
   const acct = getAccountByEmail(email);
@@ -367,11 +444,11 @@ export function getAllAccountEmails(): string[] {
 export function getAccounts(): readonly AccountEntry[] {
   return [...accounts];
 }
-export function getToken(): string | null {
-  const acct = pickAccount();
+export async function getToken(): Promise<string | null> {
+  const acct = await pickAccount();
   return acct?.state?.token || null;
 }
-export function getTokenWithAccount(email?: string): { token: string; email: string } | null {
+export async function getTokenWithAccount(email?: string): Promise<{ token: string; email: string } | null> {
   let acct: AccountEntry | null;
   if (email) {
     acct = getAccountByEmail(email);
@@ -379,7 +456,7 @@ export function getTokenWithAccount(email?: string): { token: string; email: str
       // Account exists but throttled — still return it
     }
   } else {
-    acct = pickAccount();
+    acct = await pickAccount();
   }
   if (!acct?.state?.token) return null;
   acct.lastUsed = Date.now();

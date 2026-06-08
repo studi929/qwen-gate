@@ -334,6 +334,7 @@ export async function createQwenStreamWithRetry(
   nextParentId: string | null,
   resolvedEmail: string,
   tools?: unknown[],
+  toolChoice?: unknown,
 ): Promise<{ stream: ReadableStream; abortController: AbortController; qwenLogFile?: string }> {
   try {
     const result = await createQwenStream(
@@ -344,6 +345,7 @@ export async function createQwenStreamWithRetry(
       nextParentId,
       resolvedEmail,
       tools,
+      toolChoice,
     );
     modelRouter.recordSuccess(routedModel);
     return { stream: result.stream, abortController: result.abortController, qwenLogFile: result.qwenLogFile };

@@ -5,7 +5,6 @@
  */
 
 import { launchPersistentContext as cloakPersistentContext } from 'cloakbrowser';
-import path from 'path';
 import { mkdirSync } from 'fs';
 import type { Cookie } from 'playwright';
 import { projectPath } from '../utils/paths.ts';

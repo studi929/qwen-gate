@@ -80,12 +80,18 @@ export class CircuitBreaker {
   private readonly resetTimeoutMs: number;
   private readonly halfOpenMaxAttempts: number;
   readonly name: string;
+  /** Promise-chain mutex to prevent concurrent recordSuccess/recordFailure races */
+  private lock: Promise<void> = Promise.resolve();
 
   constructor(name: string, config?: CircuitBreakerConfig) {
     this.name = name;
     this.failureThreshold = config?.failureThreshold ?? 5;
     this.resetTimeoutMs = config?.resetTimeoutMs ?? 30000;
     this.halfOpenMaxAttempts = config?.halfOpenMaxAttempts ?? 1;
+  }
+
+  getResetTimeoutMs(): number {
+    return this.resetTimeoutMs;
   }
 
   tryTransitionToHalfOpen(): void {
@@ -119,33 +125,41 @@ export class CircuitBreaker {
   }
 
   /** Record a successful execution. */
-  recordSuccess(): void {
-    if (this.state === 'half_open') {
-      this.successCount++;
-      if (this.successCount >= this.halfOpenMaxAttempts) {
-        this.state = 'closed';
-        this.failureCount = 0;
-      }
-    } else {
-      // Reset on success in closed state
-      this.failureCount = 0;
-    }
+  recordSuccess(): Promise<void> {
+    return new Promise((resolve) => {
+      this.lock = this.lock.then(() => {
+        if (this.state === 'half_open') {
+          this.successCount++;
+          if (this.successCount >= this.halfOpenMaxAttempts) {
+            this.state = 'closed';
+            this.failureCount = 0;
+          }
+        } else {
+          this.failureCount = 0;
+        }
+        resolve();
+      });
+    });
   }
 
   /** Record a failed execution. */
-  recordFailure(): void {
-    this.lastFailureTime = Date.now();
-    if (this.state === 'half_open') {
-      // Immediate re-open on any failure in half-open
-      this.state = 'open';
-      console.error(`[CircuitBreaker:${this.name}] half_open → open (probe failed)`);
-    } else {
-      this.failureCount++;
-      if (this.failureCount >= this.failureThreshold) {
-        this.state = 'open';
-        console.warn(`[CircuitBreaker:${this.name}] closed → open (${this.failureCount} consecutive failures)`);
-      }
-    }
+  recordFailure(): Promise<void> {
+    return new Promise((resolve) => {
+      this.lock = this.lock.then(() => {
+        this.lastFailureTime = Date.now();
+        if (this.state === 'half_open') {
+          this.state = 'open';
+          console.error(`[CircuitBreaker:${this.name}] half_open → open (probe failed)`);
+        } else {
+          this.failureCount++;
+          if (this.failureCount >= this.failureThreshold) {
+            this.state = 'open';
+            console.warn(`[CircuitBreaker:${this.name}] closed → open (${this.failureCount} consecutive failures)`);
+          }
+        }
+        resolve();
+      });
+    });
   }
 
   /** Force reset to closed state (useful for manual intervention). */
@@ -182,14 +196,11 @@ export function isRetryable(error: unknown, httpStatus?: number): boolean {
   // Explicit non-retryable
   if (error instanceof NonRetryableError) return false;
 
-  // Network errors (fetch throws TypeError/AbortError/NetworkError)
+  // Network errors (fetch throws TypeError/DOMException for network issues)
   if (error instanceof TypeError || error instanceof DOMException) {
     const msg = String(error.message).toLowerCase();
-    if (msg.includes('network') || msg.includes('fetch') || msg.includes('aborted') || msg.includes('timeout')) {
-      return true;
-    }
-    // TypeError often means network failure
-    return true;
+    const networkKeywords = ['network', 'fetch', 'aborted', 'timeout', 'connection', 'econnrefused', 'enotfound', 'econnreset', 'socket'];
+    return networkKeywords.some(kw => msg.includes(kw));
   }
 
   // Timeout
@@ -337,7 +348,10 @@ export async function withRetry<T>(
       }
 
       if (cfg.circuitBreaker && cfg.circuitBreaker.getState() === 'open') {
-        throw new CircuitOpenError(cfg.circuitBreaker.getStats().lastFailureTime);
+        const stats = cfg.circuitBreaker.getStats();
+        const resetTimeoutMs = cfg.circuitBreaker.getResetTimeoutMs();
+        const retryAfterMs = Math.max(0, stats.lastFailureTime + resetTimeoutMs - Date.now());
+        throw new CircuitOpenError(retryAfterMs);
       }
 
       const jitter = delay * 0.2 * (Math.random() * 2 - 1);

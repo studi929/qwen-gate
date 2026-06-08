@@ -110,7 +110,7 @@ export async function createQwenStream(
   parentId?: string | null,
   accountEmail?: string,
   tools?: unknown[],
-  toolChoice?: string
+  toolChoice?: unknown
 ): Promise<QwenStreamResult> {
   const actualParentId: string | null = parentId !== undefined ? parentId : null;
   const timestamp = Math.floor(Date.now() / 1000);
@@ -221,7 +221,7 @@ export async function createQwenStream(
           if (code === 'RateLimited' && currentAccountEmail) {
             const throttleMs = (errorJson.data?.num || 1) * 3600_000;
             throttleAccount(currentAccountEmail, Math.min(throttleMs, 7200_000));
-            const nextAccount = pickAccount();
+            const nextAccount = await pickAccount();
             if (nextAccount && nextAccount.email !== currentAccountEmail) {
               currentAccountEmail = nextAccount.email;
             }

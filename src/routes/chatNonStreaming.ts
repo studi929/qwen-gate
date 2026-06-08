@@ -38,6 +38,7 @@ interface StreamProcessorState {
   currentThoughtIndex: number;
   reasoningBuffer: string;
   lastFullContent: string;
+  lastParsedPosition: number;
   targetResponseId: string | null;
   toolCallsOut: any[];
   correctionPrompts: string[];
@@ -66,6 +67,7 @@ function buildQwenRequest(ctx: NonStreamingContext): StreamProcessorState {
     currentThoughtIndex: 0,
     reasoningBuffer: '',
     lastFullContent: '',
+    lastParsedPosition: 0,
     targetResponseId: null,
     toolCallsOut: [],
     correctionPrompts: [],
@@ -108,16 +110,20 @@ function processAnswerDelta(delta: any, state: StreamProcessorState, ctx: NonStr
     }
   }
 
-  const { toolCalls } = parseXmlToolCalls(state.lastFullContent);
-  if (toolCalls.length > 0) {
-    const parsed = toolCalls.map((tc, i) => xmlToolCallToParsed(tc, i));
-    processToolCallsThroughGuard(parsed, state.toolCallsOut, {
-      logId: ctx.logId,
-      toolSpamGuard: state.toolSpamGuard,
-      correctionPrompts: state.correctionPrompts,
-      maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
-      logParsed: true,
-    });
+  const contentToCheck = state.lastFullContent.substring(state.lastParsedPosition);
+  if (contentToCheck.length > 0) {
+    const { toolCalls } = parseXmlToolCalls(contentToCheck);
+    if (toolCalls.length > 0) {
+      const parsed = toolCalls.map((tc, i) => xmlToolCallToParsed(tc, i));
+      processToolCallsThroughGuard(parsed, state.toolCallsOut, {
+        logId: ctx.logId,
+        toolSpamGuard: state.toolSpamGuard,
+        correctionPrompts: state.correctionPrompts,
+        maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
+        logParsed: true,
+      });
+    }
+    state.lastParsedPosition = state.lastFullContent.length;
   }
 }
 
@@ -153,10 +159,16 @@ function parseQwenResponse(line: string, state: StreamProcessorState, ctx: NonSt
   if (!delta) return;
   if (state.targetResponseId !== null && chunk.response_id !== state.targetResponseId) return;
 
-  if (delta.phase === 'thinking_summary') {
+  if (delta.phase === 'think' || delta.phase === 'thinking_summary') {
     processThinkingDelta(delta, state);
   } else if (delta.phase === 'answer') {
     processAnswerDelta(delta, state, ctx);
+  } else if (delta.phase === 'local_tool') {
+    // Local tool results are already captured in the answer content
+    // Just ensure we don't lose them
+    if (delta.content) {
+      processAnswerDelta(delta, state, ctx);
+    }
   }
 }
 
@@ -164,14 +176,23 @@ function flushAndDetectLoops(state: StreamProcessorState, logId: string): void {
   const { toolCalls } = parseXmlToolCalls(state.lastFullContent);
   if (toolCalls.length > 0) {
     const parsed = toolCalls.map((tc, i) => xmlToolCallToParsed(tc, i));
-    processToolCallsThroughGuard(parsed, state.toolCallsOut, {
-      logId,
-      toolSpamGuard: state.toolSpamGuard,
-      correctionPrompts: state.correctionPrompts,
-      maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
-      label: 'xml-flush',
-      logParsed: true,
+    // Filter out already-processed tool calls to avoid corrupting ToolSpamGuard state
+    const newCalls = parsed.filter(tc => {
+      return !state.toolCallsOut.some(existing =>
+        existing.function.name === tc.name &&
+        existing.function.arguments === JSON.stringify(tc.arguments)
+      );
     });
+    if (newCalls.length > 0) {
+      processToolCallsThroughGuard(newCalls, state.toolCallsOut, {
+        logId,
+        toolSpamGuard: state.toolSpamGuard,
+        correctionPrompts: state.correctionPrompts,
+        maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
+        label: 'xml-flush',
+        logParsed: true,
+      });
+    }
   }
 
   if (state.toolCallsOut.length < 3) return;
@@ -188,6 +209,11 @@ function flushAndDetectLoops(state: StreamProcessorState, logId: string): void {
     logStore.updateEntry(logId, entry => {
       entry.errors.push(`Parallel loop: ${loopCheck.errors[0]}`);
     });
+    // Filter out duplicate tool calls from the response
+    if (loopCheck.valid && loopCheck.valid.length < parsedForLoopCheck.length) {
+      const validIds = new Set(loopCheck.valid.map(v => v.id));
+      state.toolCallsOut = state.toolCallsOut.filter(tc => validIds.has(tc.id));
+    }
   }
 }
 

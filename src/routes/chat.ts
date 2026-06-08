@@ -26,8 +26,27 @@ export {
   truncateToolResult,
 } from "./chatHelpers.ts";
 
+const MAX_MESSAGE_SIZE = 100_000; // 100KB per message
+
 async function parseRequestBody(c: Context) {
   const body: OpenAIRequest = await c.req.json();
+
+  // Per-message size validation to prevent OOM during estimateTokens
+  if (body.messages && Array.isArray(body.messages)) {
+    for (const msg of body.messages) {
+      const content = typeof msg.content === 'string'
+        ? msg.content
+        : JSON.stringify(msg.content);
+      if (content && content.length > MAX_MESSAGE_SIZE) {
+        const err = new Error(`Message content exceeds maximum size of ${MAX_MESSAGE_SIZE} characters`);
+        (err as any).upstreamStatus = 400;
+        (err as any).type = 'invalid_request_error';
+        (err as any).code = 'message_too_large';
+        throw err;
+      }
+    }
+  }
+
   let isStream = body.stream ?? false;
   const streamMode = config.get("STREAMING_MODE", "auto");
   if (streamMode === "stream") isStream = true;
@@ -85,7 +104,7 @@ async function setupSession(
 
   const isThinkingModel = !body.model.includes("no-thinking");
 
-  const selectedAccount = pickAccount();
+  const selectedAccount = await pickAccount();
   const accountEmail = selectedAccount?.email;
 
   const sessionResult = await acquireSessionWithCorrections(
@@ -109,6 +128,8 @@ async function setupSession(
       session.chatId,
       nextParentId,
       resolvedEmail,
+      body.tools,
+      body.tool_choice,
     );
 
   // Build finalPrompt for logStore debug logging only
@@ -230,6 +251,12 @@ export async function chatCompletions(c: Context) {
     logStore.finalizeRequest(logId);
     const status = err.upstreamStatus || 500;
     const cleanMessage = cleanTextOfXmlArtifacts(err.message || String(err)).cleanedText || err.message || 'Internal error';
-    return c.json({ error: { message: cleanMessage } }, status);
+    return c.json({
+      error: {
+        message: cleanMessage,
+        type: err.type || 'server_error',
+        code: err.code || undefined,
+      },
+    }, status);
   }
 }

@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { projectPath } from '../utils/paths.ts';
 
 export interface ConfigSchema {

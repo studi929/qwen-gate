@@ -2,11 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert';
 
 process.env.TEST_MOCK_PLAYWRIGHT = 'true';
-// Ensure API_KEY is empty by default for existing tests
-process.env.API_KEY = '';
+// Set a test API key (never empty — prevents auth bypass in tests)
+process.env.API_KEY = 'test-key-for-testing';
 
 import { app } from '../index.tsx';
 import { initPlaywright, closePlaywright } from '../services/playwright.ts';
+
+const TEST_API_KEY = 'test-key-for-testing';
+const authHeaders = { 'Authorization': `Bearer ${TEST_API_KEY}` };
 
 test('Health check returns degraded when Playwright not initialized', async () => {
   const req = new Request('http://localhost/health');
@@ -31,7 +34,7 @@ test('Models endpoint returns qwen3.6-plus and qwen3.6-plus-no-thinking', async 
   };
 
   try {
-    const req = new Request('http://localhost/v1/models');
+    const req = new Request('http://localhost/v1/models', { headers: authHeaders });
     const res = await app.fetch(req);
     
     assert.strictEqual(res.status, 200);
@@ -79,7 +82,7 @@ test('Chat Completions endpoint with qwen3.6-plus (thinking enabled)', async () 
 
     const req = new Request('http://localhost/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
       body: JSON.stringify(payload)
     });
 
@@ -159,7 +162,7 @@ test('Chat Completions returns explicit error for non-SSE upstream JSON errors',
   try {
     const req = new Request('http://localhost/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
       body: JSON.stringify({
         model: 'qwen3.6-plus',
         messages: [{ role: 'user', content: 'hello' }],
@@ -201,7 +204,7 @@ test('Chat Completions returns a JSON chat.completion object for non-streaming r
   try {
     const req = new Request('http://localhost/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
       body: JSON.stringify({
         model: 'qwen3.6-plus',
         messages: [{ role: 'user', content: 'hello' }],
@@ -291,7 +294,7 @@ test('Chat Completions endpoint - Non-streaming (stream: false)', async () => {
 
     const req = new Request('http://localhost/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders),
       body: JSON.stringify(payload)
     });
 

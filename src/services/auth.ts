@@ -13,6 +13,7 @@ import {
   COOKIE_DIR, getCookieFilePath, decodeJwt, discoverSavedAccounts,
   loadAccountsFromFile, setupAccountWatcher as setupAccountWatcherImpl,
   enableHotReload as enableHotReloadImpl, resetWatcherState,
+  encrypt, decrypt,
 } from './accountManager.ts';
 import { needsRefresh, ensureAccountFresh } from './tokenRefresh.ts';
 import { LoginMutex, loginFreshViaBrowser, loginFreshViaFetch, loginViaTempContext } from './loginHelpers.ts';
@@ -215,10 +216,24 @@ export async function ensureAllFresh(): Promise<void> {
 export async function loadSavedCookies(email: string): Promise<AuthState | null> {
   try {
     const filePath = getCookieFilePath(email);
-    if (!existsSync(filePath)) return null;
+    if (!existsSync(filePath)) {
+      // Constant-time delay to prevent account enumeration via timing
+      await new Promise(r => setTimeout(r, 50 + Math.random() * 50));
+      return null;
+    }
 
     const raw = readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as { email: string; token: string; refreshToken: string | null; expiresAt: number };
+    const apiKey = config.get("API_KEY");
+    let jsonStr = raw;
+    // Try to decrypt; fallback to raw for legacy unencrypted files
+    if (apiKey) {
+      try {
+        jsonStr = decrypt(raw, apiKey);
+      } catch {
+        // File is likely unencrypted (legacy format) — use raw
+      }
+    }
+    const data = JSON.parse(jsonStr) as { email: string; token: string; refreshToken: string | null; expiresAt: number };
 
     if (!data.token || data.email.toLowerCase() !== email.toLowerCase()) return null;
 
@@ -313,7 +328,10 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
       expiresAt: jwtExpiresAt,
     };
 
-    writeFileSync(getCookieFilePath(normalizedEmail), JSON.stringify(data, null, 2), 'utf-8');
+    const jsonStr = JSON.stringify(data, null, 2);
+    const apiKey = config.get("API_KEY");
+    const output = apiKey ? encrypt(jsonStr, apiKey) : jsonStr;
+    writeFileSync(getCookieFilePath(normalizedEmail), output, 'utf-8');
 
     const acct = accounts.find(a => a.email.toLowerCase().trim() === normalizedEmail);
     if (acct && token) {

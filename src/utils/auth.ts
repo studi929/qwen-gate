@@ -20,18 +20,23 @@ export function safeCompare(a: string, b: string): boolean {
 
 /**
  * Check API key authorization on a request.
+ * Checks Authorization header first, then falls back to ?token= query parameter
+ * (for EventSource/SSE and browser page-navigation scenarios).
  * Returns a Response (401) if unauthorized, or undefined if authorized / no key configured.
  */
 export function checkApiKeyAuth(c: any): Response | undefined {
   const apiKey = config.get("API_KEY");
   if (!apiKey) return undefined;
+
   const authHeader = c.req.header("authorization");
-  if (
-    !authHeader ||
-    !authHeader.startsWith("Bearer ") ||
-    !safeCompare(authHeader.slice(7), apiKey)
-  ) {
-    return c.json({ error: "Unauthorized" }, 401);
+  if (authHeader && authHeader.startsWith("Bearer ") && safeCompare(authHeader.slice(7), apiKey)) {
+    return undefined;
   }
-  return undefined;
+
+  const tokenParam = c.req.query("token");
+  if (tokenParam && safeCompare(tokenParam, apiKey)) {
+    return undefined;
+  }
+
+  return c.json({ error: "Unauthorized" }, 401);
 }

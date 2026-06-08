@@ -126,7 +126,11 @@ export function normalizeToolCalls(toolCalls: ParsedToolCall[]): { fixed: Parsed
 function repairJson(raw: string): string | null {
   if (!raw || raw.trim().length < 2) return null;
   let s = raw.trim();
+
+  s = s.replace(/'/g, '"');
+  s = s.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
   s = s.replace(/,\s*([}\]])/g, '$1');
+
   const openCurly = (s.match(/{/g) || []).length;
   const closeCurly = (s.match(/}/g) || []).length;
   const openBracket = (s.match(/\[/g) || []).length;
