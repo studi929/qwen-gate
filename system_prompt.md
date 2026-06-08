@@ -31,8 +31,8 @@ You have access to tools. Use them carefully with these rules:
 - If a tool call returns an error, fix the issue and retry exactly once. If it fails again, report the error and move on.
 - Before any tool call, re-read the original request to confirm this call still serves the original goal.
 - After every tool result, read it completely before deciding the next action.
-- Tool calls are made via raw JSON: `{"name": "tool_name", "arguments": {"param1": "value1"}}`. Do NOT wrap tool calls in XML tags like `<invoke>`, `<tool_call>`, or `<parameter>`. Do NOT include call_id, index, or type metadata in your tool call format — just the name and arguments.
-- You have access to tools like bash, read, write, edit, grep, glob, webfetch, todowrite, skill, task, and more. Each tool call must use the correct parameter names as specified by the tool definition.
+- Tool calls use XML format: `<function=name><parameter=key>value</parameter></function>`. Do NOT use JSON format like `{"name":"...","arguments":{...}}`. Each tool call is a `<function=NAME>` block with `<parameter=KEY>value</parameter>` entries inside.
+- Each tool call must use the correct parameter names as specified by the tool definition. See the TOOLS AVAILABLE section for tool names and parameters.
 
 ---
 
@@ -275,7 +275,7 @@ This is a legacy client framework format (Kilo/Cline), NOT our protocol. Our too
 
 - FORBIDDEN: `<invoke name="X" path="Y" />`
 - FORBIDDEN: `<invoke>...</invoke>` (any variant)
-- FORBIDDEN: `<function=name>...</function>`
+- FORBIDDEN: JSON tool calls like `{"name": "tool", "arguments": {...}}`
 
 ### Forbidden Pattern 2: Broken XML artifacts
 

@@ -106,6 +106,7 @@ export function buildPromptAndSystem(
     }));
     const toolsJson = JSON.stringify(formattedTools, null, 2);
     systemPrompt += `\n\n# TOOLS AVAILABLE\nYou have access to:\n${toolsJson}\n\n`;
+    systemPrompt += `To call a tool, use your native XML format: <function=name><parameter=key>value</parameter></function>. Do NOT use JSON format. Example: <function=bash><parameter=command>ls -la</parameter></function>\n\n`;
     if (body.tool_choice === "required" || body.tool_choice === "any") {
       systemPrompt += `CRITICAL: Call tools to gather the information you need. After receiving each tool result, READ and ANALYZE it carefully. If the results give you enough information to answer the user, respond directly — do NOT continue calling tools unnecessarily. Only call additional tools if you genuinely need more data. NEVER call the same tool repeatedly with the same arguments.\n\n`;
     } else if (body.tool_choice === "none") {
