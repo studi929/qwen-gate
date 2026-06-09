@@ -6,11 +6,11 @@
  */
 
 import crypto from 'crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { getActivePage, getBrowser } from './playwright.ts';
 import { logStore } from './logStore.js';
 import {
-  COOKIE_DIR, getCookieFilePath, decodeJwt, discoverSavedAccounts,
+  decodeJwt,
   loadAccountsFromFile, setupAccountWatcher as setupAccountWatcherImpl,
   enableHotReload as enableHotReloadImpl, resetWatcherState,
   encrypt, decrypt,
@@ -21,8 +21,8 @@ import { config } from './configService.ts';
 
 export { tryRefreshToken, ensureAccountFresh, needsRefresh } from './tokenRefresh.ts';
 export {
-  addAccount, removeAccount, reloadAccounts, discoverSavedAccounts,
-  COOKIE_DIR, getCookieFilePath, decodeJwt,
+  addAccount, removeAccount, reloadAccounts,
+  decodeJwt,
   isAvailable, pickAccount, incrementInFlight, decrementInFlight,
   incrementTotalRequests, hasInFlight, getAccountByEmail,
   getToken, getTokenWithAccount, throttleAccount, isAccountThrottled,
@@ -120,27 +120,14 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
   initDone = true;
 
   const persisted = loadAccountsFromFile();
-  const discovered = discoverSavedAccounts();
 
-  const merged = [...discovered];
-  for (const p of persisted) {
-    const existing = merged.find(a => a.email.toLowerCase().trim() === p.email.toLowerCase().trim());
-    if (existing) {
-      if (p.password && !existing.password) {
-        existing.password = p.password;
-      }
-    } else if (p.password) {
-      merged.push(p);
-    }
-  }
-
-  if (merged.length === 0) {
+  if (persisted.length === 0) {
     console.warn('[Auth] No saved accounts found. Run: npm run login user@example.com');
     return;
   }
 
   accounts.length = 0;
-  for (const a of merged) {
+  for (const a of persisted) {
     accounts.push({
       email: a.email,
       password: a.password,
@@ -215,46 +202,6 @@ export async function ensureAllFresh(): Promise<void> {
   await Promise.allSettled(stale.map(a => ensureAccountFresh(a)));
 }
 
-export async function loadSavedCookies(email: string): Promise<AuthState | null> {
-  try {
-    const filePath = getCookieFilePath(email);
-    if (!existsSync(filePath)) {
-      // Constant-time delay to prevent account enumeration via timing
-      await new Promise(r => setTimeout(r, 50 + Math.random() * 50));
-      return null;
-    }
-
-    const raw = readFileSync(filePath, 'utf-8');
-    const apiKey = config.get("API_KEY");
-    let jsonStr = raw;
-    // Try to decrypt; fallback to raw for legacy unencrypted files
-    if (apiKey) {
-      try {
-        jsonStr = decrypt(raw, apiKey);
-      } catch {
-        // File is likely unencrypted (legacy format) — use raw
-      }
-    }
-    const data = JSON.parse(jsonStr) as { email: string; token: string; refreshToken: string | null; expiresAt: number };
-
-    if (!data.token || data.email.toLowerCase() !== email.toLowerCase()) return null;
-
-    const payload = decodeJwt(data.token);
-    if (payload?.exp && payload.exp * 1000 < Date.now()) {
-      return null;
-    }
-
-    return {
-      token: data.token,
-      expiresAt: data.expiresAt,
-      refreshToken: data.refreshToken,
-    };
-  } catch (err: any) {
-    console.warn(`[Auth] Failed to load saved cookies for ${email}: ${err.message}`);
-    return null;
-  }
-}
-
 export async function loadCookiesFromProfile(email: string): Promise<AuthState | null> {
   try {
     const { getProfileDir } = await import('./playwright.ts');
@@ -313,7 +260,7 @@ async function tryExtractCookies(profilePath: string, email: string, saveCookieF
           refreshToken: refreshCookie?.value || null,
         };
         if (saveCookieFile) {
-          await saveCookies(email, state.token, state.refreshToken, state.expiresAt);
+          await saveCookies(email, state.token, state.refreshToken, state.expiresAt, true);
         }
         return state;
       }
@@ -329,33 +276,14 @@ async function tryExtractCookies(profilePath: string, email: string, saveCookieF
   return null;
 }
 
-export async function saveCookies(email: string, token: string, refreshToken?: string | null, expiresAt?: number): Promise<void> {
+export async function saveCookies(email: string, token: string, refreshToken?: string | null, expiresAt?: number, skipProfile?: boolean): Promise<void> {
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    if (!existsSync(COOKIE_DIR)) mkdirSync(COOKIE_DIR, { recursive: true });
-
-    let jwtExpiresAt = expiresAt;
-    if (!jwtExpiresAt) {
+    const jwtExpiresAt = expiresAt || (() => {
       const payload = decodeJwt(token);
-      if (payload?.exp && typeof payload.exp === 'number') {
-        jwtExpiresAt = payload.exp * 1000;
-      } else {
-        jwtExpiresAt = Date.now() + AUTH_TOKEN_MAX_AGE_MS;
-      }
-    }
-
-    const data = {
-      email: normalizedEmail,
-      token,
-      refreshToken: refreshToken || null,
-      savedAt: Date.now(),
-      expiresAt: jwtExpiresAt,
-    };
-
-    const jsonStr = JSON.stringify(data, null, 2);
-    const apiKey = config.get("API_KEY");
-    const output = apiKey ? encrypt(jsonStr, apiKey) : jsonStr;
-    writeFileSync(getCookieFilePath(normalizedEmail), output, 'utf-8');
+      if (payload?.exp && typeof payload.exp === 'number') return payload.exp * 1000;
+      return Date.now() + AUTH_TOKEN_MAX_AGE_MS;
+    })();
 
     const acct = accounts.find(a => a.email.toLowerCase().trim() === normalizedEmail);
     if (acct && token) {
@@ -369,8 +297,9 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
       }
     }
 
-    // Also save cookies to the persistent Chromium profile for next boot
-    await saveCookiesToProfile(normalizedEmail, token, refreshToken || null);
+    if (!skipProfile) {
+      await saveCookiesToProfile(normalizedEmail, token, refreshToken || null);
+    }
 
   } catch (err: any) {
     console.error(`[Auth] Failed to save cookies for ${normalizedEmail}: ${err.message}`);

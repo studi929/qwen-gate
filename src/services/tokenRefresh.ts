@@ -33,12 +33,16 @@ export async function tryRefreshToken(acct: AccountEntry): Promise<boolean> {
     if (response.ok) {
       const data = await response.json();
       if (data.data?.token) {
+        const newToken = data.data.token;
+        const newRefresh = data.data.refresh_token || acct.state.refreshToken;
+        const payload = (await import('./auth.ts')).decodeJwt(newToken);
+        const newExpiresAt = payload?.exp ? payload.exp * 1000 : Date.now() + AUTH_TOKEN_MAX_AGE_MS;
         acct.state = {
-          token: data.data.token,
-          expiresAt: Date.now() + AUTH_TOKEN_MAX_AGE_MS,
-          refreshToken: data.data.refresh_token || acct.state.refreshToken,
+          token: newToken,
+          expiresAt: newExpiresAt,
+          refreshToken: newRefresh,
         };
-        await saveCookies(acct.email, acct.state.token, acct.state.refreshToken, acct.state.expiresAt);
+        await saveCookies(acct.email, newToken, newRefresh, newExpiresAt);
         if (acct.throttledUntil > Date.now()) {
           acct.throttledUntil = 0;
         } else {
@@ -103,6 +107,7 @@ export async function ensureAccountFresh(acct: AccountEntry): Promise<boolean> {
       const newState = await loginFresh(acct.email, acct.password);
       if (newState) {
         acct.state = newState;
+        await saveCookies(acct.email, newState.token, newState.refreshToken, newState.expiresAt);
         return true;
       }
       return false;

@@ -11,7 +11,7 @@ import { projectPath } from '../utils/paths.ts';
 
 export function getProfileDir(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  const dir = projectPath('qwen_profile', 'chromium-profiles', safe);
+  const dir = projectPath('qwen_profile', safe);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -114,8 +114,7 @@ async function tryCheckToken(context: any, email: string): Promise<LoginResult |
     if (!tokenCookie) return null;
     const { saveCookies } = await import('./auth.ts');
     const refreshCookie = cookies.find((c: Cookie) => c.name.toLowerCase().includes('refresh'));
-    // Don't pass expiresAt — let saveCookies decode the JWT for real TTL
-    await saveCookies(email, tokenCookie.value, refreshCookie?.value);
+    await saveCookies(email, tokenCookie.value, refreshCookie?.value, undefined, true);
     try { await context.close(); } catch { /* non-blocking */ }
     return 'success';
   } catch {
@@ -230,8 +229,7 @@ export async function refreshViaProfile(email: string): Promise<boolean> {
       if (tokenCookie && tokenCookie.expires && tokenCookie.expires * 1000 > Date.now()) {
         const { saveCookies } = await import('./auth.ts');
         const refreshCookie = cookies.find((c: Cookie) => c.name.toLowerCase().includes('refresh'));
-        // Don't pass expiresAt — let saveCookies decode the JWT for real TTL
-        await saveCookies(email, tokenCookie.value, refreshCookie?.value);
+        await saveCookies(email, tokenCookie.value, refreshCookie?.value, undefined, true);
         try { await context.close(); } catch { /* non-blocking */ }
         return true;
       }

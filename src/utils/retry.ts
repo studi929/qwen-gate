@@ -138,6 +138,9 @@ export class CircuitBreaker {
           this.failureCount = 0;
         }
         resolve();
+      }).catch((err) => {
+        console.error(`[CircuitBreaker:${this.name}] mutex error in recordSuccess:`, err);
+        resolve();
       });
     });
   }
@@ -158,6 +161,9 @@ export class CircuitBreaker {
           }
         }
         resolve();
+      }).catch((err) => {
+        console.error(`[CircuitBreaker:${this.name}] mutex error in recordFailure:`, err);
+        resolve();
       });
     });
   }
@@ -175,12 +181,11 @@ export class CircuitBreaker {
     this.allowRequest();
     try {
       const result = await fn();
-      this.recordSuccess();
+      await this.recordSuccess();
       return result;
     } catch (error) {
-      // Only count retryable errors as circuit failures
       if (isRetryable(error)) {
-        this.recordFailure();
+        await this.recordFailure();
       }
       throw error;
     }
@@ -204,6 +209,7 @@ export function isRetryable(error: unknown, httpStatus?: number): boolean {
   }
 
   // Timeout
+  if (error instanceof AttemptTimeoutError) return true;
   if (error instanceof Error && error.name === 'TimeoutError') return true;
 
   // Abort
