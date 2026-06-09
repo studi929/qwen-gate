@@ -154,20 +154,15 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
     });
   }
 
-  // Phase 1: Parallel — try profiles and saved cookies for ALL accounts at once
+  // Phase 1: Parallel — extract fresh cookies from Chromium profiles for ALL accounts
   await Promise.allSettled(accounts.map(async (acct) => {
     const profileState = await loadCookiesFromProfile(acct.email);
     if (profileState) {
       acct.state = profileState;
-    } else {
-      const savedState = await loadSavedCookies(acct.email);
-      if (savedState) {
-        acct.state = savedState;
-      }
     }
   }));
 
-  // Phase 2: Sequential — password-based login for accounts that still need it
+  // Phase 2: Sequential — password-based login for accounts without a profile session
   for (let i = 0; i < accounts.length; i++) {
     const acct = accounts[i];
     if (!acct.state && acct.password) {
@@ -374,8 +369,44 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
       }
     }
 
+    // Also save cookies to the persistent Chromium profile for next boot
+    await saveCookiesToProfile(normalizedEmail, token, refreshToken || null);
+
   } catch (err: any) {
     console.error(`[Auth] Failed to save cookies for ${normalizedEmail}: ${err.message}`);
+  }
+}
+
+/**
+ * Inject the auth token into the persistent Chromium profile so
+ * loadCookiesFromProfile can find it on the next boot.
+ */
+async function saveCookiesToProfile(email: string, token: string, refreshToken: string | null): Promise<void> {
+  try {
+    const { getProfileDir } = await import('./playwright.ts');
+    const profileDir = getProfileDir(email);
+    const { launchPersistentContext } = await import('cloakbrowser');
+
+    const cookies: Array<{ name: string; value: string; domain: string; path: string }> = [
+      { name: 'token', value: token, domain: '.chat.qwen.ai', path: '/' },
+    ];
+    if (refreshToken) {
+      cookies.push({ name: 'refresh_token', value: refreshToken, domain: '.chat.qwen.ai', path: '/' });
+    }
+
+    const context = await launchPersistentContext({
+      userDataDir: profileDir,
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--mute-audio', '--no-first-run'],
+    });
+    try {
+      await context.addCookies(cookies);
+    } finally {
+      await context.close();
+    }
+  } catch (err: any) {
+    // Non-blocking — profile might be locked or unavailable
+    console.warn(`[Auth] Profile cookie injection failed for ${email}: ${err.message}`);
   }
 }
 
