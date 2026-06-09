@@ -25,8 +25,8 @@ import { settingsHtml } from "./settings.ts";
 import { APP_VERSION } from "../../utils/version.ts";
 
 const serveHtml = (html: string) => (c: any) => {
-  const scriptInjection = `<script>\nwindow.APP_VERSION = '${APP_VERSION}';\n`;
-  const output = html.replace("<script>", scriptInjection);
+  const scriptInjection = `<script>\nwindow.APP_VERSION = '${APP_VERSION}';\n</script>\n`;
+  const output = html.replace(/(<script\b)/, scriptInjection + "$1");
   return c.html(output);
 };
 
