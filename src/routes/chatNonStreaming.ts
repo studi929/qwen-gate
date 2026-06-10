@@ -16,6 +16,7 @@ import {
 const MAX_TOOL_CALLS_PER_TURN = 8;
 
 import { parseXmlToolCalls, cleanTextOfXmlArtifacts, xmlToolCallToParsed } from '../tools/xmlToolParser.ts';
+import { extractLocalMcpToolCalls } from './chatStreamingHelpers.ts';
 
 export interface NonStreamingContext {
   c: Context;
@@ -157,6 +158,17 @@ function parseQwenResponse(line: string, state: StreamProcessorState, ctx: NonSt
     processThinkingDelta(delta, state);
   } else if (delta.phase === 'answer') {
     processAnswerDelta(delta, state, ctx);
+  } else if (delta.phase === 'local_tool' && delta.status === 'finished') {
+    const localToolCalls = extractLocalMcpToolCalls(chunk);
+    if (localToolCalls.length > 0) {
+      processToolCallsThroughGuard(localToolCalls, state.toolCallsOut, {
+        logId: ctx.logId,
+        toolSpamGuard: state.toolSpamGuard,
+        correctionPrompts: state.correctionPrompts,
+        maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
+        logParsed: true,
+      });
+    }
   }
 }
 
