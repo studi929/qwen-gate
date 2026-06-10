@@ -222,6 +222,63 @@ test('Chat Completions returns a JSON chat.completion object for non-streaming r
   }
 });
 
+test('Chat Completions forwards OpenAI tools to Qwen payload', async () => {
+  const originalFetch = globalThis.fetch;
+  let qwenPayload: any = null;
+  globalThis.fetch = async (input: any, init?: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (url.includes('/api/v2/chat/completions')) {
+      qwenPayload = JSON.parse(String(init?.body || '{}'));
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"choices": [{"delta": {"phase": "answer", "content": ""}}]}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          c.close();
+        }
+      });
+      return new Response(stream, { status: 200 });
+    }
+    return originalFetch(input, init);
+  };
+
+  await initPlaywright(false);
+
+  try {
+    const tools = [{
+      type: 'function' as const,
+      function: {
+        name: 'read',
+        description: 'Read a file',
+        parameters: {
+          type: 'object',
+          properties: { filePath: { type: 'string' } },
+          required: ['filePath'],
+        },
+      },
+    }];
+    const req = new Request('http://localhost/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen3.6-plus',
+        messages: [{ role: 'user', content: 'read package.json' }],
+        tools,
+        tool_choice: 'auto',
+        stream: false,
+      }),
+    });
+
+    const res = await app.fetch(req);
+    assert.strictEqual(res.status, 200);
+    assert.deepStrictEqual(qwenPayload.tools, tools);
+    assert.strictEqual(qwenPayload.tool_choice, 'auto');
+    assert.strictEqual(qwenPayload.parallel_tool_calls, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    await closePlaywright();
+  }
+});
+
 test('API Key protection', async () => {
   const originalApiKey = process.env.API_KEY;
   process.env.API_KEY = 'test-api-key';

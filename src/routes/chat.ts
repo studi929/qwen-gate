@@ -102,14 +102,16 @@ async function setupSession(
 
   const routedModel = await modelRouter.route(body.model);
   let { stream, abortController: qwenAbortController } =
-    await createQwenStreamWithRetry(
-      sessionMessages,
-      isThinkingModel,
-      routedModel,
-      session.chatId,
-      nextParentId,
-      resolvedEmail,
-    );
+      await createQwenStreamWithRetry(
+        sessionMessages,
+        isThinkingModel,
+        routedModel,
+        session.chatId,
+        nextParentId,
+        resolvedEmail,
+        body.tools,
+        typeof body.tool_choice === 'string' ? body.tool_choice : undefined,
+      );
 
   // Build finalPrompt for logStore debug logging only
   const finalPrompt = sessionMessages.map((m: any) => {
