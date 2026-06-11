@@ -44,8 +44,7 @@ var SETTINGS_SECTIONS = [
   ]},
   { title: 'System & Accounts', desc: 'System prompts and account management actions.', fields: [
     { key: 'USE_CUSTOM_INSTRUCTION', label: 'USE_CUSTOM_INSTRUCTION', type: 'checkbox' },
-    { key: 'CUSTOM_INSTRUCTION', label: 'CUSTOM_INSTRUCTION', type: 'text' },
-    { key: '_delete_all_chats', type: 'action', label: 'Delete All Chats', desc: 'Removes all conversations from every Qwen account', action: 'deleteAllChats' }
+    { key: 'CUSTOM_INSTRUCTION', label: 'CUSTOM_INSTRUCTION', type: 'text' }
   ]}
 ];
 
@@ -66,7 +65,22 @@ function renderSettingsForm() {
     }
     html += '</div></fieldset>';
   }
-  container.innerHTML = html;
+  container.innerHTML = html + renderDeleteAllChatsSection();
+}
+
+function renderDeleteAllChatsSection() {
+  return '<div class="settings-section" style="border-color:var(--danger);margin-top:24px">'
+    + '<div class="settings-section-title" style="color:var(--danger)">Danger Zone</div>'
+    + '<p class="settings-section-desc" style="color:var(--text-secondary)">Irreversible account-wide actions. Proceed with caution.</p>'
+    + '<button class="delete-all-btn" onclick="handleDeleteAllChats()">Delete All Chats</button></div>';
+}
+
+async function handleDeleteAllChats() {
+  var bodyHtml = '<p style="margin:0 0 12px">This will permanently <strong>delete all conversations</strong> from every Qwen account.</p>'
+    + '<p style="margin:0;color:var(--danger)"><strong>This action cannot be undone.</strong></p>';
+  var footerHtml = '<button class="modal-btn modal-btn-secondary" onclick="hideModal()">Cancel</button>'
+    + '<button class="modal-btn modal-btn-primary" id="confirmDeleteBtn" onclick="executeDeleteAllChats()">Yes, delete all</button>';
+  showModal('Delete All Chats', bodyHtml, footerHtml);
 }
 
 function renderSettingsField(field, val) {
@@ -85,7 +99,7 @@ function renderSettingsField(field, val) {
   if (field.key === 'CUSTOM_INSTRUCTION') {
     return '<div class="settings-field" style="grid-column:span 2">'
       + '<label for="cfg-CUSTOM_INSTRUCTION">' + escHtml(field.label) + '</label>'
-      + '<textarea id="cfg-CUSTOM_INSTRUCTION" data-key="CUSTOM_INSTRUCTION" rows="4" style="width:100%;resize:vertical;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-family:var(--mono);font-size:0.75rem;color:var(--text-primary)" oninput="onFieldChange(this)">' + escHtml(val) + '</textarea></div>';
+      + '<textarea id="cfg-CUSTOM_INSTRUCTION" data-key="CUSTOM_INSTRUCTION" rows="4" oninput="onFieldChange(this)">' + escHtml(val) + '</textarea></div>';
   }
   if (field.type === 'select') {
     var opts = '';
@@ -173,10 +187,10 @@ function showModal(title, bodyHtml, footerHtml) {
   document.getElementById('modalHeader').textContent = title;
   document.getElementById('modalBody').innerHTML = bodyHtml;
   document.getElementById('modalFooter').innerHTML = footerHtml;
-  document.getElementById('confirmModal').style.display = 'flex';
+  document.getElementById('confirmModal').classList.remove('hidden');
 }
 function hideModal() {
-  document.getElementById('confirmModal').style.display = 'none';
+  document.getElementById('confirmModal').classList.add('hidden');
 }
 
 /* ── Actions ── */
@@ -200,7 +214,17 @@ async function executeDeleteAllChats() {
   var doneCount = 0;
   var errorCount = 0;
   try {
-    var res = await fetch('/dashboard/accounts/delete-all-chats', { method: 'POST' });
+    var res = await fetch('/dashboard/accounts/delete-all-chats', { method: 'POST', headers: authHeaders() });
+    if (!res.ok) {
+      var errBody = '';
+      try { errBody = await res.text(); } catch(e) {}
+      var errMsg = errBody || 'HTTP ' + res.status;
+      try { var errJson = JSON.parse(errBody); if (errJson.error) errMsg = errJson.error; } catch(e) {}
+      progressEl.innerHTML = '<div style="color:var(--danger)">Error: ' + escHtml(errMsg) + '</div>';
+      var footerHtml = '<button class="modal-btn modal-btn-secondary" onclick="hideModal()">Close</button>';
+      document.getElementById('modalFooter').innerHTML = footerHtml;
+      return;
+    }
     var reader = res.body.getReader();
     var decoder = new TextDecoder();
     var buffer = '';

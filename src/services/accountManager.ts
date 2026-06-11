@@ -397,6 +397,8 @@ export async function pickAccount(): Promise<AccountEntry | null> {
     const picked = pool[0];
     picked.lastUsed = Date.now();
     picked.inFlight++;
+    // Safety valve: reset if counter drifts unreasonably high
+    if (picked.inFlight > 20) picked.inFlight = 1;
     return picked;
   } catch (err: any) {
     logStore.log('error', 'auth', 'pickAccount mutex error:', err);

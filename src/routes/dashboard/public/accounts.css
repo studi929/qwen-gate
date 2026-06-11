@@ -3,7 +3,7 @@
 .page-header h1{font-size:1.35rem;font-family:var(--display);font-weight:700;letter-spacing:-0.02em}
 
 /* Panels */
-.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;box-shadow:var(--clay-shadow),var(--clay-puff)}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;max-height:100vh;box-shadow:var(--clay-shadow),var(--clay-puff)}
 .panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;user-select:none;border-bottom:1px solid var(--border);transition:background 0.15s}
 .panel-title{font-size:0.875rem;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:8px}
 .panel-body{padding:16px}

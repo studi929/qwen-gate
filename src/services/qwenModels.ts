@@ -214,16 +214,19 @@ export async function deleteAllChats(email: string): Promise<void> {
       'DELETE', reqHeaders, 'settings',
     );
     debugId = fetchDebugId;
-    if (response.ok) {
+    const body = await response.json();
+    if (response.ok && body?.success !== false) {
       logStore.log('info', 'account', `All chats deleted for ${email}`);
     } else {
-      const text = await response.text();
-      console.error(`[Qwen] Failed to delete chats for ${email}: ${response.status} - ${text}`);
+      const errMsg = body?.message || body?.error || JSON.stringify(body);
+      console.error(`[Qwen] Failed to delete chats for ${email}: ${response.status} - ${errMsg}`);
+      throw new Error(`Delete chats failed: ${errMsg}`);
     }
     completeEntry(debugId);
   } catch (err: any) {
     if (debugId) errorEntry(debugId, err.message);
     console.error(`[Qwen] Error deleting chats for ${email}: ${err.message}`);
+    throw err;
   }
 }
 

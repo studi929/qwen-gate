@@ -57,7 +57,7 @@ export const settingsHtml = `<!DOCTYPE html>
 
 <div class="toast-container" id="toastContainer"></div>
 
-<div class="modal-overlay" id="confirmModal" style="display:none">
+    <div class="modal-overlay hidden" id="confirmModal">
   <div class="modal-box">
     <div class="modal-header" id="modalHeader">Warning</div>
     <div class="modal-body" id="modalBody"></div>

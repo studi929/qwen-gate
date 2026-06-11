@@ -11,8 +11,9 @@
 .settings-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px}
 .settings-field{display:flex;flex-direction:column;gap:4px}
 .settings-field label{font-size:0.75rem;font-weight:600;color:var(--text-primary);font-family:var(--mono)}
-.settings-field select,.settings-field input{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8125rem;background:var(--bg-primary);color:var(--text-primary);font-family:var(--mono)}
-.settings-field select:focus,.settings-field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.settings-field select,.settings-field input,.settings-field textarea{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.8125rem;background:var(--bg-primary);color:var(--text-primary);font-family:var(--mono);width:100%;box-sizing:border-box}
+.settings-field select:focus,.settings-field input:focus,.settings-field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.settings-field textarea{resize:vertical;min-height:60px;line-height:1.5}
 .settings-field input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
 .settings-checkbox{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0}
 .settings-checkbox span{font-size:0.75rem;font-family:var(--mono);color:var(--text-primary)}
@@ -24,13 +25,17 @@
 .toast.toast-error{border-left:3px solid var(--danger)}
 @keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:2000;display:flex;align-items:center;justify-content:center}
+.modal-overlay.hidden{display:none!important}
 .modal-box{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden}
 .modal-header{padding:16px 20px 12px;font-size:1rem;font-weight:700;color:var(--text-primary);border-bottom:1px solid var(--border)}
-.modal-body{padding:16px 20px;font-size:0.8125rem;color:var(--text-secondary);line-height:1.6;max-height:400px;overflow-y:auto}
+.modal-body{padding:16px 20px;font-size:0.8125rem;color:var(--text-secondary);line-height:1.6;max-height:50vh;overflow-y:auto}
+#deleteProgress{font-family:var(--mono);font-size:0.75rem}
 .modal-footer{padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end}
 .modal-btn{padding:8px 20px;border:none;border-radius:var(--radius-sm);font-size:0.8125rem;font-weight:500;cursor:pointer;font-family:var(--font)}
 .modal-btn-primary{background:var(--danger);color:#fff}
 .modal-btn-secondary{background:var(--bg-elevated);color:var(--text-primary);border:1px solid var(--border)}
 .modal-btn-primary:hover{opacity:0.85}
 .modal-btn-secondary:hover{background:var(--border)}
+.delete-all-btn{display:block;width:100%;padding:14px 20px;background:var(--danger);color:#fff;border:2px solid var(--danger);border-radius:var(--radius);font-size:0.9375rem;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity 0.2s;text-align:center;letter-spacing:0.02em}
+.delete-all-btn:hover{opacity:0.85}
 @media(max-width:600px){.settings-fields{grid-template-columns:1fr}.settings-section{padding:12px 14px 16px}.main-content{padding:12px}}

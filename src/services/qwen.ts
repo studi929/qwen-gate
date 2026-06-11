@@ -1,7 +1,7 @@
 import { getQwenHeaders } from './playwright.ts';
 import crypto from 'node:crypto';
 import { withRetry, CircuitBreaker, CircuitOpenError } from '../utils/retry.ts';
-import { throttleAccount, pickAccount } from './auth.ts';
+import { throttleAccount, pickAccount, decrementInFlight } from './auth.ts';
 import { createNetworkEntry, recordResponse, recordStreamChunk, completeEntry, errorEntry } from './networkDebug.ts';
 import { config } from './configService.ts';
 import { logQwenRequest, logQwenResponse } from './qwenLogger.ts';
@@ -226,6 +226,9 @@ export async function createQwenStream(
             if (nextAccount && nextAccount.email !== currentAccountEmail) {
               currentAccountEmail = nextAccount.email;
             }
+            // pickAccount incremented inFlight for the new account, but we're about to throw
+            // so decrement it — the caller will retry with a fresh pickAccount
+            if (nextAccount) decrementInFlight(nextAccount.email);
           }
           let status: number;
           if (code === 'RateLimited') status = 429;

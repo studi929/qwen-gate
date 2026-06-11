@@ -26,9 +26,9 @@ import { settingsHtml } from "./settings.ts";
 import { APP_VERSION } from "../../utils/version.ts";
 
 const serveHtml = (html: string) => (c: any) => {
-  const scriptInjection = `<script>\nwindow.APP_VERSION = ${JSON.stringify(APP_VERSION)};\n</script>\n`;
+  const scriptInjection = `<script>\nwindow.APP_VERSION = ${JSON.stringify(APP_VERSION)};\nwindow.API_KEY = ${JSON.stringify(config.get("API_KEY"))};\n</script>\n`;
   const output = html.replace(/(<script\b)/, scriptInjection + "$1");
-  c.header("Content-Security-Policy", "default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
+  c.header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
   return c.html(output);
 };
 
@@ -303,8 +303,16 @@ export function registerDashboardRoutes(app: Hono): void {
     return c.json(sessionPool.getStats());
   });
 
-  app.post("/admin/accounts/reload", bearerAuth({ token: config.get("API_KEY") }), accountsReloadHandler);
-  app.post("/dashboard/accounts/delete-all-chats", bearerAuth({ token: config.get("API_KEY") }), deleteAllChatsHandler);
+  app.post("/admin/accounts/reload", async (c, next) => {
+    const apiKey = config.get("API_KEY");
+    if (!apiKey) return await next();
+    return bearerAuth({ token: apiKey })(c, next);
+  }, accountsReloadHandler);
+  app.post("/dashboard/accounts/delete-all-chats", async (c, next) => {
+    const apiKey = config.get("API_KEY");
+    if (!apiKey) return await next();
+    return bearerAuth({ token: apiKey })(c, next);
+  }, deleteAllChatsHandler);
 
   app.get("/system/logs", systemLogsHandler);
   app.get("/metrics/model-health", modelHealthHandler);
