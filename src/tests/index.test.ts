@@ -279,6 +279,152 @@ test('Chat Completions forwards OpenAI tools to Qwen payload', async () => {
   }
 });
 
+test('Chat Completions converts Qwen local_tool SSE to OpenAI tool_calls', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (url.includes('/api/v2/chat/completions')) {
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"response.created":{"response_id":"resp_1"}}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"Call ★-get_weather","phase":"local_tool","status":"typing","mcp_name":"★","tool_name":"get_weather"}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"","phase":"local_tool","status":"finished","extra":{"local_mcp":{"★":[{"tool_name":"get_weather","params":{"city":"Berlin"}}]}}}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          c.close();
+        }
+      });
+      return new Response(stream, { status: 200 });
+    }
+    return originalFetch(input);
+  };
+
+  await initPlaywright(false);
+
+  try {
+    const req = new Request('http://localhost/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen3.7-max',
+        messages: [{ role: 'user', content: 'weather berlin' }],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'get_weather',
+            description: 'Get current weather for a city',
+            parameters: {
+              type: 'object',
+              properties: { city: { type: 'string' } },
+              required: ['city'],
+            },
+          },
+        }],
+        tool_choice: 'required',
+        stream: false,
+      }),
+    });
+
+    const res = await app.fetch(req);
+    assert.strictEqual(res.status, 200);
+    const body = await res.json();
+    assert.strictEqual(body.choices[0].finish_reason, 'tool_calls');
+    assert.strictEqual(body.choices[0].message.content, null);
+    assert.strictEqual(body.choices[0].message.tool_calls.length, 1);
+    assert.strictEqual(body.choices[0].message.tool_calls[0].function.name, 'get_weather');
+    assert.deepStrictEqual(JSON.parse(body.choices[0].message.tool_calls[0].function.arguments), { city: 'Berlin' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    await closePlaywright();
+  }
+});
+
+test('Chat Completions converts Qwen XML tool calls in streaming response and prevents duplicates', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input: any) => {
+    const url = typeof input === 'string' ? input : input.url;
+    if (url.includes('/api/v2/chat/completions')) {
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('data: {"response.created":{"response_id":"resp_1"}}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"<function=get_weather>\\n","phase":"answer"}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"<parameter=city>Berlin</parameter>\\n","phase":"answer"}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"</function>\\n","phase":"answer"}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"role":"assistant","content":"Done.","phase":"answer"}}],"response_id":"resp_1"}\n\n'));
+          c.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          c.close();
+        }
+      });
+      return new Response(stream, { status: 200 });
+    }
+    return originalFetch(input);
+  };
+
+  await initPlaywright(false);
+
+  try {
+    const req = new Request('http://localhost/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'qwen3.7-max',
+        messages: [{ role: 'user', content: 'weather berlin' }],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'get_weather',
+            description: 'Get current weather for a city',
+            parameters: {
+              type: 'object',
+              properties: { city: { type: 'string' } },
+              required: ['city'],
+            },
+          },
+        }],
+        stream: true,
+      }),
+    });
+
+    const res = await app.fetch(req);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers.get('Content-Type'), 'text/event-stream');
+
+    const reader = res.body?.getReader();
+    assert.ok(reader);
+
+    const decoder = new TextDecoder();
+    const toolCalls: any[] = [];
+    let textContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line.trim() !== 'data: [DONE]') {
+          const payload = JSON.parse(line.slice(6));
+          if (payload.choices?.[0]?.delta?.tool_calls) {
+            toolCalls.push(...payload.choices[0].delta.tool_calls);
+          }
+          if (payload.choices?.[0]?.delta?.content) {
+            textContent += payload.choices[0].delta.content;
+          }
+        }
+      }
+    }
+
+    assert.strictEqual(toolCalls.length, 1, 'Should receive exactly one tool call event');
+    assert.strictEqual(toolCalls[0].function.name, 'get_weather');
+    assert.deepStrictEqual(JSON.parse(toolCalls[0].function.arguments), { city: 'Berlin' });
+    assert.strictEqual(textContent.trim(), 'Done.');
+  } finally {
+    globalThis.fetch = originalFetch;
+    await closePlaywright();
+  }
+});
+
+
 test('API Key protection', async () => {
   const originalApiKey = process.env.API_KEY;
   process.env.API_KEY = 'test-api-key';

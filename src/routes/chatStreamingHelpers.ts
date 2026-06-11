@@ -131,6 +131,7 @@ export interface StreamProcessingState {
   lastThinkingSnapshot: string;
   lastVStrRaw: string;
   loggedToolCalls: Set<string>;
+  emittedToolCalls: Set<string>;
 }
 
 export interface StreamProcessingCtx {
@@ -275,8 +276,13 @@ export async function processStreamData(
     }
     
     for (const [i, tc] of xmlToolCalls.entries()) {
+      const key = `${i}:${tc.name}:${JSON.stringify(tc.parameters)}`;
+      if (state.emittedToolCalls.has(key)) continue;
+      state.emittedToolCalls.add(key);
+
       const parsed = xmlToolCallToParsed(tc, i);
       await writeToolCallEvent(streamWriter, completionId, model, parsed, i);
+      ctx.emittedToolCallCount++;
     }
   }
 

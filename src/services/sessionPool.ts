@@ -153,7 +153,7 @@ export class SessionPool {
       const waiterEmail = accountEmail || pickAccount()?.email;
       Promise.all([getBasicHeaders(waiterEmail), this.createSession(waiterEmail)])
         .then(([{ cookie, userAgent, email: actualEmail }, id]) => {
-          waiter.resolve({ chatId: id, parentId: _newParentId, inUse: true, cachedHeaders: { cookie, userAgent }, accountEmail: actualEmail || waiterEmail });
+          waiter.resolve({ chatId: id, parentId: null, inUse: true, cachedHeaders: { cookie, userAgent }, accountEmail: actualEmail || waiterEmail });
         })
         .catch(err => {
           console.error('[SessionPool] Failed to create session for waiter:', err.message);

@@ -108,18 +108,6 @@ function processAnswerDelta(delta: any, state: StreamProcessorState, ctx: NonStr
       state.lastFullContent = vStr;
     }
   }
-
-  const { toolCalls } = parseXmlToolCalls(state.lastFullContent);
-  if (toolCalls.length > 0) {
-    const parsed = toolCalls.map((tc, i) => xmlToolCallToParsed(tc, i));
-    processToolCallsThroughGuard(parsed, state.toolCallsOut, {
-      logId: ctx.logId,
-      toolSpamGuard: state.toolSpamGuard,
-      correctionPrompts: state.correctionPrompts,
-      maxToolCalls: MAX_TOOL_CALLS_PER_TURN,
-      logParsed: true,
-    });
-  }
 }
 
 function parseQwenResponse(line: string, state: StreamProcessorState, ctx: NonStreamingContext): void {

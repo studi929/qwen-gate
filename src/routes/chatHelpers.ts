@@ -123,6 +123,37 @@ export function buildQwenMessages(
             ? assistantContent + "\n" + xmlPayload
             : xmlPayload;
         }
+      } else {
+        // Fallback: If client stripped tool_calls, infer them from the next tool messages
+        for (let j = i + 1; j < messages.length; j++) {
+          const nextMsg = messages[j];
+          if (nextMsg.role === "user" || nextMsg.role === "assistant" || nextMsg.role === "system") {
+            break;
+          }
+          if (nextMsg.role === "tool" || nextMsg.role === "function") {
+            let inferredName = nextMsg.name;
+            if (!inferredName) {
+              const tc = String(nextMsg.content || "");
+              if (tc.includes("<path>") && tc.includes("<type>file</type>")) inferredName = "read";
+              else if (tc.includes("<path>") && tc.includes("<type>directory</type>")) inferredName = "glob";
+              else if (tc.includes("Edit applied successfully") || tc.includes("The following changes were made")) inferredName = "edit";
+              else if (tc.includes("Wrote file successfully")) inferredName = "write";
+              else if (tc.includes("Command executed:") || tc.includes("Command failed:") || tc.includes("Directory: ") || tc.includes("\x1b[32;1mMode") || tc.includes("Fehler beim Buildvorgang") || tc.includes("Verstrichene Zeit") || tc.includes("error CS")) inferredName = "bash";
+              else if (tc.includes("Matches for") || (tc.includes("Found ") && tc.includes("matches"))) inferredName = "grep";
+              else if (tc.trim().startsWith("[") && tc.includes('"status":')) inferredName = "task";
+              else if (tc.includes("using System") || tc.includes("namespace ") || tc.includes("public class") || tc.includes("public static") || (tc.includes("using ") && tc.includes(";"))) inferredName = "read";
+              else if (tc.includes("No files found") || tc.includes("(Results are truncated") || /^[A-Za-z]:\\[\s\S]+/.test(tc)) inferredName = "glob";
+              else {
+                const availableTools = body.tools && Array.isArray(body.tools) ? body.tools.map((t: any) => t.function?.name) : [];
+                inferredName = availableTools.includes("bash") ? "bash" : (availableTools[0] || "unknown");
+              }
+            }
+            const xmlPayload = `<function=${inferredName}>\n</function>`;
+            assistantContent = assistantContent
+              ? assistantContent + "\n" + xmlPayload
+              : xmlPayload;
+          }
+        }
       }
 
       segments.push(`Assistant: ${assistantContent}`);
@@ -141,6 +172,24 @@ export function buildQwenMessages(
             }
           }
         }
+      }
+      
+      // If toolName is still missing, guess from content for compatibility
+      if (!toolName) {
+         const tc = String(contentStr || "");
+         if (tc.includes("<path>") && tc.includes("<type>file</type>")) toolName = "read";
+         else if (tc.includes("<path>") && tc.includes("<type>directory</type>")) toolName = "glob";
+         else if (tc.includes("Edit applied successfully") || tc.includes("The following changes were made")) toolName = "edit";
+         else if (tc.includes("Wrote file successfully")) toolName = "write";
+         else if (tc.includes("Command executed:") || tc.includes("Command failed:") || tc.includes("Directory: ") || tc.includes("\x1b[32;1mMode") || tc.includes("Fehler beim Buildvorgang") || tc.includes("Verstrichene Zeit") || tc.includes("error CS")) toolName = "bash";
+         else if (tc.includes("Matches for") || (tc.includes("Found ") && tc.includes("matches"))) toolName = "grep";
+         else if (tc.trim().startsWith("[") && tc.includes('"status":')) toolName = "task";
+         else if (tc.includes("using System") || tc.includes("namespace ") || tc.includes("public class") || tc.includes("public static") || (tc.includes("using ") && tc.includes(";"))) toolName = "read";
+         else if (tc.includes("No files found") || tc.includes("(Results are truncated") || /^[A-Za-z]:\\[\s\S]+/.test(tc)) toolName = "glob";
+         else {
+            const availableTools = body.tools && Array.isArray(body.tools) ? body.tools.map((t: any) => t.function?.name) : [];
+            toolName = availableTools.includes("bash") ? "bash" : (availableTools[0] || "unknown");
+         }
       }
 
       const truncated = compressToolResult(contentStr || "");

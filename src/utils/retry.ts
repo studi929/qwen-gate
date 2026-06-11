@@ -182,6 +182,12 @@ export function isRetryable(error: unknown, httpStatus?: number): boolean {
   // Explicit non-retryable
   if (error instanceof NonRetryableError) return false;
 
+  // Explicit check for custom retryable stream errors (avoids import cycle)
+  if (error && typeof error === 'object') {
+    const errName = (error as any).name || (error as any).constructor?.name;
+    if (errName === 'RetryableQwenStreamError') return true;
+  }
+
   // Network errors (fetch throws TypeError/AbortError/NetworkError)
   if (error instanceof TypeError || error instanceof DOMException) {
     const msg = String(error.message).toLowerCase();

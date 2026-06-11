@@ -1,6 +1,6 @@
 import { getQwenHeaders } from './playwright.ts';
 import crypto from 'node:crypto';
-import { withRetry, CircuitBreaker, CircuitOpenError } from '../utils/retry.ts';
+import { withRetry, CircuitBreaker, CircuitOpenError, NonRetryableError } from '../utils/retry.ts';
 import { throttleAccount, pickAccount } from './auth.ts';
 import { createNetworkEntry, recordResponse, recordStreamChunk, completeEntry, errorEntry } from './networkDebug.ts';
 import { config } from './configService.ts';
@@ -97,9 +97,9 @@ function createFetchTimeout(): { controller: AbortController; cleanup: () => voi
 }
 
 const qwenCircuitBreaker = new CircuitBreaker('qwen-api', {
-  failureThreshold: 5,
-  resetTimeoutMs: 30_000,
-  halfOpenMaxAttempts: 1,
+  failureThreshold: 10,
+  resetTimeoutMs: 20_000,
+  halfOpenMaxAttempts: 3,
 });
 
 export async function createQwenStream(
@@ -172,6 +172,7 @@ export async function createQwenStream(
     baseDelayMs: Math.max(0, parseInt(config.get('RETRY_BASE_DELAY_MS', '1000'), 10)),
     maxDelayMs: Math.max(0, parseInt(config.get('RETRY_MAX_DELAY_MS', '30000'), 10)),
     backoffMultiplier: Math.max(0.1, parseFloat(config.get('RETRY_BACKOFF_MULTIPLIER', '2'))),
+    attemptTimeoutMs: QWEN_FETCH_TIMEOUT_MS,
   };
 
   const retriesEnabled = config.get('RETRY_ENABLED', 'true') !== 'false';
@@ -238,11 +239,12 @@ export async function createQwenStream(
             errorJson?.data?.details?.includes('not exist') ||
             errorJson?.data?.details?.includes('does not exist')) {
           errorEntry(debugEntryId, errorJson.data.details);
-          throw new RetryableQwenStreamError(`Qwen: ${errorJson.data.details}`, 0);
+          throw new NonRetryableError(`Qwen: ${errorJson.data.details}`);
         }
       } catch (parseOrRetryError) {
         if (parseOrRetryError instanceof RetryableQwenStreamError ||
-            parseOrRetryError instanceof QwenUpstreamError) {
+            parseOrRetryError instanceof QwenUpstreamError ||
+            parseOrRetryError instanceof NonRetryableError) {
           throw parseOrRetryError;
         }
       }

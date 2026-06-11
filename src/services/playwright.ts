@@ -27,6 +27,34 @@ const COOKIES_TTL = 30 * 1000;
 let cookiesInFlight: Promise<string> | null = null;
 const COOKIE_REFRESH_INTERVAL = 30 * 1000;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function isFatalBrowserError(message: string): boolean {
+  return message.includes('Target page, context or browser has been closed') ||
+    message.includes('browser has been closed') ||
+    message.includes('Page crashed') ||
+    message.includes('Target crashed');
+}
+
+async function detachAccountContext(email: string, accCtx: AccountContext): Promise<void> {
+  accountContexts.delete(email);
+  if (accCtx.refreshInterval) clearInterval(accCtx.refreshInterval);
+  try { await accCtx.context.close(); } catch { /* context may already be gone */ }
+}
+
+async function resetBrowserAfterFatalError(email: string, accCtx: AccountContext, message: string): Promise<void> {
+  await detachAccountContext(email, accCtx);
+  if (defaultBrowser) {
+    const browser = defaultBrowser;
+    defaultBrowser = null;
+    cachedUserAgent = null;
+    cachedCookies = null;
+    lastCookiesTime = 0;
+    cookiesInFlight = null;
+    try { await browser.close(); } catch { /* browser may already be gone */ }
+  }
+  logStore.log('warn', 'browser', `Playwright browser reset after fatal error for ${email}: ${message}`);
+}
+
 export function validateQwenUrl(url: string): void {
   let parsed: URL;
   try {
@@ -272,8 +300,12 @@ export async function refreshAccountCookies(email: string): Promise<void> {
     for (const c of freshCookies) { cookieRecord[c.name] = c.value; }
     accCtx.cookies = cookieRecord;
     accCtx.lastRefresh = Date.now();
-  } catch (err) {
+  } catch (err: any) {
+    const message = err?.message || String(err);
     console.error(`[AccountContext] Refresh error for ${email}:`, err);
+    if (isFatalBrowserError(message)) {
+      await resetBrowserAfterFatalError(email, accCtx, message);
+    }
   }
 }
 export async function closePlaywright() {
