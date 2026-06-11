@@ -11,7 +11,7 @@ import { projectPath } from '../utils/paths.ts';
 
 export function getProfileDir(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  const dir = projectPath('qwen_profile', safe);
+  const dir = projectPath('.qwen', 'browser-profiles', safe);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -65,22 +65,22 @@ async function checkExistingToken(context: any): Promise<boolean> {
 
 async function fillLoginForm(page: any, email: string, password: string): Promise<void> {
   try {
-    await page.waitForSelector('input[type="email"], input[placeholder*="Email"], input[name="email"], input[name="login"]', { timeout: 8000 });
+    await page.waitForSelector('input[type="email"], input[placeholder*="Email"], input[name="email"], input[name="login"]', { timeout: 5000 });
     const emailInput = page.locator('input[type="email"], input[placeholder*="Email"], input[name="email"], input[name="login"]').first();
     await emailInput.click();
-    await sleep(300 + Math.random() * 400);
-    await emailInput.pressSequentially(email, { delay: 50 + Math.random() * 80 });
+    await sleep(100 + Math.random() * 200);
+    await emailInput.pressSequentially(email, { delay: 30 + Math.random() * 50 });
 
-    await sleep(200 + Math.random() * 300);
-    await page.waitForSelector('input[type="password"], input[name="password"]', { timeout: 5000 });
+    await sleep(100 + Math.random() * 150);
+    await page.waitForSelector('input[type="password"], input[name="password"]', { timeout: 3000 });
     const passwordInput = page.locator('input[type="password"], input[name="password"]').first();
     await passwordInput.click();
-    await sleep(200 + Math.random() * 300);
-    await passwordInput.pressSequentially(password, { delay: 40 + Math.random() * 60 });
+    await sleep(100 + Math.random() * 150);
+    await passwordInput.pressSequentially(password, { delay: 25 + Math.random() * 40 });
 
-    await sleep(500 + Math.random() * 500);
+    await sleep(200 + Math.random() * 300);
     try {
-      const submitBtn = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Login"), button:has-text("Log in")').first();
+      const submitBtn = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Login"), button:has-text("Log in"), button:has-text("Continue")').first();
       await submitBtn.click({ timeout: 3000 });
     } catch {
       // non-blocking: submit button may not exist on some login pages

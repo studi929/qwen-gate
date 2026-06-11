@@ -249,6 +249,25 @@ export async function refreshAccountCookies(email: string): Promise<void> {
   if (!accCtx) return;
   const { context, page } = accCtx;
   try {
+    // Ensure the account's JWT token is injected as a cookie in the browser context
+    const { getAccountByEmail } = await import('./auth.ts');
+    const acct = getAccountByEmail(email);
+    if (acct?.state?.token) {
+      const existingCookies = await context.cookies();
+      const hasTokenCookie = existingCookies.some(c => c.name === 'token' && c.value === acct.state!.token);
+      if (!hasTokenCookie) {
+        await context.addCookies([{
+          name: 'token',
+          value: acct.state.token,
+          domain: '.qwen.ai',
+          path: '/',
+          httpOnly: true,
+          secure: true,
+          sameSite: 'Lax',
+        }]);
+      }
+    }
+
     const cookies = await context.cookies();
     const hasAuthCookie = cookies.some(c => {
       const n = c.name.toLowerCase();
@@ -266,9 +285,14 @@ export async function refreshAccountCookies(email: string): Promise<void> {
         return n.includes('token') || n.includes('session');
       });
       if (!hasPostAuth) {
-        logStore.log('warn', 'account', `${email} still has no auth cookie after navigation - token invalid, marking unavailable`);
-        const { throttleAccount } = await import('./auth.ts');
-        throttleAccount(email, 120_000);
+        // Only throttle if we don't have a valid token in memory
+        if (!acct?.state?.token || (acct.state.expiresAt && acct.state.expiresAt < Date.now())) {
+          logStore.log('warn', 'account', `${email} has no auth cookie and no valid token - marking unavailable`);
+          const { throttleAccount } = await import('./auth.ts');
+          throttleAccount(email, 60_000);
+        } else {
+          logStore.log('info', 'account', `${email} has valid token in memory but no browser cookie - will use token directly`);
+        }
         accCtx.cookies = {};
         accCtx.lastRefresh = Date.now();
         return;

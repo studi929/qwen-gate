@@ -6,14 +6,15 @@
  */
 
 import crypto from 'crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { getActivePage, getBrowser } from './playwright.ts';
 import { logStore } from './logStore.js';
 import {
-  COOKIE_DIR, getCookieFilePath, decodeJwt,
+  decodeJwt,
   discoverSavedAccounts,
   loadAccountsFromFile, setupAccountWatcher as setupAccountWatcherImpl,
   enableHotReload as enableHotReloadImpl, resetWatcherState,
+  migrateFromOldPaths,
 } from './accountManager.ts';
 import { needsRefresh, ensureAccountFresh } from './tokenRefresh.ts';
 import { LoginMutex, loginFreshViaBrowser, loginFreshViaFetch, loginViaTempContext } from './loginHelpers.ts';
@@ -22,14 +23,12 @@ import { config } from './configService.ts';
 export { tryRefreshToken, ensureAccountFresh, needsRefresh } from './tokenRefresh.ts';
 export {
   addAccount, removeAccount, reloadAccounts, discoverSavedAccounts,
-  COOKIE_DIR, getCookieFilePath, decodeJwt,
+  decodeJwt,
   isAvailable, pickAccount, incrementInFlight, decrementInFlight,
   incrementTotalRequests, hasInFlight, getAccountByEmail,
   getToken, getTokenWithAccount, throttleAccount, isAccountThrottled,
   getAccountStats, getAccountCount, getAvailableCount, getAllAccountEmails, getAccounts,
 } from './accountManager.ts';
-export type { CookieData } from './accountManager.ts';
-import type { CookieData } from './accountManager.ts';
 
 export const AUTH_TOKEN_MAX_AGE_MS = parseInt(config.get('AUTH_TOKEN_MAX_AGE_MS', '28800000'), 10);
 export const AUTH_REFRESH_BEFORE_MS = parseInt(config.get('AUTH_REFRESH_BEFORE_MS', '300000'), 10);
@@ -85,6 +84,16 @@ const loginMutex = new LoginMutex();
 export async function loginFresh(email: string, password: string): Promise<AuthState | null> {
   const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
 
+  // Try fetch first — it's the fastest (no browser overhead)
+  if (!process.env.TEST_MOCK_PLAYWRIGHT) {
+    const fetchResult = await loginFreshViaFetch(email, hashedPassword);
+    if (fetchResult) {
+      logStore.log('info', 'auth', 'Login success (fetch): ' + email);
+      return fetchResult;
+    }
+  }
+
+  // Fallback to browser strategies if fetch fails
   if (!process.env.TEST_MOCK_PLAYWRIGHT) {
     const activePage = getActivePage();
     if (activePage) {
@@ -98,27 +107,24 @@ export async function loginFresh(email: string, password: string): Promise<AuthS
 
     const browser = getBrowser();
     if (browser) {
-      const tempResult = await loginViaTempContext(browser, email, password, loginMutex);
+      const tempResult = await loginViaTempContext(browser, email, hashedPassword, loginMutex);
       if (tempResult) {
         logStore.log('info', 'auth', 'Login success (temp context): ' + email);
         return tempResult;
       }
-      console.warn(`[Auth] Temp context login failed for ${email}, trying fetch fallback...`);
+      console.warn(`[Auth] Temp context login failed for ${email}`);
     }
   }
 
-  const fetchResult = await loginFreshViaFetch(email, hashedPassword);
-  if (fetchResult) {
-    logStore.log('info', 'auth', 'Login success (fetch): ' + email);
-  } else {
-    logStore.log('error', 'auth', 'Login failed: ' + email);
-  }
-  return fetchResult;
+  logStore.log('error', 'auth', 'Login failed: ' + email);
+  return null;
 }
 
 export async function initAuth(onAccountReady?: (email: string) => Promise<void>): Promise<void> {
   if (initDone) return;
   initDone = true;
+
+  migrateFromOldPaths();
 
   const persisted = loadAccountsFromFile();
   const discovered = discoverSavedAccounts();
@@ -155,36 +161,54 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
     });
   }
 
-  for (let i = 0; i < accounts.length; i++) {
-    const acct = accounts[i];
-
-    const savedState = await loadSavedCookies(acct.email);
-    if (savedState) {
-      acct.state = savedState;
-    } else {
-      const profileState = await loadCookiesFromProfile(acct.email);
-      if (profileState) {
-        acct.state = profileState;
-      } else if (acct.password) {
-        const newState = await loginFresh(acct.email, acct.password);
-        if (newState) {
-          acct.state = newState;
-          await saveCookies(acct.email, newState.token, newState.refreshToken, newState.expiresAt);
+  // Phase 1: Load tokens from browser profiles — max 3 concurrent Chromium instances
+  const MAX_CONCURRENT_PROFILE_LOADS = 3;
+  const loadResults: Array<{ acct: typeof accounts[0]; source: string | null }> = [];
+  
+  for (let i = 0; i < accounts.length; i += MAX_CONCURRENT_PROFILE_LOADS) {
+    const batch = accounts.slice(i, i + MAX_CONCURRENT_PROFILE_LOADS);
+    const batchResults = await Promise.allSettled(
+      batch.map(async (acct) => {
+        const profileState = await loadCookiesFromProfile(acct.email);
+        if (profileState) {
+          acct.state = profileState;
+          return { acct, source: 'profile' as const };
         }
-      }
+        return { acct, source: null as string | null };
+      })
+    );
+    for (const r of batchResults) {
+      if (r.status === 'fulfilled') loadResults.push(r.value);
     }
+  }
 
-    if (acct.state?.token && onAccountReady) {
-      try {
-        await onAccountReady(acct.email);
-      } catch (err: any) {
-        logStore.log('warn', 'auth', `Post-login config failed for ${acct.email}: ${err.message}`);
+  // Phase 2: Login accounts that don't have tokens yet — all in parallel
+  const needLogin = accounts.filter(a => !a.state?.token && a.password);
+  if (needLogin.length > 0) {
+    console.log(`[Auth] Logging in ${needLogin.length} accounts in parallel...`);
+    const loginPromises = needLogin.map(async (acct) => {
+      const newState = await loginFresh(acct.email, acct.password);
+      if (newState) {
+        acct.state = newState;
+        await saveCookies(acct.email, newState.token, newState.refreshToken, newState.expiresAt);
       }
-    }
+      return { acct, success: !!newState };
+    });
+    await Promise.allSettled(loginPromises);
+  }
 
-    if (i < accounts.length - 1) {
-      await new Promise(r => setTimeout(r, acct.password && !acct.state ? 2000 : 1000));
-    }
+  // Phase 3: Run post-login callbacks in parallel
+  if (onAccountReady) {
+    const readyPromises = accounts
+      .filter(a => a.state?.token)
+      .map(async (acct) => {
+        try {
+          await onAccountReady(acct.email);
+        } catch (err: any) {
+          logStore.log('warn', 'auth', `Post-login config failed for ${acct.email}: ${err.message}`);
+        }
+      });
+    await Promise.allSettled(readyPromises);
   }
 
   const successCount = accounts.filter(a => a.state !== null && a.state.token).length;
@@ -194,18 +218,17 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
 }
 
 export async function autoLoginAllAccounts(): Promise<void> {
-  for (let i = 0; i < accounts.length; i++) {
-    const acct = accounts[i];
-    if (acct.state || !acct.password) continue;
+  const needLogin = accounts.filter(a => !a.state && a.password);
+  if (needLogin.length === 0) return;
+
+  const loginPromises = needLogin.map(async (acct) => {
     const newState = await loginFresh(acct.email, acct.password);
     if (newState) {
       acct.state = newState;
       await saveCookies(acct.email, newState.token, newState.refreshToken, newState.expiresAt);
     }
-    if (i < accounts.length - 1) {
-      await new Promise(r => setTimeout(r, 2000));
-    }
-  }
+  });
+  await Promise.allSettled(loginPromises);
 }
 
 export async function ensureAllFresh(): Promise<void> {
@@ -214,38 +237,20 @@ export async function ensureAllFresh(): Promise<void> {
   await Promise.allSettled(stale.map(a => ensureAccountFresh(a)));
 }
 
-export async function loadSavedCookies(email: string): Promise<AuthState | null> {
-  try {
-    const filePath = getCookieFilePath(email);
-    if (!existsSync(filePath)) return null;
-
-    const raw = readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(raw) as CookieData;
-
-    if (!data.token || data.email.toLowerCase() !== email.toLowerCase()) return null;
-
-    const payload = decodeJwt(data.token);
-    if (payload?.exp && payload.exp * 1000 < Date.now()) {
-      return null;
-    }
-
-    return {
-      token: data.token,
-      expiresAt: data.expiresAt,
-      refreshToken: data.refreshToken,
-    };
-  } catch (err: any) {
-    console.warn(`[Auth] Failed to load saved cookies for ${email}: ${err.message}`);
-    return null;
-  }
-}
-
 export async function loadCookiesFromProfile(email: string): Promise<AuthState | null> {
   try {
     const { getProfileDir } = await import('./playwright.ts');
     const profileDir = getProfileDir(email);
-    if (!existsSync(profileDir)) return null;
+    if (!existsSync(profileDir)) {
+      console.warn(`[Auth] No profile dir for ${email}`);
+      return null;
+    }
 
+    // Look up password from accounts array
+    const acct = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
+    const password = acct?.password;
+
+    console.log(`[Auth] Loading token from profile for ${email}...`);
     const { launchPersistentContext } = await import('cloakbrowser');
     const context = await launchPersistentContext({
       userDataDir: profileDir,
@@ -255,24 +260,42 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
 
     try {
       let cookies = await context.cookies();
-      const hasAuth = cookies.some(c => {
+      let authCookie = cookies.find(c => {
         const n = c.name.toLowerCase();
         if (n.includes('refresh')) return false;
         return n.includes('token') || n.includes('session');
       });
 
-      if (!hasAuth) {
-        const page = context.pages()[0] || await context.newPage();
-        await page.goto('https://chat.qwen.ai/', { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 2000));
-        cookies = await context.cookies();
+      // No auth cookie — authorize the profile via openBrowserProfile
+      if (!authCookie?.value && password) {
+        console.log(`[Auth] No auth cookie in profile for ${email}, authorizing...`);
+        try { await context.close(); } catch { /* non-blocking */ }
+        
+        const { openBrowserProfile } = await import('./browserProfiles.ts');
+        const result = await openBrowserProfile(email, password, { headless: true });
+        
+        if (result === 'success') {
+          // Re-open the profile to read the now-authenticated cookies
+          const authContext = await launchPersistentContext({
+            userDataDir: profileDir,
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--mute-audio', '--no-first-run', '--disable-background-networking', '--disable-default-apps', '--disable-sync', '--disable-translate', '--disable-blink-features=AutomationControlled'],
+          });
+          try {
+            cookies = await authContext.cookies();
+            authCookie = cookies.find(c => {
+              const n = c.name.toLowerCase();
+              if (n.includes('refresh')) return false;
+              return n.includes('token') || n.includes('session');
+            });
+          } finally {
+            try { await authContext.close(); } catch { /* non-blocking */ }
+          }
+        } else {
+          console.warn(`[Auth] Profile authorization failed for ${email}: ${result}`);
+          return null;
+        }
       }
-
-      const authCookie = cookies.find(c => {
-        const n = c.name.toLowerCase();
-        if (n.includes('refresh')) return false;
-        return n.includes('token') || n.includes('session');
-      });
 
       if (authCookie?.value) {
         const payload = decodeJwt(authCookie.value);
@@ -285,8 +308,17 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
             refreshToken: refreshCookie?.value || null,
           };
           await saveCookies(email, state.token, state.refreshToken, state.expiresAt);
+          console.log(`[Auth] ✓ Token loaded from profile for ${email}`);
           return state;
+        } else {
+          console.warn(`[Auth] Token expired for ${email}`);
         }
+      } else {
+        console.warn(`[Auth] No auth cookie found in profile for ${email}`);
+      }
+    } finally {
+      try { await context.close(); } catch { /* non-blocking */ }
+    }
       }
     } finally {
       try { await context.close(); } catch { /* non-blocking */ }
@@ -301,8 +333,6 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
 export async function saveCookies(email: string, token: string, refreshToken?: string | null, expiresAt?: number): Promise<void> {
   const normalizedEmail = email.toLowerCase().trim();
   try {
-    if (!existsSync(COOKIE_DIR)) mkdirSync(COOKIE_DIR, { recursive: true });
-
     let jwtExpiresAt = expiresAt;
     if (!jwtExpiresAt) {
       const payload = decodeJwt(token);
@@ -312,16 +342,6 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
         jwtExpiresAt = Date.now() + AUTH_TOKEN_MAX_AGE_MS;
       }
     }
-
-    const data = {
-      email: normalizedEmail,
-      token,
-      refreshToken: refreshToken || null,
-      savedAt: Date.now(),
-      expiresAt: jwtExpiresAt,
-    };
-
-    writeFileSync(getCookieFilePath(normalizedEmail), JSON.stringify(data, null, 2), 'utf-8');
 
     const acct = accounts.find(a => a.email.toLowerCase().trim() === normalizedEmail);
     if (acct && token) {

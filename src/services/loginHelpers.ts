@@ -63,12 +63,13 @@ export async function loginFreshViaBrowser(
       const existingCookies = await context.cookies();
       const authCookies = existingCookies.filter(c =>
         c.name === 'token' ||
-        c.name === 'refresh_token' ||
-        c.name.toLowerCase().includes('session') ||
-        c.name.toLowerCase().includes('token')
+        c.name === 'refresh_token'
       );
       if (authCookies.length > 0) {
-        await context.clearCookies();
+        // Only remove specific auth cookies, not ALL cookies
+        for (const c of authCookies) {
+          await context.clearCookies({ name: c.name, domain: c.domain, path: c.path });
+        }
       }
     } catch (err: any) {
       console.warn(`[Auth] Cookie clearing failed for ${email}: ${err.message}`);
@@ -78,7 +79,7 @@ export async function loginFreshViaBrowser(
     try {
       evalResult = await page.evaluate(async ({ email, hashedPassword }: { email: string; hashedPassword: string }) => {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30_000);
+        const timeoutId = setTimeout(() => controller.abort(), 15_000);
         let response: Response;
         try {
           response = await fetch(`${QWEN_CHAT_URL}/api/v2/auths/signin`, {
@@ -218,11 +219,7 @@ export async function loginFreshViaFetch(email: string, hashedPassword: string):
 
       const hasPlaywrightSession = await checkPlaywrightSession();
       if (hasPlaywrightSession) {
-        return {
-          token: '',
-          expiresAt: Date.now() + AUTH_TOKEN_MAX_AGE_MS,
-          refreshToken: null,
-        };
+        console.warn(`[Auth] API login returned 200 but no token for ${email}, and Playwright session exists but has no usable token`);
       }
 
       console.warn(`[Auth] API login returned 200 but no token for ${email}:`, JSON.stringify(data).substring(0, 200));
@@ -240,7 +237,7 @@ export async function loginFreshViaFetch(email: string, hashedPassword: string):
 export async function loginViaTempContext(
   _browser: ReturnType<typeof getBrowser>,
   email: string,
-  rawPassword: string,
+  hashedPassword: string,
   loginMutex: LoginMutex,
 ): Promise<AuthState | null> {
   const release = await loginMutex.acquire();
@@ -252,52 +249,79 @@ export async function loginViaTempContext(
     let capturedToken: string | null = null;
     let capturedRefresh: string | null = null;
 
+    // Intercept signin API to capture token from BOTH JSON body AND set-cookie headers
     await page.route('**/api/v2/auths/signin', async (route) => {
-      const response = await route.fetch();
-      const setCookies = response.headersArray()
-        .filter(h => h.name.toLowerCase() === 'set-cookie')
-        .map(h => h.value);
-      for (const cookie of setCookies) {
-        const tokenMatch = cookie.match(/\btoken=([^;]+)/);
-        if (tokenMatch && !capturedToken) capturedToken = tokenMatch[1];
-        const refreshMatch = cookie.match(/\brefresh_token=([^;]+)/);
-        if (refreshMatch) capturedRefresh = refreshMatch[1];
+      try {
+        const response = await route.fetch();
+
+        // Try to extract token from JSON response body first (fastest path)
+        try {
+          const body = await response.json();
+          const jsonToken = body?.data?.token || body?.token || body?.data?.session_token || null;
+          const jsonRefresh = body?.data?.refresh_token || body?.refresh_token || null;
+          if (jsonToken && !capturedToken) capturedToken = jsonToken;
+          if (jsonRefresh && !capturedRefresh) capturedRefresh = jsonRefresh;
+        } catch {
+          // non-JSON response, fall through to cookie extraction
+        }
+
+        // Also check set-cookie headers as fallback
+        const setCookies = response.headersArray()
+          .filter(h => h.name.toLowerCase() === 'set-cookie')
+          .map(h => h.value);
+        for (const cookie of setCookies) {
+          const tokenMatch = cookie.match(/\btoken=([^;]+)/);
+          if (tokenMatch && !capturedToken) capturedToken = tokenMatch[1];
+          const refreshMatch = cookie.match(/\brefresh_token=([^;]+)/);
+          if (refreshMatch && !capturedRefresh) capturedRefresh = refreshMatch[1];
+        }
+
+        await route.fulfill({ response });
+      } catch (err: any) {
+        // If route.fetch fails, let the request pass through normally
+        await route.continue();
       }
-      await route.fulfill({ response });
     });
 
     try {
-      await page.goto(`${QWEN_CHAT_URL}/auth`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+      await page.goto(`${QWEN_CHAT_URL}/auth`, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     } catch {
       // non-blocking
     }
 
     try {
-      await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 15_000 });
+      await page.waitForSelector('input[type="email"], input[name="email"]', { timeout: 10_000 });
       await page.fill('input[type="email"], input[name="email"]', email);
-      await page.fill('input[type="password"], input[name="password"]', rawPassword);
+      await page.fill('input[type="password"], input[name="password"]', hashedPassword);
       await Promise.all([
-        page.click('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in")'),
+        page.click('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in"), button:has-text("Continue")'),
         page.waitForURL(url => !url.toString().includes('/auth'), { timeout: 15_000 }).catch(() => {}),
       ]);
     } catch {
       // non-blocking
     }
 
-    await new Promise(r => setTimeout(r, 2000));
+    // Poll for token with shorter intervals instead of blind sleep
+    for (let attempt = 0; attempt < 10; attempt++) {
+      if (capturedToken) break;
+      await new Promise(r => setTimeout(r, 500));
 
-    if (!capturedToken) {
-      const cookies = await context.cookies();
-      const tokenCookie = cookies.find(c =>
-        c.name === 'token' ||
-        (c.name.toLowerCase().includes('token') && c.domain.includes('qwen') && !c.name.toLowerCase().includes('refresh'))
-      );
-      const refreshCookie = cookies.find(c =>
-        c.name === 'refresh_token' ||
-        (c.name.toLowerCase().includes('refresh') && c.domain.includes('qwen'))
-      );
-      capturedToken = tokenCookie?.value || null;
-      capturedRefresh = refreshCookie?.value || null;
+      // Check cookies as fallback
+      try {
+        const cookies = await context.cookies();
+        const tokenCookie = cookies.find(c =>
+          c.name === 'token' ||
+          (c.name.toLowerCase().includes('token') && c.domain.includes('qwen') && !c.name.toLowerCase().includes('refresh'))
+        );
+        const refreshCookie = cookies.find(c =>
+          c.name === 'refresh_token' ||
+          (c.name.toLowerCase().includes('refresh') && c.domain.includes('qwen'))
+        );
+        if (tokenCookie?.value) capturedToken = tokenCookie.value;
+        if (refreshCookie?.value) capturedRefresh = refreshCookie.value;
+      } catch {
+        // non-blocking
+      }
     }
 
     await page.unroute('**/api/v2/auths/signin');

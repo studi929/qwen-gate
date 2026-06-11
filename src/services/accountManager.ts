@@ -5,23 +5,47 @@
  */
 import crypto from 'crypto';
 import path from 'path';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync, unlinkSync, watch } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, watch } from 'fs';
 import { loginFresh, saveCookies, accounts, type AccountEntry } from "./auth.ts";
 import { configureAccount } from './qwenModels.ts';
 import { config } from './configService.ts';
 import { logStore } from './logStore.ts';
 import { projectPath } from '../utils/paths.ts';
 
-export const COOKIE_DIR = projectPath('qwen_profile', 'cookies');
-const ACCOUNTS_FILE = projectPath('qwen_profile', 'accounts.json');
-export function getCookieFilePath(email: string): string {
-  const hash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
-  return path.join(COOKIE_DIR, `${hash}.json`);
-}
+const ACCOUNTS_FILE = projectPath('.qwen', 'accounts.json');
+const QWEN_DIR = projectPath('.qwen');
+
+const OLD_ACCOUNTS_FILE = projectPath('qwen_profile', 'accounts.json');
+
 function getProfileDirForEmail(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-  return projectPath('qwen_profile', safe);
+  return projectPath('.qwen', 'browser-profiles', safe);
 }
+
+export function migrateFromOldPaths(): void {
+  try {
+    if (!existsSync(OLD_ACCOUNTS_FILE) || existsSync(ACCOUNTS_FILE)) {
+      return;
+    }
+
+    console.log('[Auth] Migrating data from qwen_profile/ to .qwen/ ...');
+
+    const newDir = path.dirname(ACCOUNTS_FILE);
+    if (!existsSync(newDir)) {
+      mkdirSync(newDir, { recursive: true });
+    }
+
+    const accountsData = readFileSync(OLD_ACCOUNTS_FILE, 'utf-8');
+    writeFileSync(ACCOUNTS_FILE, accountsData, 'utf-8');
+    console.log('[Auth] Migrated accounts.json');
+    console.log('[Auth] Note: old token files are ignored — tokens are now read from browser profiles.');
+
+    console.log('[Auth] Migration complete. Old files preserved.');
+  } catch (err: any) {
+    console.error('[Auth] Migration error:', err.message);
+  }
+}
+
 export interface CookieData {
   email: string;
   token: string;
@@ -50,35 +74,7 @@ export function parseAccountsFromEnv(): Array<{ email: string; password: string 
   return result;
 }
 export function discoverSavedAccounts(): Array<{ email: string; password: string }> {
-  try {
-    const diskAccounts: Array<{ email: string; password: string }> = [];
-    if (existsSync(COOKIE_DIR)) {
-      const files = readdirSync(COOKIE_DIR).filter((f: string) => f.endsWith('.json'));
-      for (const file of files) {
-        try {
-          const data: CookieData = JSON.parse(readFileSync(path.join(COOKIE_DIR, file), 'utf-8'));
-          if (data.email && data.token) {
-            diskAccounts.push({ email: data.email, password: '' });
-          }
-        } catch (err) {
-          console.error(`[Auth] Failed to parse saved account file ${file}:`, err);
-        }
-      }
-    }
-    const envAccounts = parseAccountsFromEnv();
-    const merged = [...diskAccounts];
-    for (const envAcct of envAccounts) {
-      const existing = merged.find(a => a.email.toLowerCase().trim() === envAcct.email.toLowerCase().trim());
-      if (existing) {
-        existing.password = envAcct.password;
-      } else {
-        merged.push({ email: envAcct.email, password: envAcct.password });
-      }
-    }
-    return merged;
-  } catch {
-    return [];
-  }
+  return parseAccountsFromEnv();
 }
 
 /**
@@ -127,7 +123,8 @@ export function decrypt(encryptedText: string, apiKey: string): string {
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch {
-    return encryptedText;
+    console.error('[Auth] Decryption failed — wrong API_KEY or corrupted data');
+    return '';
   }
 }
 
@@ -189,10 +186,28 @@ export async function addAccount(
   };
   accounts.push(entry);
   saveAccountsToFile(accounts);
+
+  // Step 1: Create and authorize the browser profile
+  const { openBrowserProfile } = await import('./browserProfiles.ts');
+  const profileResult = await openBrowserProfile(normalizedEmail, password, { headless: true });
+
+  if (profileResult === 'success') {
+    // Step 2: Extract token from the now-authenticated profile
+    const { loadCookiesFromProfile } = await import('./auth.ts');
+    const profileState = await loadCookiesFromProfile(normalizedEmail);
+    if (profileState) {
+      entry.state = profileState;
+      await configureAccount(normalizedEmail).catch(err =>
+        console.error(`[Account] Failed to configure ${normalizedEmail}: ${err.message}`)
+      );
+      return { loginSucceeded: true };
+    }
+  }
+
+  // Fallback: try API login if profile authorization failed
   const newState = await loginFresh(normalizedEmail, password);
   if (newState) {
     entry.state = newState;
-    await saveCookies(normalizedEmail, newState.token, newState.refreshToken, newState.expiresAt);
     await configureAccount(normalizedEmail).catch(err =>
       console.error(`[Account] Failed to configure ${normalizedEmail}: ${err.message}`)
     );
@@ -213,14 +228,6 @@ export async function removeAccount(
   }
   accounts.splice(index, 1);
   saveAccountsToFile(accounts);
-  const cookieFile = getCookieFilePath(normalizedEmail);
-  if (existsSync(cookieFile)) {
-    try {
-      unlinkSync(cookieFile);
-    } catch (err: any) {
-      console.error(`[Auth] Failed to delete cookie file for ${normalizedEmail}:`, err.message);
-    }
-  }
   const profileDir = getProfileDirForEmail(normalizedEmail);
   if (existsSync(profileDir)) {
     try {
@@ -231,7 +238,7 @@ export async function removeAccount(
   }
 }
 /**
- * Re-scan COOKIE_DIR and merge changes into the live accounts array.
+ * Re-scan accounts and merge changes into the live accounts array.
  */
 export async function reloadAccounts(): Promise<void> {
   if (accountWatcher && !watcherReady) {
@@ -256,10 +263,10 @@ export async function reloadAccounts(): Promise<void> {
         inFlight: 0,
         totalRequests: 0,
       };
-      const { loadSavedCookies } = await import('./auth.ts');
-      const savedState = await loadSavedCookies(email);
-      if (savedState) {
-        entry.state = savedState;
+      const { loadCookiesFromProfile } = await import('./auth.ts');
+      const profileState = await loadCookiesFromProfile(email);
+      if (profileState) {
+        entry.state = profileState;
       }
       accounts.push(entry);
       added++;
@@ -268,8 +275,8 @@ export async function reloadAccounts(): Promise<void> {
   for (let i = accounts.length - 1; i >= 0; i--) {
     const acct = accounts[i];
     if (!discoveredEmails.has(acct.email.toLowerCase().trim())) {
-      const cookieFile = getCookieFilePath(acct.email);
-      if (existsSync(cookieFile)) {
+      const profileDir = getProfileDirForEmail(acct.email);
+      if (existsSync(profileDir)) {
         continue;
       }
       if (acct.inFlight > 0) {
@@ -284,16 +291,16 @@ let accountWatcher: any = null;
 let reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let watcherReady = false;
 /**
- * Set up fs.watch on COOKIE_DIR with 300ms debounce to detect account file changes.
+ * Set up fs.watch on .qwen/ directory with 500ms debounce to detect accounts.json changes.
  */
 export function setupAccountWatcher(): void {
   if (accountWatcher) return;
-  if (!existsSync(COOKIE_DIR)) {
-    mkdirSync(COOKIE_DIR, { recursive: true });
+  if (!existsSync(QWEN_DIR)) {
+    mkdirSync(QWEN_DIR, { recursive: true });
   }
   try {
-    accountWatcher = watch(COOKIE_DIR, (_eventType: string, filename: string | null) => {
-      if (!filename || !filename.endsWith('.json')) return;
+    accountWatcher = watch(QWEN_DIR, (_eventType: string, filename: string | null) => {
+      if (!filename || filename !== 'accounts.json') return;
       if (reloadDebounceTimer) clearTimeout(reloadDebounceTimer);
       reloadDebounceTimer = setTimeout(() => {
         reloadDebounceTimer = null;
@@ -385,7 +392,8 @@ export function hasInFlight(email: string): boolean {
   return acct ? acct.inFlight > 0 : false;
 }
 export function getAccountByEmail(email: string): AccountEntry | null {
-  return accounts.find(a => a.email === email) || null;
+  const normalized = email.toLowerCase().trim();
+  return accounts.find(a => a.email.toLowerCase().trim() === normalized) || null;
 }
 export function throttleAccount(email: string, durationMs?: number): void {
   const acct = getAccountByEmail(email);
