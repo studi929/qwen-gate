@@ -2,21 +2,6 @@
 import { validateSingleToolCall } from "../tools/guard.ts";
 import { logStore } from "../services/logStore.ts";
 
-// ── Debug / Logging utilities ─────────────────────────────────────
-
-export function logDebug(_label: string, _data: any) {
-  // Debug logging intentionally disabled
-}
-
-
-export function streamDebugLog(
-  _sessionId: string,
-  _stage: string,
-  _data: string | Record<string, unknown>,
-) {
-  // Debug logging intentionally disabled
-}
-
 export function safeTruncate(val: any, maxLen = 200): any {
   if (typeof val === "string") {
     if (val.length > maxLen) return val.substring(0, maxLen) + "...";

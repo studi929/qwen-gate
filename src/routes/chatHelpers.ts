@@ -5,7 +5,7 @@ import { createQwenStream } from "../services/qwen.ts";
 import { modelRouter } from "../services/modelRouter.ts";
 import modelSpecs from "../models.json" with { type: "json" };
 import type { ModelSpec } from "../types/openai.ts";
-import { safeTruncate, pendingCorrections } from "./chatHelpersCore.ts";
+import { pendingCorrections } from "./chatHelpersCore.ts";
 import { compressToolResult } from "./compressToolResult.ts";
 
 // Re-export everything from core utilities
@@ -207,50 +207,6 @@ export function buildQwenMessages(
   }];
 
   return { qwenMessages, toolResultContents };
-}
-
-export function createLogEntry(
-  logId: string,
-  body: any,
-  isStream: boolean,
-  messages: any[],
-  lastMsgContent: string,
-): any {
-  const logEntry = logStore.createEntry(logId, body.model, isStream);
-  logStore.log("info", "request", "Chat request: model=" + body.model + " stream=" + isStream);
-  logEntry.clientRequest = {
-    messageCount: messages.length,
-    roles: messages.map((m) => m.role),
-    hasTools: !!body.tools?.length,
-    toolNames: body.tools?.map((t: any) => t.function.name) || [],
-    tool_choice: body.tool_choice
-      ? typeof body.tool_choice === "string"
-        ? body.tool_choice
-        : JSON.stringify(body.tool_choice)
-      : null,
-    lastMessage: lastMsgContent ? safeTruncate(lastMsgContent, 300) : "",
-    messages: messages.map(function (m: any) {
-      var txt = Array.isArray(m.content)
-        ? m.content
-            .filter(function (p: any) {
-              return p.type === "text";
-            })
-            .map(function (p: any) {
-              return p.text;
-            })
-            .join(" ")
-        : String(m.content ?? "");
-      return { role: m.role, content: txt };
-    }),
-  };
-  const maxRequestBody = 4096;
-  const rawBodyStr = JSON.stringify(body);
-  logEntry.rawRequestBody =
-    rawBodyStr.length > maxRequestBody
-      ? rawBodyStr.substring(0, maxRequestBody) + "... [truncated]"
-      : rawBodyStr;
-  logStore.saveRequestInput(logId, body);
-  return logEntry;
 }
 
 export function handleImageModelFallback(body: any, messages: any[]): void {

@@ -5,7 +5,6 @@ import {
   extractDeltaContent,
   type AmplificationGuardState,
 } from "./chatHelpers.ts";
-import { validateSingleToolCall } from '../tools/guard.ts';
 import type { ParsedToolCall } from '../types/openai.ts';
 import { logStore } from '../services/logStore.ts';
 import { parseXmlToolCalls, cleanTextOfXmlArtifacts, xmlToolCallToParsed } from '../tools/xmlToolParser.ts';
@@ -26,55 +25,6 @@ import {
  * Performance: extracted to module-level const to avoid recompilation on each chunk.
  */
 const SELF_CLOSING_TAG_PATTERN = /^[\n\s]*<\/?(?:think(?:ing)?|thought)[\s>]*[\n\s]*$/;
-
-// ── Tool call handling ─────────────────────────────────────────────
-
-/**
- * Log tool calls to logStore, validate each, and write SSE events.
- * Returns true if all tool calls passed validation.
- */
-const MAX_TOOL_CALLS_PER_TURN = 8;
-
-export async function handleToolCalls(
-  toolCalls: any[],
-  logId: string,
-  streamWriter: any,
-  completionId: string,
-  model: string,
-  emittedToolCallCount: number,
-): Promise<boolean> {
-  if (toolCalls.length > MAX_TOOL_CALLS_PER_TURN) {
-    console.warn(`  [🛑 TOOL LIMIT] Truncating ${toolCalls.length} tool calls to first ${MAX_TOOL_CALLS_PER_TURN}`);
-    logStore.updateEntry(logId, entry => {
-      entry.errors.push(
-        `Note: Only the first ${MAX_TOOL_CALLS_PER_TURN} tool calls will be executed. Remaining ${toolCalls.length - MAX_TOOL_CALLS_PER_TURN} calls were dropped.`,
-      );
-    });
-    toolCalls = toolCalls.slice(0, MAX_TOOL_CALLS_PER_TURN);
-  }
-
-  logStore.updateEntry(logId, entry => {
-    for (const tc of toolCalls) {
-      entry.parsedToolCalls.push({ name: tc.name, args: JSON.stringify(tc.arguments) });
-    }
-  });
-
-  let allValid = true;
-  const baseIndex = emittedToolCallCount - toolCalls.length;
-  for (let i = 0; i < toolCalls.length; i++) {
-    const tc = toolCalls[i];
-    const guard = validateSingleToolCall(tc);
-    if (!guard.ok) {
-      allValid = false;
-      logStore.updateEntry(logId, entry => {
-        entry.errors.push(`Guard rejected streaming tool call "${tc.name}": ${guard.errors.join(', ')}`);
-      });
-      continue;
-    }
-    await writeToolCallEvent(streamWriter, completionId, model, tc, baseIndex + i);
-  }
-  return allValid;
-}
 
 // ── Local MCP tool call extraction (from Qwen Studio local_tool phase) ──
 
