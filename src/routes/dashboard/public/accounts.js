@@ -152,10 +152,10 @@ function handleRemove(email) {
   };
 }
 
-/* ── Manual Login ── */
+/* ── Manual Login (Autofill) ── */
 function handleManualLogin(email) {
   var btn = document.querySelector('button[data-email="' + escHtml(email) + '"][data-action="login"]');
-  if (btn) { btn.textContent = 'Opening...'; btn.disabled = true; }
+  if (btn) { btn.textContent = 'Authorizing...'; btn.disabled = true; }
   setError(null);
   (async function() {
     try {
@@ -168,11 +168,14 @@ function handleManualLogin(email) {
       if (!res.ok) {
         throw new Error(result && result.error && result.error.message ? result.error.message : 'Login failed (' + res.status + ')');
       }
-      if (btn) { btn.textContent = 'Browser open'; setTimeout(function() { btn.textContent = 'Login'; btn.disabled = false; }, 5000); }
-      showToast('Browser opened \u2014 log in manually. Session will be captured.', 'warning');
+      if (result && result.authenticated) {
+        showToast('Profile authorized for ' + email, 'success');
+      } else {
+        showToast('Authorization in progress for ' + email + '...', 'warning');
+        pollAuth(email, 30);
+}
       pollAuth(email, 30);
     } catch (e) {
-      if (btn) { btn.textContent = 'Login'; btn.disabled = false; }
       setError(e.message);
       showToast(e.message, 'error');
     }

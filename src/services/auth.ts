@@ -102,7 +102,7 @@ export async function loginFresh(email: string, password: string): Promise<AuthS
         logStore.log('info', 'auth', 'Login success: ' + email);
         return browserResult;
       }
-      console.warn(`[Auth] Browser login failed for ${email}, trying temp context...`);
+      logStore.log('warn', 'auth', `Browser login failed for ${email}, trying temp context...`);
     }
 
     const browser = getBrowser();
@@ -112,7 +112,7 @@ export async function loginFresh(email: string, password: string): Promise<AuthS
         logStore.log('info', 'auth', 'Login success (temp context): ' + email);
         return tempResult;
       }
-      console.warn(`[Auth] Temp context login failed for ${email}`);
+      logStore.log('warn', 'auth', `Temp context login failed for ${email}`);
     }
   }
 
@@ -142,7 +142,7 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
   }
 
   if (merged.length === 0) {
-    console.warn('[Auth] No saved accounts found. Run: npm run login user@example.com');
+    logStore.log('warn', 'auth', 'No saved accounts found. Run: npm run login user@example.com');
     return;
   }
 
@@ -185,7 +185,7 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
   // Phase 2: Login accounts that don't have tokens yet — all in parallel
   const needLogin = accounts.filter(a => !a.state?.token && a.password);
   if (needLogin.length > 0) {
-    console.log(`[Auth] Logging in ${needLogin.length} accounts in parallel...`);
+    logStore.log('info', 'auth', `Logging in ${needLogin.length} accounts in parallel...`);
     const loginPromises = needLogin.map(async (acct) => {
       const newState = await loginFresh(acct.email, acct.password);
       if (newState) {
@@ -242,7 +242,7 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
     const { getProfileDir } = await import('./playwright.ts');
     const profileDir = getProfileDir(email);
     if (!existsSync(profileDir)) {
-      console.warn(`[Auth] No profile dir for ${email}`);
+      logStore.log('warn', 'auth', `No profile dir for ${email}`);
       return null;
     }
 
@@ -250,7 +250,7 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
     const acct = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
     const password = acct?.password;
 
-    console.log(`[Auth] Loading token from profile for ${email}...`);
+    logStore.log('info', 'auth', `Loading token from profile for ${email}...`);
     const { launchPersistentContext } = await import('cloakbrowser');
     const context = await launchPersistentContext({
       userDataDir: profileDir,
@@ -268,14 +268,22 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
 
       // No auth cookie — authorize the profile via openBrowserProfile
       if (!authCookie?.value && password) {
-        console.log(`[Auth] No auth cookie in profile for ${email}, authorizing...`);
+        logStore.log('info', 'auth', `Authorizing profile for ${email}...`);
         try { await context.close(); } catch { /* non-blocking */ }
         
         const { openBrowserProfile } = await import('./browserProfiles.ts');
         const result = await openBrowserProfile(email, password, { headless: true });
         
         if (result === 'success') {
-          // Re-open the profile to read the now-authenticated cookies
+          // openBrowserProfile already called saveCookies() via tryCheckToken,
+          // so the in-memory acct.state is already set. Just return it.
+          const updated = accounts.find(a => a.email.toLowerCase().trim() === email.toLowerCase().trim());
+          if (updated?.state) {
+            logStore.log('info', 'auth', `✓ Authorized ${email} via browser profile`);
+            return updated.state;
+          }
+          // Fallback: re-open profile to read cookie (may not be flushed yet)
+          logStore.log('info', 'auth', `Reading cookie from profile for ${email}...`);
           const authContext = await launchPersistentContext({
             userDataDir: profileDir,
             headless: true,
@@ -292,7 +300,7 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
             try { await authContext.close(); } catch { /* non-blocking */ }
           }
         } else {
-          console.warn(`[Auth] Profile authorization failed for ${email}: ${result}`);
+          logStore.log('warn', 'auth', `Profile authorization failed for ${email}: ${result}`);
           return null;
         }
       }
@@ -308,24 +316,20 @@ export async function loadCookiesFromProfile(email: string): Promise<AuthState |
             refreshToken: refreshCookie?.value || null,
           };
           await saveCookies(email, state.token, state.refreshToken, state.expiresAt);
-          console.log(`[Auth] ✓ Token loaded from profile for ${email}`);
+          logStore.log('info', 'auth', `✓ Token loaded from profile for ${email}`);
           return state;
         } else {
-          console.warn(`[Auth] Token expired for ${email}`);
+          logStore.log('warn', 'auth', `Token expired for ${email}`);
         }
-      } else {
-        console.warn(`[Auth] No auth cookie found in profile for ${email}`);
-      }
-    } finally {
-      try { await context.close(); } catch { /* non-blocking */ }
-    }
+      } else if (!authCookie?.value && password) {
+        logStore.log('warn', 'auth', `No auth cookie found in profile for ${email}`);
       }
     } finally {
       try { await context.close(); } catch { /* non-blocking */ }
     }
   } catch (err: any) {
     if (err?.message?.toLowerCase().includes('lock')) return null;
-    console.warn(`[Auth] Profile cookie load failed for ${email}: ${err.message}`);
+    logStore.log('warn', 'auth', `Profile cookie load failed for ${email}: ${err.message}`);
   }
   return null;
 }
@@ -355,7 +359,7 @@ export async function saveCookies(email: string, token: string, refreshToken?: s
       }
     }
   } catch (err: any) {
-    console.error(`[Auth] Failed to save cookies for ${normalizedEmail}: ${err.message}`);
+    logStore.log('error', 'auth', `Failed to save cookies for ${normalizedEmail}: ${err.message}`);
   }
 }
 

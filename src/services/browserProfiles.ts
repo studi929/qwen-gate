@@ -8,6 +8,7 @@ import { launchPersistentContext as cloakPersistentContext } from 'cloakbrowser'
 import { mkdirSync } from 'fs';
 import type { Cookie } from 'playwright';
 import { projectPath } from '../utils/paths.ts';
+import { logStore } from './logStore.ts';
 
 export function getProfileDir(email: string): string {
   const safe = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
@@ -137,7 +138,7 @@ async function tryCheckCaptcha(page: any, context: any, attempt: number, headles
 }
 
 async function pollForToken(page: any, context: any, email: string, headless: boolean): Promise<LoginResult | null> {
-  const maxAttempts = headless ? 15 : Infinity;
+  const maxAttempts = headless ? 20 : Infinity;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     await sleep(2000);
 
@@ -158,31 +159,39 @@ export async function openBrowserProfile(email: string, password?: string, optio
   let page: any = null;
 
   try {
+    logStore.log('info', 'browser', `Opening profile for ${email} (headless: ${headless})...`);
     context = await setupBrowserContext(email, headless);
     if (await checkExistingToken(context)) {
+      logStore.log('info', 'browser', `Existing valid token found for ${email}`);
       await context.close();
       return 'success';
     }
 
     page = context.pages()[0] || await context.newPage();
 
+    logStore.log('info', 'browser', `Navigating to auth page for ${email}...`);
     validateQwenUrl('https://chat.qwen.ai/auth');
-    await page.goto('https://chat.qwen.ai/auth', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.goto('https://chat.qwen.ai/auth', { waitUntil: 'domcontentloaded', timeout: 30_000 });
 
     if (password) {
+      logStore.log('info', 'browser', `Filling login form for ${email}...`);
       await fillLoginForm(page, email, password);
     }
 
+    logStore.log('info', 'browser', `Polling for token for ${email}...`);
     const result = await pollForToken(page, context, email, headless);
-    if (result) return result;
+    if (result) {
+      logStore.log('info', 'browser', `✓ Login successful for ${email}`);
+      return result;
+    }
 
-    console.error('[BrowserProfile] Headless timeout — no login detected, closing browser');
+    logStore.log('error', 'browser', `Headless timeout — no login detected for ${email}, closing browser`);
     try { await context.close(); } catch {
       // non-blocking
     }
     return 'error';
   } catch (err: any) {
-    console.error('[BrowserProfile] Error:', err.message);
+    logStore.log('error', 'browser', `Error for ${email}: ${err.message}`);
     if (context) { try { await context.close(); } catch {
       // non-blocking
     } }
@@ -235,13 +244,13 @@ export async function refreshViaProfile(email: string): Promise<boolean> {
       }
     }
 
-    console.error(`[BrowserProfile] No valid token found after profile navigation for ${email}`);
+    logStore.log('error', 'browser', `No valid token found after profile navigation for ${email}`);
     try { await context.close(); } catch {
       // intentional
     }
     return false;
   } catch (err: any) {
-    console.error(`[BrowserProfile] Profile refresh error for ${email}:`, err.message);
+    logStore.log('error', 'browser', `Profile refresh error for ${email}: ${err.message}`);
     if (context) { try { await context.close(); } catch {
       // intentional
     } }

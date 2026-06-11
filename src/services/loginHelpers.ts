@@ -7,6 +7,7 @@
 import crypto from 'crypto';
 import { getActivePage, getBrowser, createAccountContext } from './playwright.ts';
 import { AUTH_TOKEN_MAX_AGE_MS, createAuthFetchTimeout, checkPlaywrightSession, type AuthState } from "./auth.ts";
+import { logStore } from './logStore.ts';
 
 const QWEN_CHAT_URL = 'https://chat.qwen.ai';
 
@@ -55,7 +56,7 @@ export async function loginFreshViaBrowser(
         await page.goto(QWEN_CHAT_URL, { waitUntil: 'domcontentloaded' });
       }
     } catch (err: any) {
-      console.warn(`[Auth] Navigation check failed for ${email}: ${err.message}`);
+      logStore.log('warn', 'auth', `Navigation check failed for ${email}: ${err.message}`);
     }
 
     try {
@@ -72,7 +73,7 @@ export async function loginFreshViaBrowser(
         }
       }
     } catch (err: any) {
-      console.warn(`[Auth] Cookie clearing failed for ${email}: ${err.message}`);
+      logStore.log('warn', 'auth', `Cookie clearing failed for ${email}: ${err.message}`);
     }
 
     let evalResult: { ok: boolean; status: number; token: string | null; refreshToken: string | null; dataKeys: string[] };
@@ -116,12 +117,12 @@ export async function loginFreshViaBrowser(
         };
       }, { email, hashedPassword });
     } catch (err: any) {
-      console.error(`[Auth] Browser evaluate failed for ${email}: ${err.message}`);
+      logStore.log('error', 'auth', `Browser evaluate failed for ${email}: ${err.message}`);
       return null;
     }
 
     if (!evalResult.ok) {
-      console.error(`[Auth] Login failed for ${email} (${evalResult.status})`);
+      logStore.log('error', 'auth', `Login failed for ${email} (${evalResult.status})`);
       return null;
     }
 
@@ -140,7 +141,7 @@ export async function loginFreshViaBrowser(
       cookieToken = tokenCookie?.value || null;
       cookieRefresh = refreshCookie?.value || null;
     } catch (err: any) {
-      console.warn(`[Auth] Cookie read failed for ${email}: ${err.message}`);
+      logStore.log('warn', 'auth', `Cookie read failed for ${email}: ${err.message}`);
     }
 
     const finalToken = evalResult.token || cookieToken;
@@ -154,8 +155,8 @@ export async function loginFreshViaBrowser(
       };
     }
 
-    console.warn(
-      `[Auth] Login returned 200 for ${email} but no token found. ` +
+    logStore.log('warn', 'auth',
+      `Login returned 200 for ${email} but no token found. ` +
       `Response keys: [${evalResult.dataKeys.join(', ')}]. ` +
       `No auth cookies captured.`
     );
@@ -219,16 +220,16 @@ export async function loginFreshViaFetch(email: string, hashedPassword: string):
 
       const hasPlaywrightSession = await checkPlaywrightSession();
       if (hasPlaywrightSession) {
-        console.warn(`[Auth] API login returned 200 but no token for ${email}, and Playwright session exists but has no usable token`);
+        logStore.log('warn', 'auth', `API login returned 200 but no token for ${email}, and Playwright session exists but has no usable token`);
       }
 
-      console.warn(`[Auth] API login returned 200 but no token for ${email}:`, JSON.stringify(data).substring(0, 200));
+      logStore.log('warn', 'auth', `API login returned 200 but no token for ${email}: ${JSON.stringify(data).substring(0, 200)}`);
     } else {
       const errText = await response.text();
-      console.error(`[Auth] Login failed for ${email} (${response.status}): ${errText.substring(0, 200)}`);
+      logStore.log('error', 'auth', `Login failed for ${email} (${response.status}): ${errText.substring(0, 200)}`);
     }
   } catch (err: any) {
-    console.error(`[Auth] Login error for ${email}: ${err.message}`);
+    logStore.log('error', 'auth', `Login error for ${email}: ${err.message}`);
   }
 
   return null;
@@ -335,12 +336,12 @@ export async function loginViaTempContext(
     }
 
     const cookies = await context.cookies();
-    console.warn(
-      `[Auth] Temp context login failed for ${email}. Cookies: ${cookies.map(c => c.name).join(', ')}`
+    logStore.log('warn', 'auth',
+      `Temp context login failed for ${email}. Cookies: ${cookies.map(c => c.name).join(', ')}`
     );
     return null;
   } catch (err: any) {
-    console.error(`[Auth] Temp context login error for ${email}: ${err.message}`);
+    logStore.log('error', 'auth', `Temp context login error for ${email}: ${err.message}`);
     return null;
   } finally {
     release();

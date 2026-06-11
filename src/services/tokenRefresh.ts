@@ -5,6 +5,7 @@
  */
 
 import { createAuthFetchTimeout, AUTH_TOKEN_MAX_AGE_MS, AUTH_REFRESH_BEFORE_MS, saveCookies, loginFresh, type AccountEntry } from "./auth.ts";
+import { logStore } from './logStore.ts';
 
 export function needsRefresh(acct: AccountEntry): boolean {
   if (!acct.state) return true;
@@ -48,7 +49,7 @@ export async function tryRefreshToken(acct: AccountEntry): Promise<boolean> {
       }
     }
 
-    console.error(`[Auth] HTTP refresh failed for ${acct.email} — falling back to profile-based refresh`);
+    logStore.log('error', 'auth', `HTTP refresh failed for ${acct.email} — falling back to profile-based refresh`);
     try {
       const { refreshViaProfile } = await import('./playwright.ts');
       const profileResult = await refreshViaProfile(acct.email);
@@ -56,21 +57,21 @@ export async function tryRefreshToken(acct: AccountEntry): Promise<boolean> {
         return true;
       }
     } catch (profileErr: any) {
-      console.error(`[Auth] Profile refresh fallback failed for ${acct.email}:`, profileErr.message);
+      logStore.log('error', 'auth', `Profile refresh fallback failed for ${acct.email}: ${profileErr.message}`);
     }
 
     return false;
   } catch (err: any) {
-    console.error('[TokenRefresh] HTTP fetch failed:', err);
+    logStore.log('error', 'auth', 'HTTP fetch failed:', err);
     try {
       const { refreshViaProfile } = await import('./playwright.ts');
       const profileResult = await refreshViaProfile(acct.email);
       if (profileResult) {
-        console.error(`[Auth] ✓ Token refreshed via profile for ${acct.email} (after network error)`);
+        logStore.log('error', 'auth', `✓ Token refreshed via profile for ${acct.email} (after network error)`);
         return true;
       }
     } catch (innerErr: any) {
-      console.error('[TokenRefresh] Profile refresh fallback failed:', innerErr);
+      logStore.log('error', 'auth', `Profile refresh fallback failed: ${innerErr}`);
       // non-blocking: profile refresh may fail if browser unavailable
     }
     return false;
@@ -91,12 +92,12 @@ export async function ensureAccountFresh(acct: AccountEntry): Promise<boolean> {
     try {
       if (acct.state?.refreshToken) {
         if (await tryRefreshToken(acct)) return true;
-        console.warn(`[Auth] Refresh token failed for ${acct.email}`);
+        logStore.log('warn', 'auth', `Refresh token failed for ${acct.email}`);
       }
 
       if (acct.throttledUntil > Date.now()) {
         const waitSec = Math.ceil((acct.throttledUntil - Date.now()) / 1000);
-        console.warn(`[Auth] ⏳ Skipping re-login for ${acct.email} — throttled for ${waitSec}s more`);
+        logStore.log('warn', 'auth', `Skipping re-login for ${acct.email} — throttled for ${waitSec}s more`);
         return false;
       }
 

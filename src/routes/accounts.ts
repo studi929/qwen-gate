@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
-import { getAccounts, addAccount, removeAccount, getAccountByEmail, loginFresh, saveCookies } from '../services/auth.ts';
-import { openBrowserProfile } from '../services/playwright.ts';
+import { getAccounts, addAccount, removeAccount, getAccountByEmail } from '../services/auth.ts';
 
 const accountActionRateLimit = new Map<string, number[]>();
 
@@ -48,20 +47,6 @@ accountsRouter.post('/', async (c) => {
     }
 
     const result = await addAccount(email, password);
-
-    openBrowserProfile(email.toLowerCase().trim(), password, { headless: true })
-      .then(loginResult => {
-        if (loginResult === 'success') {
-          // intentional: success is already reflected in addAccount result, no additional action needed
-        } else if (loginResult === 'captcha') {
-          // intentional: CAPTCHA requires manual intervention, user must complete login via CLI
-        } else if (loginResult === 'closed') {
-          // intentional: browser closed before login completed, user must retry
-        }
-      })
-      .catch(err => {
-        console.error(`[Accounts] Persistent browser login error for ${email}:`, err.message);
-      });
 
     return c.json({ success: true, email: email.toLowerCase().trim(), loginSucceeded: result.loginSucceeded, loginError: result.loginError }, 201);
   } catch (err: any) {
@@ -111,14 +96,23 @@ accountsRouter.get('/:email/login', async (c) => {
       return c.json({ error: { message: 'No password stored for this account' } }, 400);
     }
 
-    const newState = await loginFresh(account.email, account.password);
+    // Authorize the browser profile — creates profile, logs in, saves cookie
+    const { openBrowserProfile } = await import('../services/playwright.ts');
+    const loginResult = await openBrowserProfile(account.email, account.password, { headless: true });
 
-    if (newState) {
-      account.state = newState;
-      await saveCookies(account.email, newState.token, newState.refreshToken, newState.expiresAt);
+    if (loginResult === 'success') {
+      // Re-read token from the now-authenticated profile
+      const { loadCookiesFromProfile } = await import('../services/auth.ts');
+      const profileState = await loadCookiesFromProfile(account.email);
+      if (profileState) {
+        account.state = profileState;
+        return c.json({ success: true, email: account.email, authenticated: true });
+      }
       return c.json({ success: true, email: account.email, authenticated: true });
+    } else if (loginResult === 'captcha') {
+      return c.json({ error: { message: 'CAPTCHA required — use autofill to complete manually' } }, 400);
     } else {
-      return c.json({ error: { message: 'Login failed' } }, 500);
+      return c.json({ error: { message: 'Login failed — check credentials' } }, 500);
     }
   } catch (err: any) {
     console.error('[Accounts] LOGIN failed:', err.message);
@@ -135,29 +129,26 @@ accountsRouter.get('/:email/autofill', async (c) => {
       return c.json({ error: { message: `Account ${email} not found` } }, 404);
     }
 
-    if (account.state?.token) {
-      return c.json({ success: true, email: account.email, message: 'Account is already authenticated.' });
+    if (!account.password) {
+      return c.json({ error: { message: 'No password stored for this account' } }, 400);
     }
 
-    openBrowserProfile(account.email, account.password, { headless: false })
-      .then(loginResult => {
-        if (loginResult === 'success') {
-          // intentional: success is already reflected in token save, no additional action needed
-        } else if (loginResult === 'captcha') {
-          // intentional: CAPTCHA requires manual intervention, user must complete login in browser
-        } else if (loginResult === 'closed') {
-          // intentional: browser closed before login completed, user must retry
-        }
-      })
-      .catch(err => {
-        console.error(`[Accounts] Login error for ${email}:`, err.message);
-      });
+    // Open browser in non-headless mode, wait for login, save cookie in profile
+    const { openBrowserProfile } = await import('../services/playwright.ts');
+    const loginResult = await openBrowserProfile(account.email, account.password, { headless: false });
 
-    return c.json({
-      success: true,
-      email: account.email,
-      message: 'Browser opened with credentials filled. Solve CAPTCHA or fix password if needed.'
-    });
+    if (loginResult === 'success') {
+      const { loadCookiesFromProfile } = await import('../services/auth.ts');
+      const profileState = await loadCookiesFromProfile(account.email);
+      if (profileState) {
+        account.state = profileState;
+      }
+      return c.json({ success: true, email: account.email, authenticated: true });
+    } else if (loginResult === 'captcha') {
+      return c.json({ error: { message: 'CAPTCHA required — please complete in the browser' } }, 400);
+    } else {
+      return c.json({ error: { message: 'Login failed' } }, 500);
+    }
   } catch (err: any) {
     console.error('[Accounts] AUTOFILL failed:', err.message);
     return c.json({ error: { message: 'Auto-fill login failed' } }, 500);

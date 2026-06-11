@@ -28,7 +28,7 @@ export function migrateFromOldPaths(): void {
       return;
     }
 
-    console.log('[Auth] Migrating data from qwen_profile/ to .qwen/ ...');
+    logStore.log('info', 'auth', 'Migrating data from qwen_profile/ to .qwen/ ...');
 
     const newDir = path.dirname(ACCOUNTS_FILE);
     if (!existsSync(newDir)) {
@@ -37,12 +37,11 @@ export function migrateFromOldPaths(): void {
 
     const accountsData = readFileSync(OLD_ACCOUNTS_FILE, 'utf-8');
     writeFileSync(ACCOUNTS_FILE, accountsData, 'utf-8');
-    console.log('[Auth] Migrated accounts.json');
-    console.log('[Auth] Note: old token files are ignored — tokens are now read from browser profiles.');
-
-    console.log('[Auth] Migration complete. Old files preserved.');
+    logStore.log('info', 'auth', 'Migrated accounts.json');
+    logStore.log('info', 'auth', 'Note: old token files are ignored — tokens are now read from browser profiles.');
+    logStore.log('info', 'auth', 'Migration complete. Old files preserved.');
   } catch (err: any) {
-    console.error('[Auth] Migration error:', err.message);
+    logStore.log('error', 'auth', `Migration error: ${err.message}`);
   }
 }
 
@@ -123,7 +122,7 @@ export function decrypt(encryptedText: string, apiKey: string): string {
     decrypted += decipher.final('utf8');
     return decrypted;
   } catch {
-    console.error('[Auth] Decryption failed — wrong API_KEY or corrupted data');
+    logStore.log('error', 'auth', 'Decryption failed — wrong API_KEY or corrupted data');
     return '';
   }
 }
@@ -160,7 +159,7 @@ export function loadAccountsFromFile(): Array<{ email: string; password: string 
       password: apiKey ? decryptPassword(d.password, apiKey) : d.password,
     }));
   } catch (err: any) {
-    console.error('[Auth] Failed to load accounts file:', err.message);
+    logStore.log('error', 'auth', `Failed to load accounts file: ${err.message}`);
     return [];
   }
 }
@@ -198,7 +197,7 @@ export async function addAccount(
     if (profileState) {
       entry.state = profileState;
       await configureAccount(normalizedEmail).catch(err =>
-        console.error(`[Account] Failed to configure ${normalizedEmail}: ${err.message}`)
+        logStore.log('error', 'account', `Failed to configure ${normalizedEmail}: ${err.message}`)
       );
       return { loginSucceeded: true };
     }
@@ -209,12 +208,12 @@ export async function addAccount(
   if (newState) {
     entry.state = newState;
     await configureAccount(normalizedEmail).catch(err =>
-      console.error(`[Account] Failed to configure ${normalizedEmail}: ${err.message}`)
-    );
-    return { loginSucceeded: true };
-  } else {
-    const msg = `Login failed: wrong password or CAPTCHA required for ${normalizedEmail}. Check system logs.`;
-    console.warn(`[Auth] ${msg}`);
+        logStore.log('error', 'account', `Failed to configure ${normalizedEmail}: ${err.message}`)
+      );
+      return { loginSucceeded: true };
+    } else {
+      const msg = `Login failed: wrong password or CAPTCHA required for ${normalizedEmail}. Check system logs.`;
+      logStore.log('warn', 'auth', msg);
     return { loginSucceeded: false, loginError: msg };
   }
 }
@@ -233,7 +232,7 @@ export async function removeAccount(
     try {
       rmSync(profileDir, { recursive: true, force: true });
     } catch (err: any) {
-      console.error(`[Auth] Failed to delete Chromium profile for ${normalizedEmail}:`, err.message);
+      logStore.log('error', 'auth', `Failed to delete Chromium profile for ${normalizedEmail}: ${err.message}`);
     }
   }
 }
@@ -305,12 +304,12 @@ export function setupAccountWatcher(): void {
       reloadDebounceTimer = setTimeout(() => {
         reloadDebounceTimer = null;
         reloadAccounts().catch(err => {
-          console.error(`[Auth] Hot-reload failed: ${err.message}`);
+          logStore.log('error', 'auth', `Hot-reload failed: ${err.message}`);
         });
       }, 500);
     });
     accountWatcher.on('error', (err: any) => {
-      console.error(`[Auth] Account watcher error: ${err.message}`);
+      logStore.log('error', 'auth', `Account watcher error: ${err.message}`);
       try { accountWatcher?.close(); } catch {
         // non-blocking: watcher may already be closed
       }
@@ -322,7 +321,7 @@ export function setupAccountWatcher(): void {
     });
     setTimeout(() => { watcherReady = true; }, 2000);
   } catch (err: any) {
-    console.error(`[Auth] Failed to set up account watcher: ${err.message}`);
+    logStore.log('error', 'auth', `Failed to set up account watcher: ${err.message}`);
   }
 }
 /**
@@ -370,7 +369,7 @@ export function pickAccount(): Promise<AccountEntry | null> {
       picked.lastUsed = Date.now();
       resolve(picked);
     }).catch((err) => {
-      console.error('[Auth] pickAccount mutex error:', err);
+      logStore.log('error', 'auth', 'pickAccount mutex error:', err);
       resolve(null);
     });
   });
