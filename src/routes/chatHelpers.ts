@@ -81,7 +81,7 @@ export function buildQwenMessages(
           "",
         )
         .replace(
-          /<(?:think|thinking|thought|tool_call|tool_use|function_call|tool)\b[^>]*>[\s\S]*?<\/(?:think|thinking|thought|tool_call|tool_use|function_call|tool)>/gi,
+          /<(?:think(?:ing)?|thought)\b[^>]*>[\s\S]*?<\/(?:think(?:ing)?|thought)>/gi,
           "",
         )
         .replace(/^(?:System|Assistant|User|Human):\s*/gim, "")

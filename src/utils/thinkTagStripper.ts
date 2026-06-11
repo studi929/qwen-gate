@@ -33,5 +33,5 @@ export function isThinkingLine(line: string): boolean {
   return THINKING_COMBINED_PATTERN.test(trimmed);
 }
 
-export const QWEN_THINK_TAG_PATTERN = /<\/?(?:think|thinking|thought|tool_call|tool_use|function_call|tool)(?:\s[^>]{0,100})?\/?>/gi;
-export const QWEN_THINK_BLOCK_START = /<(?:think(?:ing)?|thought|tool_call|tool_use|function_call|tool)[\s>]/i;
+export const QWEN_THINK_TAG_PATTERN = /<\/?(?:think(?:ing)?|thought)(?:\s[^>]{0,100})?\/?>/gi;
+export const QWEN_THINK_BLOCK_START = /<(?:think(?:ing)?|thought)[\s>]/i;

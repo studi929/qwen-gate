@@ -130,8 +130,8 @@ export function getSnapshotDelta(
   return "";
 }
 
-/** Matches closing/opening think/tool tags (with optional attributes/self-close). */
-const THINK_TAG_PATTERN = /<\/?(?:think|thinking|thought|tool_call|tool_use|function_call|tool)(?:\s[^>]*)?\/?>/gi;
+/** Matches closing/opening think tags (with optional attributes/self-close). */
+const THINK_TAG_PATTERN = /<\/?(?:think(?:ing)?|thought)(?:\s[^>]*)?\/?>/gi;
 /** Matches tool result tag fragments (requires closing > to avoid false stripping of /toolbox /toolkit etc). */
 const TOOL_RESULT_TAG_PATTERN = /<\/tool(?:_result)?>/gi;
 

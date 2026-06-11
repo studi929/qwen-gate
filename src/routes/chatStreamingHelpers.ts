@@ -25,7 +25,7 @@ import {
  * Matches self-closing thinking/tool tags (newlines/spaces around tags).
  * Performance: extracted to module-level const to avoid recompilation on each chunk.
  */
-const SELF_CLOSING_TAG_PATTERN = /^[\n\s]*<\/?(?:think|thinking|thought|tool_call|tool_use|function_call)[\s>]*[\n\s]*$/;
+const SELF_CLOSING_TAG_PATTERN = /^[\n\s]*<\/?(?:think(?:ing)?|thought)[\s>]*[\n\s]*$/;
 
 // ── Tool call handling ─────────────────────────────────────────────
 
