@@ -83,15 +83,6 @@ export async function handleStreamingRequest(ctx: StreamingContext): Promise<Res
       const bufferRef = { text: '' };
       const loopResult = await runStreamLoop(c, reader, decoder, streamState, streamCtx, ampState, bufferRef);
 
-      if (loopResult.echoAborted) {
-        logStore.updateEntry(logId, entry => {
-          entry.finalResponse = entry.finalResponse || { finishReason: '', toolCallCount: 0, contentPreview: '' };
-          entry.finalResponse.finishReason = 'stop';
-        });
-        logStore.finalizeRequest(logId);
-        return;
-      }
-
       await handlePostStreamCompletion(
         {
           streamWriter, completionId, model: body.model, streamState, ampState,

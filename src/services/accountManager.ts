@@ -144,6 +144,16 @@ function decryptPassword(encryptedText: string): string {
   return decrypt(encryptedText);
 }
 
+// O(1) email→account lookup index (synced with accounts array mutations)
+const emailIndex = new Map<string, AccountEntry>();
+
+export function rebuildEmailIndex(): void {
+  emailIndex.clear();
+  for (const acct of accounts) {
+    emailIndex.set(acct.email.toLowerCase().trim(), acct);
+  }
+}
+
 export function saveAccountsToFile(accounts: readonly AccountEntry[]): void {
   const dir = path.dirname(ACCOUNTS_FILE);
   if (!existsSync(dir)) {
@@ -190,6 +200,7 @@ export async function addAccount(
     totalRequests: 0,
   };
   accounts.push(entry);
+  rebuildEmailIndex();
   saveAccountsToFile(accounts);
 
   // Step 1: Create and authorize the browser profile
@@ -232,6 +243,7 @@ export async function removeAccount(
     throw new Error(`Account with email ${normalizedEmail} not found`);
   }
   accounts.splice(index, 1);
+  rebuildEmailIndex();
   saveAccountsToFile(accounts);
   const { removeAccountContext } = await import('./playwright.ts');
   removeAccountContext(normalizedEmail);
@@ -293,6 +305,7 @@ export async function reloadAccounts(): Promise<void> {
       removed++;
     }
   }
+  if (added > 0 || removed > 0) rebuildEmailIndex();
 }
 let accountWatcher: any = null;
 let reloadDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -388,13 +401,18 @@ export async function pickAccount(): Promise<AccountEntry | null> {
       }
       return best;
     }
-    const idle = available.filter(a => a.inFlight === 0);
-    const pool = idle.length > 0 ? idle : available;
-    pool.sort((a, b) => {
-      if (a.inFlight !== b.inFlight) return a.inFlight - b.inFlight;
-      return (a.lastUsed || 0) - (b.lastUsed || 0);
-    });
-    const picked = pool[0];
+    const pool = available.filter(a => a.inFlight === 0);
+    const candidates = pool.length > 0 ? pool : available;
+    // Single-pass O(N) min-find instead of O(N log N) sort
+    let bestIdx = 0;
+    for (let i = 1; i < candidates.length; i++) {
+      const a = candidates[i];
+      const b = candidates[bestIdx];
+      if (a.inFlight < b.inFlight || (a.inFlight === b.inFlight && (a.lastUsed || 0) < (b.lastUsed || 0))) {
+        bestIdx = i;
+      }
+    }
+    const picked = candidates[bestIdx];
     picked.lastUsed = Date.now();
     picked.inFlight++;
     // Safety valve: reset if counter drifts unreasonably high
@@ -424,8 +442,7 @@ export function hasInFlight(email: string): boolean {
   return acct ? acct.inFlight > 0 : false;
 }
 export function getAccountByEmail(email: string): AccountEntry | null {
-  const normalized = email.toLowerCase().trim();
-  return accounts.find(a => a.email.toLowerCase().trim() === normalized) || null;
+  return emailIndex.get(email.toLowerCase().trim()) || null;
 }
 export function throttleAccount(email: string, durationMs?: number): void {
   const acct = getAccountByEmail(email);

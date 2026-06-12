@@ -5,6 +5,7 @@ import { config } from "../services/configService.ts";
 import { logStore } from "../services/logStore.ts";
 import { modelRouter } from "../services/modelRouter.ts";
 import { pickAccount } from "../services/auth.ts";
+import { sessionPool } from "../services/sessionPool.ts";
 import { checkContextWindow, estimateTokens } from "../utils/tokenEstimator.ts";
 import { handleStreamingRequest } from "./chatStreaming.ts";
 import { handleNonStreamingRequest } from "./chatNonStreaming.ts";
@@ -124,9 +125,11 @@ async function setupSession(
     entry.accountEmail = resolvedEmail;
   });
 
-  const routedModel = await modelRouter.route(body.model);
-  let { stream, abortController: qwenAbortController } =
-    await createQwenStreamWithRetry(
+  let routedModel;
+  let streamResult;
+  try {
+    routedModel = await modelRouter.route(body.model);
+    streamResult = await createQwenStreamWithRetry(
       sessionMessages,
       isThinkingModel,
       routedModel,
@@ -136,6 +139,12 @@ async function setupSession(
       body.tools,
       body.tool_choice,
     );
+  } catch (err) {
+    // Release the acquired session to prevent pool exhaustion + inFlight leak
+    sessionPool.release(session.chatId, nextParentId, sessionHeaders, resolvedEmail, false);
+    throw err;
+  }
+  let { stream, abortController: qwenAbortController } = streamResult;
 
   // Build finalPrompt for logStore debug logging only
   const finalPrompt = sessionMessages.map((m: any) => {

@@ -23,7 +23,6 @@ import {
 
 export interface StreamLoopResult {
   buffer: string;
-  echoAborted: boolean;
   nextParentId: string | null;
 }
 
@@ -45,12 +44,14 @@ export async function runStreamLoop(
     if (c.req.raw?.signal?.aborted) { reader.cancel(); break; }
 
     const IDLE_TIMEOUT_MS = 60_000;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
     const readResult = await Promise.race([
       reader.read(),
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Upstream stream idle timeout — no data for 60s')), IDLE_TIMEOUT_MS);
+        idleTimer = setTimeout(() => reject(new Error('Upstream stream idle timeout — no data for 60s')), IDLE_TIMEOUT_MS);
       }),
     ]);
+    if (idleTimer) clearTimeout(idleTimer);
     if (readResult.done) break;
     _totalChunks++;
     if (readResult.value) ampState.rawInputBytes += readResult.value.length;
@@ -82,7 +83,7 @@ export async function runStreamLoop(
     nextParentId = streamState.nextParentId;
   }
 
-  return { buffer: bufferRef.text, echoAborted: false, nextParentId };
+  return { buffer: bufferRef.text, nextParentId };
 }
 
 export async function handlePostStreamCompletion(
@@ -115,80 +116,86 @@ export async function handlePostStreamCompletion(
   } = args;
   const { reader, heartbeatInterval, chatId, sessionHeaders, email, sessionPool } = cleanup;
 
-  const upstreamError = parseQwenErrorPayload(buffer);
-  if (upstreamError) {
-    const cleanErrorMessage = cleanTextOfXmlArtifacts(upstreamError.message).cleanedText || upstreamError.message;
-    await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({ content: cleanErrorMessage })]));
-    await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({}, 'stop')]));
-    await streamWriter.write('data: [DONE]\n\n');
-    logStore.updateEntry(logId, entry => { entry.finalResponse = entry.finalResponse || { finishReason: '', toolCallCount: 0, contentPreview: '' }; entry.finalResponse.finishReason = 'upstream_error'; });
-    logStore.finalizeRequest(logId);
-    scheduleCleanup(reader, heartbeatInterval, chatId, streamState?.nextParentId, sessionHeaders, email, sessionPool, false);
-    return;
-  }
-
-  // Count tool calls from the final assembled content
-  const finalToolCalls = streamState.lastFullContent
-    ? parseXmlToolCalls(streamState.lastFullContent).toolCalls.length
-    : 0;
-  const effectiveToolCallCount = Math.max(emittedToolCallCount, finalToolCalls);
-
-  const pipelineResult = filterContentPipeline(streamState.lastFullContent, enableContentFiltering);
-  const flushCleaned = pipelineResult.cleanText;
-  const flushThinking = pipelineResult.thinking;
-
-  if (flushThinking) {
-    const thinkDelta = getSnapshotDelta(flushThinking, streamState.lastThinkingSnapshot);
-    if (thinkDelta) {
-      streamState.lastThinkingSnapshot = flushThinking;
-      await writeReasoningEvent(streamWriter, completionId, model, thinkDelta);
+  try {
+    const upstreamError = parseQwenErrorPayload(buffer);
+    if (upstreamError) {
+      const cleanErrorMessage = cleanTextOfXmlArtifacts(upstreamError.message).cleanedText || upstreamError.message;
+      await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({ content: cleanErrorMessage })]));
+      await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({}, 'stop')]));
+      await streamWriter.write('data: [DONE]\n\n');
+      logStore.updateEntry(logId, entry => { entry.finalResponse = entry.finalResponse || { finishReason: '', toolCallCount: 0, contentPreview: '' }; entry.finalResponse.finishReason = 'upstream_error'; });
+      logStore.finalizeRequest(logId);
+      return;
     }
-  }
-  if (flushCleaned) {
-    const contentDelta = getSnapshotDelta(flushCleaned, streamState.lastFilteredSnapshot);
-    if (contentDelta) {
-      streamState.lastFilteredSnapshot = flushCleaned;
-      if (checkAmplificationGuard(ampState, contentDelta.length, logId, resolvedEmail, model, streamState.lastRawContent, streamState.lastVStrRaw)) {
-        // guard triggered — skip content emission
-      } else {
-        const ct = contentDelta.replace(/[\n\s]*$/, '');
-        if (ct) {
-          logStore.addProcessedOutput(logId, ct);
-          ampState.emittedOutputBytes += ct.length;
-          await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({ content: ct })]));
+
+    // Count tool calls from the final assembled content
+    const finalToolCalls = streamState.lastFullContent
+      ? parseXmlToolCalls(streamState.lastFullContent).toolCalls.length
+      : 0;
+    const effectiveToolCallCount = Math.max(emittedToolCallCount, finalToolCalls);
+
+    const pipelineResult = filterContentPipeline(streamState.lastFullContent, enableContentFiltering);
+    const flushCleaned = pipelineResult.cleanText;
+    const flushThinking = pipelineResult.thinking;
+
+    if (flushThinking) {
+      const thinkDelta = getSnapshotDelta(flushThinking, streamState.lastThinkingSnapshot);
+      if (thinkDelta) {
+        streamState.lastThinkingSnapshot = flushThinking;
+        await writeReasoningEvent(streamWriter, completionId, model, thinkDelta);
+      }
+    }
+    if (flushCleaned) {
+      const contentDelta = getSnapshotDelta(flushCleaned, streamState.lastFilteredSnapshot);
+      if (contentDelta) {
+        streamState.lastFilteredSnapshot = flushCleaned;
+        if (checkAmplificationGuard(ampState, contentDelta.length, logId, resolvedEmail, model, streamState.lastRawContent, streamState.lastVStrRaw)) {
+          // guard triggered — skip content emission
+        } else {
+          const ct = contentDelta.replace(/[\n\s]*$/, '');
+          if (ct) {
+            logStore.addProcessedOutput(logId, ct);
+            ampState.emittedOutputBytes += ct.length;
+            await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({ content: ct })]));
+          }
         }
       }
     }
+
+
+    const usage = buildUsage(streamState.promptTokens, streamState.completionTokens, streamState.reasoningBuffer);
+    const finalFinishReason = effectiveToolCallCount > 0 ? 'tool_calls' : 'stop';
+
+    await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({}, finalFinishReason)],
+      includeUsage ? undefined : { usage },
+    ));
+
+    if (includeUsage) {
+      await writeEvent(streamWriter, buildChunkEvent(completionId, model, [], { usage }));
+    }
+    await streamWriter.write('data: [DONE]\n\n');
+
+    checkFinalAmplification(ampState, logId, resolvedEmail, logStore);
+
+    logStore.updateEntry(logId, (entry) => {
+      const now = Date.now();
+      const startedAt = new Date(entry.timestamp).getTime();
+      if (startedAt) entry.latency_ms = now - startedAt;
+      if (streamState.lastFullContent) entry.remainingText = streamState.lastFullContent;
+      entry.finalResponse = {
+        finishReason: finalFinishReason || 'stop',
+        toolCallCount: effectiveToolCallCount,
+        contentPreview: (streamState.lastFullContent || '').substring(0, 100),
+      };
+    });
+
+    logStore.finalizeRequest(logId);
+  } catch (err) {
+    console.error('[Chat] handlePostStreamCompletion error:', err);
+    logStore.addError(logId, err instanceof Error ? err.message : String(err));
+    logStore.finalizeRequest(logId);
+  } finally {
+    // Always release session to prevent pool exhaustion, even if writeEvent fails
+    scheduleCleanup(reader, heartbeatInterval, chatId, streamState.nextParentId, sessionHeaders, email, sessionPool);
   }
-
-
-  const usage = buildUsage(streamState.promptTokens, streamState.completionTokens, streamState.reasoningBuffer);
-  const finalFinishReason = effectiveToolCallCount > 0 ? 'tool_calls' : 'stop';
-
-  await writeEvent(streamWriter, buildChunkEvent(completionId, model, [makeChoice({}, finalFinishReason)],
-    includeUsage ? undefined : { usage },
-  ));
-
-  if (includeUsage) {
-    await writeEvent(streamWriter, buildChunkEvent(completionId, model, [], { usage }));
-  }
-  await streamWriter.write('data: [DONE]\n\n');
-
-  checkFinalAmplification(ampState, logId, resolvedEmail, logStore);
-
-  logStore.updateEntry(logId, (entry) => {
-    const now = Date.now();
-    const startedAt = new Date(entry.timestamp).getTime();
-    if (startedAt) entry.latency_ms = now - startedAt;
-    if (streamState.lastFullContent) entry.remainingText = streamState.lastFullContent;
-    entry.finalResponse = {
-      finishReason: finalFinishReason || 'stop',
-      toolCallCount: effectiveToolCallCount,
-      contentPreview: (streamState.lastFullContent || '').substring(0, 100),
-    };
-  });
-
-  logStore.finalizeRequest(logId);
-
-  scheduleCleanup(reader, heartbeatInterval, chatId, streamState.nextParentId, sessionHeaders, email, sessionPool);
 }

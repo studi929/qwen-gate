@@ -51,24 +51,23 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
   return { toolCalls, cleanedText: cleanedText.replace(/\n{4,}/g, '\n\n\n').trim() };
 }
 
+/**
+ * Pre-compiled regexes for stripping remaining XML markup.
+ * Grouped into 3 passes (down from 10 individual .replace() calls)
+ * to reduce regex engine invocations on the full content buffer.
+ */
+// Pass 1: All function-related markup — complete blocks, bare tags, fragments, closing tags
+const FUNCTION_MARKUP_RE = /<function=[^\s>][^>]*>[\s\S]*?(?:<\/function>|<function=|$)|<function=[^>]*(?:>|(?=\n|$))|<function(?=[\s<]|$)|<\/?function>/g;
+// Pass 2: All parameter-related markup — complete blocks, bare tags, closing tags
+const PARAMETER_MARKUP_RE = /<parameter=[^\s>][^>]*>[\s\S]*?<\/parameter>|<parameter=[^>]*(?:>|(?=\n|$))|<\/?parameter>/g;
+// Pass 3: Excessive newlines
+const EXCESS_NEWLINES_RE = /\n{4,}/g;
+
 function stripRemainingXmlMarkup(text: string): string {
   return text
-    // Strip complete or partial <function=...> blocks (including malformed/incomplete tags)
-    .replace(/<function=[^\s>][^>]*>[\s\S]*?(?:<\/function>|<function=|$)/g, '')
-    // Strip bare <function=...> tags without content (with or without closing >)
-    .replace(/<function=[^>]*(?:>|(?=\n|$))/g, '')
-    // Strip bare <function (without =) when split across chunks
-    .replace(/<function(?=[\s<]|$)/g, '')
-    // Strip </function> tags
-    .replace(/<\/?function>/g, '')
-    // Strip complete <parameter=...> blocks
-    .replace(/<parameter=[^\s>][^>]*>[\s\S]*?<\/parameter>/g, '')
-    // Strip bare <parameter=...> tags
-    .replace(/<parameter=[^>]*(?:>|(?=\n|$))/g, '')
-    // Strip </parameter> tags
-    .replace(/<\/?parameter>/g, '')
-    // Clear excessive newlines
-    .replace(/\n{4,}/g, '\n\n\n')
+    .replace(FUNCTION_MARKUP_RE, '')
+    .replace(PARAMETER_MARKUP_RE, '')
+    .replace(EXCESS_NEWLINES_RE, '\n\n\n')
     .trim();
 }
 

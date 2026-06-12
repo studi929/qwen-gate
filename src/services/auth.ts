@@ -16,6 +16,7 @@ import {
   loadAccountsFromFile, setupAccountWatcher as setupAccountWatcherImpl,
   enableHotReload as enableHotReloadImpl, resetWatcherState,
   migrateFromOldPaths,
+  rebuildEmailIndex,
 } from './accountManager.ts';
 import { needsRefresh, ensureAccountFresh } from './tokenRefresh.ts';
 import { LoginMutex, loginFreshViaBrowser, loginFreshViaFetch, loginViaTempContext } from './loginHelpers.ts';
@@ -162,6 +163,7 @@ export async function initAuth(onAccountReady?: (email: string) => Promise<void>
       totalRequests: 0,
     });
   }
+  rebuildEmailIndex();
 
   try {
     // Phase 1: Load tokens from browser profiles — max 3 concurrent Chromium instances

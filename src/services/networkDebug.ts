@@ -52,6 +52,7 @@ const MAX_STORED_CHUNKS = 100;
 const MAX_BODY_PREVIEW = 2000;
 
 const entries: NetworkDebugEntry[] = [];
+const entryIndex = new Map<string, NetworkDebugEntry>(); // O(1) lookup by id
 const listeners = new Set<(entry: NetworkDebugEntry) => void>();
 
 function redactHeaders(headers: Record<string, string>): Record<string, string> {
@@ -84,6 +85,7 @@ function notifyListeners(entry: NetworkDebugEntry): void {
 }
 
 export function createNetworkEntry(options: NetworkDebugOptions): NetworkDebugEntry {
+  const bodyStr = options.body ? JSON.stringify(options.body) : '';
   const entry: NetworkDebugEntry = {
     id: crypto.randomUUID(),
     timestamp: new Date().toISOString(),
@@ -92,12 +94,8 @@ export function createNetworkEntry(options: NetworkDebugOptions): NetworkDebugEn
       url: options.url,
       method: options.method,
       headers: redactHeaders(options.headers),
-      bodyPreview: options.body 
-        ? JSON.stringify(options.body).slice(0, MAX_BODY_PREVIEW) 
-        : '',
-      bodySize: options.body 
-        ? new TextEncoder().encode(JSON.stringify(options.body)).length 
-        : 0,
+      bodyPreview: bodyStr.slice(0, MAX_BODY_PREVIEW),
+      bodySize: bodyStr ? new TextEncoder().encode(bodyStr).length : 0,
     },
     response: {
       status: null,
@@ -123,10 +121,12 @@ export function createNetworkEntry(options: NetworkDebugOptions): NetworkDebugEn
   
   // Add to front of array (newest first)
   entries.unshift(entry);
+  entryIndex.set(entry.id, entry);
   
   // Maintain FIFO - remove oldest if over limit
   if (entries.length > MAX_ENTRIES) {
-    entries.pop();
+    const removed = entries.pop()!;
+    entryIndex.delete(removed.id);
   }
   
   notifyListeners(entry);
@@ -135,7 +135,7 @@ export function createNetworkEntry(options: NetworkDebugOptions): NetworkDebugEn
 }
 
 export function recordResponse(entryId: string, response: Response): void {
-  const entry = entries.find(e => e.id === entryId);
+  const entry = entryIndex.get(entryId);
   if (!entry) {
     return;
   }
@@ -156,7 +156,7 @@ export function recordResponse(entryId: string, response: Response): void {
 }
 
 export function recordStreamChunk(entryId: string, chunk: string): void {
-  const entry = entries.find(e => e.id === entryId);
+  const entry = entryIndex.get(entryId);
   if (!entry) {
     return;
   }
@@ -181,7 +181,7 @@ export function recordStreamChunk(entryId: string, chunk: string): void {
 }
 
 export function completeEntry(entryId: string): void {
-  const entry = entries.find(e => e.id === entryId);
+  const entry = entryIndex.get(entryId);
   if (!entry) {
     return;
   }
@@ -199,7 +199,7 @@ export function completeEntry(entryId: string): void {
 }
 
 export function errorEntry(entryId: string, error: string): void {
-  const entry = entries.find(e => e.id === entryId);
+  const entry = entryIndex.get(entryId);
   if (!entry) {
     return;
   }
@@ -219,7 +219,7 @@ export function getRecentNetworkEntries(count: number = 50): NetworkDebugEntry[]
 }
 
 export function getNetworkEntry(id: string): NetworkDebugEntry | undefined {
-  return entries.find(e => e.id === id);
+  return entryIndex.get(id);
 }
 
 export function subscribeNetwork(listener: (entry: NetworkDebugEntry) => void): () => void {

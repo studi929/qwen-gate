@@ -91,6 +91,9 @@ export interface QwenStreamResult {
 
 const QWEN_FETCH_TIMEOUT_MS = parseInt(config.get('QWEN_FETCH_TIMEOUT_MS', '30000'), 10);
 
+// Cache Intl.DateTimeFormat — avoids re-creating per request (expensive)
+const cachedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 function createFetchTimeout(): { controller: AbortController; cleanup: () => void } {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), QWEN_FETCH_TIMEOUT_MS);
@@ -191,7 +194,7 @@ export async function createQwenStream(
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'same-origin',
-      'timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      'timezone': cachedTimezone,
       'user-agent': reqHeaders['user-agent'],
       'x-accel-buffering': 'no',
       'x-request-id': crypto.randomUUID(),
@@ -274,16 +277,18 @@ export async function createQwenStream(
       let response: Response;
       try {
         const { controller, cleanup } = createFetchTimeout();
-        controller.signal.addEventListener('abort', () => {
+        const onFetchAbort = () => {
           if (!streamAbortController.signal.aborted) {
             streamAbortController.abort(controller.signal.reason || new Error('Fetch timeout'));
           }
-        });
-        streamAbortController.signal.addEventListener('abort', () => {
+        };
+        const onStreamAbort = () => {
           if (!controller.signal.aborted) {
             controller.abort(streamAbortController.signal.reason);
           }
-        });
+        };
+        controller.signal.addEventListener('abort', onFetchAbort);
+        streamAbortController.signal.addEventListener('abort', onStreamAbort);
         try {
           const bodyStr = JSON.stringify(payload);
           if (config.get("SAVE_REQUEST_LOGS") === "true") {
@@ -296,7 +301,11 @@ export async function createQwenStream(
           const respHeaders: Record<string, string> = {};
           response.headers.forEach((v, k) => { respHeaders[k] = v; });
           if (makeRequestQwenLogFile) logQwenResponse(makeRequestQwenLogFile, response.status, response.statusText, respHeaders, '');
-        } finally { cleanup(); }
+        } finally {
+          cleanup();
+          controller.signal.removeEventListener('abort', onFetchAbort);
+          streamAbortController.signal.removeEventListener('abort', onStreamAbort);
+        }
       } catch (fetchErr: unknown) {
         if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
           logStore.log('warn', 'qwen', 'Request timed out');

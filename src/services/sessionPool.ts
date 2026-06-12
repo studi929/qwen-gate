@@ -169,9 +169,10 @@ export class SessionPool {
     const existingTimer = this.releaseTimers.get(chatId);
     if (existingTimer) clearTimeout(existingTimer);
     const timer = setTimeout(() => {
-      this.deleteSession(chatId);
+      this.deleteSession(chatId, cachedHeaders, accountEmail);
       this.releaseTimers.delete(chatId);
     }, 60_000);
+    if (typeof timer.unref === 'function') timer.unref();
     this.releaseTimers.set(chatId, timer);
     logStore.log('info', 'pool', 'Session released' + (accountEmail ? ': ' + accountEmail.split('@')[0] : ''));
   }

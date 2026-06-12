@@ -8,15 +8,36 @@ export function filterContent(raw: string): FilterResult {
   let text = raw;
   const capturedThinking: string[] = [];
 
-  while (true) {
-    const startMatch = text.match(QWEN_THINK_BLOCK_START);
-    if (!startMatch) break;
+  // Pre-compiled end-tag patterns for known think tag names (avoids new RegExp() per iteration)
+  const END_TAG_PATTERNS: Record<string, RegExp> = {
+    'think': /<\/think>/i,
+    'thinking': /<\/thinking>/i,
+    'thought': /<\/thought>/i,
+  };
 
-    const startIdx = startMatch.index!;
+  // Segment-based extraction: avoids O(n²) string concatenation by collecting
+  // non-thinking segments and joining once at the end.
+  const segments: string[] = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const remainder = text.substring(cursor);
+    const startMatch = remainder.match(QWEN_THINK_BLOCK_START);
+    if (!startMatch) {
+      segments.push(remainder);
+      break;
+    }
+
+    const startIdx = cursor + startMatch.index!;
     const startTagEnd = text.indexOf('>', startIdx) + 1;
 
+    // Extract the tag name to find matching close tag
     const endTagName = text.substring(startIdx + 1, text.indexOf('>', startIdx));
-    const endPattern = new RegExp(`</${endTagName.replace(/[\s>].*/, '')}>`, 'i');
+    const strippedTagName = endTagName.replace(/[\s>].*/, '');
+    
+    // Use pre-compiled regex if available, fall back to dynamic compilation
+    const endPattern = END_TAG_PATTERNS[strippedTagName.toLowerCase()] 
+      ?? new RegExp(`</${strippedTagName}>`, 'i');
     const endMatch = text.substring(startTagEnd).match(endPattern);
 
     if (endMatch) {
@@ -26,19 +47,20 @@ export function filterContent(raw: string): FilterResult {
       if (cleanThinkContent.trim()) {
         capturedThinking.push(cleanThinkContent.trim());
       }
-      const before = text.substring(0, startIdx);
-      const after = text.substring(endIdx + endMatch[0].length);
-      const needsSpace = before.length > 0 && !/[\s\n]$/.test(before) && after.length > 0 && !/^[\s\n]/.test(after);
-      text = before + (needsSpace ? ' ' : '') + after;
+      // Push the non-thinking segment before this block
+      segments.push(text.substring(cursor, startIdx));
+      cursor = endIdx + endMatch[0].length;
     } else {
+      // Unclosed think tag — capture everything from here to end
       const thinkContent = text.substring(startTagEnd);
       const cleanThinkContent = stripToolCallArtifacts(thinkContent);
       capturedThinking.push(cleanThinkContent.trim());
-      const before = text.substring(0, startIdx);
-      text = before + (before.length > 0 && !/[\s\n]$/.test(before) ? ' ' : '');
+      segments.push(text.substring(cursor, startIdx));
       break;
     }
   }
+
+  text = segments.join('');
 
   text = text.replace(QWEN_THINK_TAG_PATTERN, ' ');
 

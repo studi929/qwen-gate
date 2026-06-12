@@ -97,6 +97,7 @@ export class RequestLogStore extends SystemLogger {
   private serverStartTime = Date.now();
   private requestLogDir: string | null = null;
   private requestDirMap: Map<string, string> = new Map();
+  private requestFileCount = 0; // Track files written since last cleanup
 
   /**
    * Enable per-request file logging. Each request gets a single JSON file
@@ -385,10 +386,16 @@ export class RequestLogStore extends SystemLogger {
       };
       const fileName = `${dateStr}_${timeStr}.json`;
       const filePath = join(this.requestLogDir, fileName);
-      const files = readdirSync(this.requestLogDir).sort();
-      if (files.length >= 1000) {
-        const toRemove = files.slice(0, files.length - 999);
-        for (const f of toRemove) unlinkSync(join(this.requestLogDir, f));
+      // Periodic cleanup instead of readdirSync+sort on every request
+      this.requestFileCount++;
+      if (this.requestFileCount % 50 === 0) {
+        try {
+          const files = readdirSync(this.requestLogDir).sort();
+          if (files.length >= 1000) {
+            const toRemove = files.slice(0, files.length - 999);
+            for (const f of toRemove) unlinkSync(join(this.requestLogDir, f));
+          }
+        } catch { /* cleanup is best-effort */ }
       }
       writeFile(filePath, JSON.stringify(payload, null, 2)).catch(err =>
         console.error('[LogStore] Failed to write request log:', err.message)

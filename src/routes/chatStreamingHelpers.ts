@@ -272,6 +272,12 @@ export async function processStreamData(
 
   if (state.loggedToolCalls.size > 500) state.loggedToolCalls.clear();
 
+  // Performance: only run the expensive content filter pipeline when there
+  // is genuinely new raw content since the last pipeline invocation. This
+  // avoids O(n²) work (regex chains on the full 100KB buffer) on empty
+  // or thinking-only chunks that don't add answer text.
+  if (!rawText) return 'continue';
+
   const pipelineResult = filterContentPipeline(state.lastFullContent, enableContentFiltering);
   const cleanedText = pipelineResult.cleanText;
   const filteredThinking = pipelineResult.thinking;

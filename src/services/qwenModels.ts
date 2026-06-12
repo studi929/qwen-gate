@@ -2,7 +2,7 @@ import { getQwenHeaders, getBasicHeaders } from './playwright.ts';
 import crypto from 'node:crypto';
 import modelSpecs from '../models.json' with { type: 'json' };
 import type { ModelSpec } from '../types/openai.ts';
-import { getAllAccountEmails } from './auth.ts';
+import { getAllAccountEmails, decrementInFlight } from './auth.ts';
 import { createNetworkEntry, recordResponse, completeEntry, errorEntry } from './networkDebug.ts';
 import { config } from './configService.ts';
 import { logStore } from './logStore.ts';
@@ -11,6 +11,7 @@ import { QWEN_API_BASE, QWEN_SETTINGS_URL, QWEN_CHATS_URL, QWEN_MODELS_URL } fro
 export { DEFAULT_SYSTEM_PROMPT };
 
 const QWEN_FETCH_TIMEOUT_MS = parseInt(config.get('QWEN_FETCH_TIMEOUT_MS', '30000'), 10);
+const cachedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 function createFetchTimeout(): { controller: AbortController; cleanup: () => void } {
   const controller = new AbortController();
@@ -233,7 +234,10 @@ export async function deleteAllChats(email: string): Promise<void> {
 export async function fetchQwenModels(): Promise<any[]> {
   const now = Date.now();
   if (cachedModels && (now - lastModelsFetch < 3600000)) { return cachedModels; }
-  const { cookie, userAgent, bxV } = await getBasicHeaders();
+  const { cookie, userAgent, bxV, email: resolvedEmail } = await getBasicHeaders();
+  // getBasicHeaders() internally calls pickAccount() which increments inFlight.
+  // This is a non-session model-fetch, so decrement immediately to prevent leak.
+  if (resolvedEmail) decrementInFlight(resolvedEmail);
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     let modelsDebugId: string | null = null;
@@ -247,7 +251,7 @@ export async function fetchQwenModels(): Promise<any[]> {
         'user-agent': userAgent,
         'x-request-id': crypto.randomUUID(),
         'bx-v': bxV,
-        'timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+        'timezone': cachedTimezone,
         'source': 'web'
       };
       const modelsDebugEntry = createNetworkEntry({
