@@ -48,7 +48,7 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
   sections.push(text.slice(lastIdx));
   cleanedText = sections.join('');
 
-  return { toolCalls, cleanedText: cleanedText.replace(/\n{4,}/g, '\n\n\n').trim() };
+  return { toolCalls, cleanedText: cleanedText.replace(/\n{4,}/g, '\n\n\n') };
 }
 
 /**
@@ -67,8 +67,7 @@ function stripRemainingXmlMarkup(text: string): string {
   return text
     .replace(FUNCTION_MARKUP_RE, '')
     .replace(PARAMETER_MARKUP_RE, '')
-    .replace(EXCESS_NEWLINES_RE, '\n\n\n')
-    .trim();
+    .replace(EXCESS_NEWLINES_RE, '\n\n\n');
 }
 
 export function cleanTextOfXmlArtifacts(text: string): { toolCalls: ParsedXmlToolCall[]; cleanedText: string } {
