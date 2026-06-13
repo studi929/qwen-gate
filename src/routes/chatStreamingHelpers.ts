@@ -113,8 +113,21 @@ export type ProcessStreamResult = 'continue' | 'break_stream';
 export function filterContentPipeline(
   text: string,
   enableContentFiltering: boolean,
+  /** Set true for per-chunk deltas to avoid mangling partial XML tool call syntax.
+   *  Skips cleanTextOfXmlArtifacts and filterContent (both strip incomplete
+   *  XML tags and create orphaned tail fragments). Only runs cleanThinkTags
+   *  which strips complete tags safely. Full XML stripping happens on flush. */
+  skipXmlArtifactStripping?: boolean,
 ): { cleanText: string | null; thinking: string } {
   if (!text) return { cleanText: null, thinking: '' };
+  if (skipXmlArtifactStripping) {
+    // Per-chunk: only strip complete think/function tags. Partial XML tool call
+    // syntax (e.g. "<function" or "=read>\n" split across chunks) is handled
+    // on the full accumulated text during flush processing.
+    const cleaned = cleanThinkTags(text);
+    return { cleanText: cleaned || null, thinking: '' };
+  }
+  // Full-text processing (flush path): strip ALL XML tool call artifacts.
   const { cleanedText: stripped } = cleanTextOfXmlArtifacts(text);
   if (!enableContentFiltering) {
     const cleaned = cleanThinkTags(stripped);
@@ -285,7 +298,7 @@ export async function processStreamData(
   // Incremental filtering: process only the new delta through the filter
   // pipeline instead of re-scanning the full accumulated buffer (up to 100KB)
   // on every chunk. Accumulate filtered output for snapshot diffing.
-  const filterDelta = filterContentPipeline(rawText, enableContentFiltering);
+  const filterDelta = filterContentPipeline(rawText, enableContentFiltering, true);
   const deltaCleaned = filterDelta.cleanText;
   const deltaThinking = filterDelta.thinking;
 
