@@ -78,6 +78,9 @@ pics/
 *.tmp
 TODO.md
 
+# Deepwork progress files
+.slim/
+
 # Project docs
 TODO/
 qwen-gate/

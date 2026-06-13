@@ -5,10 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-06-14
 
 ### Fixed
-- **Dashboard Script Injection**: Fixed critical bug where `serveHtml` broke all `<script src="...">` tags when injecting `window.APP_VERSION`, causing the entire dashboard to crash. The string-based `.replace("<script>", ...)` now uses regex `/(<script\b)/` to properly inject before existing script tags. ([#5](https://github.com/youssefvdel/qwen-gate/issues/5)) — reported and fixed by [@ericjoo98-ai](https://github.com/ericjoo98-ai)
+- **Stream Idle Timeout Hang**: Upstream silence no longer hangs the client indefinitely. Catches timeout gracefully, writes error SSE event + `[DONE]`, logs to dashboard. Default timeout 45s, configurable via `STREAM_IDLE_TIMEOUT_MS`.
+- **Tool Call Content Leak**: Streaming tool call XML fragments (`<function=`, `=filePath>`, `-edit`) no longer leak into emitted content. Uses `toolCallDepth` state counter + per-chunk detection.
+- **Timing-Safe API Key**: Config route now uses constant-time comparison (`safeCompare`) for API key check.
+
+### Changed
+- **Data-Driven Stripping**: All tag names centralized in `src/utils/tagNames.ts`. `TOOL_CALL_KEYWORDS`, `THINK_TAG_NAMES`, `TOOL_RESULT_KEYWORDS` arrays drive regex construction in all 8 stripping sites. No hardcoded regex patterns.
+- **Deduplication**: Think tag regex consolidated from 5 sites → 1 shared. Newline normalization unified to `\n{3,}→\n\n` everywhere. Removed 250+ lines of dead code (`json.ts`, `stripStreamingDelta`, `repairMalformedJson`, unused re-exports).
+- **Performance**: `END_TAG_PATTERNS` hoisted to module-level. `IDLE_TIMEOUT_MS` hoisted out of hot loop. Short-circuit guards added to `cleanThinkTags` and `parseXmlToolCalls`.
+- **Better Diagnostics**: JSON parse errors log raw data. Stream errors captured in both console and dashboard log.
+
+### Fixed
+- **Dashboard Script Injection**: Fixed critical bug where `serveHtml` broke all `<script src="...">` tags when injecting `window.APP_VERSION`. ([#5](https://github.com/youssefvdel/qwen-gate/issues/5))
 
 ## [0.2.0] - 2026-06-04
 
@@ -76,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Package.json with core dependencies
 - Basic README with project description
 
-[0.2.0]: https://github.com/youssefvdel/qwen-gate/compare/v0.1.0...HEAD
+[0.5.0]: https://github.com/youssefvdel/qwen-gate/compare/v0.4.0...v0.5.0
+[0.2.0]: https://github.com/youssefvdel/qwen-gate/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/youssefvdel/qwen-gate/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/youssefvdel/qwen-gate/releases/tag/v0.0.1

@@ -48,8 +48,6 @@ test('reproduces and tests fix for corrupted tool call when split across chunks'
       emittedOutputBytes: 0,
       triggered: false,
     },
-    reader: null as any,
-    streamReader: null,
     qwenAbortController: new AbortController(),
   };
 

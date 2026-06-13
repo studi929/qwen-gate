@@ -1,6 +1,6 @@
 {
   "name": "qwen-gate",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "OpenAI-compatible API gateway for Qwen models — drop-in replacement for /v1/chat/completions with multi-account rotation, tool calling, streaming SSE, and web dashboard",
   "main": "index.js",
   "bin": {
