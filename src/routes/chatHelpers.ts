@@ -7,13 +7,14 @@ import modelSpecs from "../models.json" with { type: "json" };
 import type { ModelSpec } from "../types/openai.ts";
 import { pendingCorrections } from "./chatHelpersCore.ts";
 import { compressToolResult } from "./compressToolResult.ts";
+import { THINK_TAG_NAMES } from "../utils/tagNames.ts";
 
 // Re-export everything from core utilities
 export * from "./chatHelpersCore.ts";
 
 /** Pre-compiled regex patterns for user content sanitization */
 const TAG_STRIP_RE = /<(?:system|instruction|prompt|rule)\b[^>]*>[\s\S]*?<\/(?:system|instruction|prompt|rule)>/gi;
-const THINK_TAG_STRIP_RE = /<(?:think(?:ing)?|thought)\b[^>]*>[\s\S]*?<\/(?:think(?:ing)?|thought)>/gi;
+const THINK_TAG_STRIP_RE = new RegExp(`<(?:${THINK_TAG_NAMES.join('|')})\\b[^>]*>[\\s\\S]*?<\/(?:${THINK_TAG_NAMES.join('|')})>`, 'gi');
 const ROLE_PREFIX_RE = /^(?:System|Assistant|User|Human):\s*/gim;
 const CONTROL_CHAR_RE = /[\x00-\x08\x0b\x0c\x0e-\x1f]/g;
 

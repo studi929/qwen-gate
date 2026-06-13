@@ -10,6 +10,7 @@ import { logStore } from '../services/logStore.ts';
 import { parseXmlToolCalls, cleanTextOfXmlArtifacts, xmlToolCallToParsed } from '../tools/xmlToolParser.ts';
 import { logQwenSSE } from '../services/qwenLogger.ts';
 import { filterContent } from '../utils/contentFilter.ts';
+import { THINK_TAG_NAMES } from '../utils/tagNames.ts';
 
 import {
   writeReasoningEvent,
@@ -24,7 +25,7 @@ import {
  * Matches self-closing thinking/tool tags (newlines/spaces around tags).
  * Performance: extracted to module-level const to avoid recompilation on each chunk.
  */
-const SELF_CLOSING_TAG_PATTERN = /^[\n\s]*<\/?(?:think(?:ing)?|thought)[\s>]*[\n\s]*$/;
+const SELF_CLOSING_TAG_PATTERN = new RegExp(`^[\\n\\s]*<\\/?(?:${THINK_TAG_NAMES.join('|')})[\\s>]*[\\n\\s]*$`);
 
 // ── Local MCP tool call extraction (from Qwen Studio local_tool phase) ──
 
@@ -84,6 +85,8 @@ export interface StreamProcessingState {
   lastDeltaThinkingFull: string;
   loggedToolCalls: Set<string>;
   lastParsePosition: number;
+  /** Depth tracking for nested tool call XML blocks. >0 means suppress content emission. */
+  toolCallDepth: number;
 }
 
 export interface StreamProcessingCtx {
@@ -245,6 +248,15 @@ export async function processStreamData(
     state.lastFullContent += rawText;
   }
 
+  // Track tool call depth to suppress content leaks from chunk-boundary fragments
+  // When inside a tool call block (depth > 0), don't accumulate into
+  // lastFilteredFullContent or emit content deltas to the client. The flush
+  // path handles the clean version of the tool call text.
+  const tagOpen  = /<function(?:[=\s]|$)/i.test(rawText);
+  const tagClose = /<\/function\s*>/i.test(rawText);
+  if (tagOpen)  state.toolCallDepth++;
+  if (tagClose) state.toolCallDepth = Math.max(0, state.toolCallDepth - 1);
+
   // Keep state.lastFullContent raw so partial <function=...> survives for the next chunk
   const newToolCallContent = state.lastFullContent;
   const { toolCalls: xmlToolCalls } = parseXmlToolCalls(newToolCallContent);
@@ -302,7 +314,10 @@ export async function processStreamData(
   const deltaCleaned = filterDelta.cleanText;
   const deltaThinking = filterDelta.thinking;
 
-  if (deltaCleaned) state.lastFilteredFullContent = (state.lastFilteredFullContent || '') + deltaCleaned;
+  // Only accumulate filtered content when outside a tool call block.
+  // Inside a tool call (depth > 0), fragments like "-edit" or "=filePath>" would
+  // leak through cleanThinkTags and corrupt the client's content stream.
+  if (deltaCleaned && state.toolCallDepth === 0) state.lastFilteredFullContent = (state.lastFilteredFullContent || '') + deltaCleaned;
   if (deltaThinking) state.lastDeltaThinkingFull = (state.lastDeltaThinkingFull || '') + deltaThinking;
 
   const cleanedText = state.lastFilteredFullContent || null;
@@ -321,7 +336,7 @@ export async function processStreamData(
     }
   }
 
-  if (cleanedText) {
+  if (cleanedText && state.toolCallDepth === 0) {
     // Text-only content (no tool calls): write content delta to SSE + logStore
     const contentDelta = getSnapshotDelta(cleanedText, state.lastFilteredSnapshot);
     state.lastFilteredSnapshot = cleanedText;

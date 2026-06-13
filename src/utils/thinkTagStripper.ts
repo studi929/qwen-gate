@@ -1,3 +1,5 @@
+import { THINK_TAG_NAMES } from './tagNames.ts';
+
 export interface FilterResult {
   cleanText: string;
   thinking: string;
@@ -33,5 +35,5 @@ export function isThinkingLine(line: string): boolean {
   return THINKING_COMBINED_PATTERN.test(trimmed);
 }
 
-export const QWEN_THINK_TAG_PATTERN = /<\/?(?:think(?:ing)?|thought)(?:\s[^>]{0,100})?\/?>/gi;
-export const QWEN_THINK_BLOCK_START = /<(?:think(?:ing)?|thought)[\s>]/i;
+export const QWEN_THINK_TAG_PATTERN = new RegExp(`<\\/?(?:${THINK_TAG_NAMES.join('|')})(?:\\s[^>]{0,100})?\\/?>`, 'gi');
+export const QWEN_THINK_BLOCK_START = new RegExp(`<(?:${THINK_TAG_NAMES.join('|')})[\\s>]`, 'i');

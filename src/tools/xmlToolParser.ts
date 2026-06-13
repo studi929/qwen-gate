@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { TOOL_CALL_KEYWORDS } from '../utils/tagNames.ts';
 
 export interface ParsedXmlToolCall {
   name: string;
@@ -6,8 +7,9 @@ export interface ParsedXmlToolCall {
 }
 
 function functionNameFromTag(tag: string): string | null {
-  // Match function name from <function=NAME...> — NAME can be any non-whitespace, non-> chars
-  const m = tag.match(/^<function=([^\s>]+)>/);
+  // Match function name from <KEYWORD=NAME...> — NAME can be any non-whitespace, non-> chars
+  const kw = TOOL_CALL_KEYWORDS[0];
+  const m = tag.match(new RegExp(`^<${kw}=([^\\s>]+)>`));
   return m ? m[1] : null;
 }
 
@@ -16,7 +18,15 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
   const unique = new Set<string>();
   let cleanedText = text;
 
-  const re = /<function=[^\s>]+[\s\S]*?>[\s\S]*?(?:<\/function>|$)/g;
+  // Fast path: skip the expensive regex exec loop when there's no tool call content
+  const hasToolCallStart = TOOL_CALL_KEYWORDS.some(kw => text.includes(`<${kw}=`));
+  if (!hasToolCallStart) return { toolCalls, cleanedText };
+
+  const fkw = TOOL_CALL_KEYWORDS[0]; // 'function' — the block-level keyword
+  const pkw = TOOL_CALL_KEYWORDS[1]; // 'parameter' — the parameter keyword
+  // Semantics: <keyword=NAME...chars...> body </keyword>
+  // Matches the opening <keyword=, captures until first >, then lazily until </keyword> or end.
+  const re = new RegExp(`<${fkw}=[^\\s>]+[\\s\\S]*?>[\\s\\S]*?(?:<\\/${fkw}>|$)`, 'g');
   const sections: string[] = [];
   let lastIdx = 0;
   let match: RegExpExecArray | null;
@@ -28,13 +38,13 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
     const name = functionNameFromTag(match[0]);
     if (!name) continue;
 
-    const closingTag = '</function>';
+    const closingTag = `</${fkw}>`;
     const closingIndex = match[0].lastIndexOf(closingTag);
     if (closingIndex === -1) continue; // malformed — no closing tag
     const body = match[0].slice(match[0].indexOf('>') + 1, closingIndex);
 
     const parameters: Record<string, string> = {};
-    const paramRe = /<parameter=([^\s>]+)>([\s\S]*?)<\/parameter>/g;
+    const paramRe = new RegExp(`<${pkw}=([^\\s>]+)>([\\s\\S]*?)<\\/${pkw}>`, 'g');
     let pm: RegExpExecArray | null;
     while ((pm = paramRe.exec(body)) !== null) {
       parameters[pm[1].trim()] = pm[2].trim();
@@ -48,26 +58,36 @@ export function parseXmlToolCalls(text: string): { toolCalls: ParsedXmlToolCall[
   sections.push(text.slice(lastIdx));
   cleanedText = sections.join('');
 
-  return { toolCalls, cleanedText: cleanedText.replace(/\n{4,}/g, '\n\n\n') };
+  return { toolCalls, cleanedText: cleanedText.replace(/\n{3,}/g, '\n\n') };
 }
 
 /**
  * Pre-compiled regexes for stripping remaining XML markup.
- * Grouped into 3 passes (down from 10 individual .replace() calls)
- * to reduce regex engine invocations on the full content buffer.
+ * Built dynamically from the shared TOOL_CALL_KEYWORDS array so adding
+ * new tool call tag keywords is a one-line change.
  */
-// Pass 1: All function-related markup — complete blocks, bare tags, fragments, closing tags
-const FUNCTION_MARKUP_RE = /<function=[^\s>][^>]*>[\s\S]*?(?:<\/function>|<function=|$)|<function=[^>]*(?:>|(?=\n|$))|<function(?=[\s<]|$)|<\/?function>/g;
-// Pass 2: All parameter-related markup — complete blocks, bare tags, closing tags
-const PARAMETER_MARKUP_RE = /<parameter=[^\s>][^>]*>[\s\S]*?<\/parameter>|<parameter=[^>]*(?:>|(?=\n|$))|<\/?parameter>/g;
-// Pass 3: Excessive newlines
-const EXCESS_NEWLINES_RE = /\n{4,}/g;
+const [TOOL_MARKUP_RE, EXCESS_NEWLINES_RE] = (() => {
+  const markupParts: string[] = [];
+  for (const kw of TOOL_CALL_KEYWORDS) {
+    // 1. Complete block (or truncated at next occurrence of same keyword)
+    markupParts.push(`<${kw}=[^\\s>][^>]*>[\\s\\S]*?(?:<\\/${kw}>|<${kw}=|$)`);
+    // 2. Bare tag with =value (no >, or > at end)
+    markupParts.push(`<${kw}=[^>]*(?:>|(?=\\n|$))`);
+    // 3. Bare <keyword prefix followed by whitespace, <, or end
+    markupParts.push(`<${kw}(?=[\\s<]|$)`);
+    // 4. Opening/closing tag
+    markupParts.push(`<\\/?${kw}>`);
+  }
+  return [
+    new RegExp(markupParts.join('|'), 'g'),
+    /\n{3,}/g,
+  ];
+})();
 
 function stripRemainingXmlMarkup(text: string): string {
   return text
-    .replace(FUNCTION_MARKUP_RE, '')
-    .replace(PARAMETER_MARKUP_RE, '')
-    .replace(EXCESS_NEWLINES_RE, '\n\n\n');
+    .replace(TOOL_MARKUP_RE, '')
+    .replace(EXCESS_NEWLINES_RE, '\n\n');
 }
 
 export function cleanTextOfXmlArtifacts(text: string): { toolCalls: ParsedXmlToolCall[]; cleanedText: string } {

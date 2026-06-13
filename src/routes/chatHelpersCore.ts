@@ -1,6 +1,7 @@
 
 import { validateSingleToolCall } from "../tools/guard.ts";
 import { logStore } from "../services/logStore.ts";
+import { TOOL_CALL_KEYWORDS, THINK_TAG_NAMES, TOOL_RESULT_KEYWORDS } from "../utils/tagNames.ts";
 
 function safeTruncate(val: any, maxLen = 200): any {
   if (typeof val === "string") {
@@ -115,10 +116,10 @@ export function getSnapshotDelta(
   return "";
 }
 
-/** Matches closing/opening think tags (with optional attributes/self-close). */
-const THINK_TAG_PATTERN = /<\/?(?:think(?:ing)?|thought)(?:\s[^>]*)?\/?>/gi;
+/** Matches closing/opening think tags (with optional attributes/self-close). Bounded attr length for ReDoS safety. */
+const THINK_TAG_PATTERN = new RegExp(`<\\/?(?:${THINK_TAG_NAMES.join('|')})(?:\\s[^>]{0,100})?\\/?>`, 'gi');
 /** Matches tool result tag fragments (requires closing > to avoid false stripping of /toolbox /toolkit etc). */
-const TOOL_RESULT_TAG_PATTERN = /<\/tool(?:_result)?>/gi;
+const TOOL_RESULT_TAG_PATTERN = new RegExp(`<\\/${TOOL_RESULT_KEYWORDS.join('|')}>`, 'gi');
 
 /**
  * Data-driven regex builder for tool call XML tag & tail stripping.
@@ -135,7 +136,7 @@ const TOOL_RESULT_TAG_PATTERN = /<\/tool(?:_result)?>/gi;
  */
 const MIN_TOOL_PREFIX_LEN = 3;
 const [TOOL_TAG_RE, TOOL_TAIL_RE] = (() => {
-  const keywords = ['function', 'parameter'];
+  const keywords = TOOL_CALL_KEYWORDS;
   const tagPrefixes: string[] = [];
   const tailPrefixes: string[] = [];
 
@@ -158,6 +159,8 @@ const [TOOL_TAG_RE, TOOL_TAIL_RE] = (() => {
 })();
 
 export function cleanThinkTags(t: string): string {
+  // Fast path: skip all regex work when there's no tag-like content or tail fragment
+  if (!t.includes('<') && !TOOL_TAIL_RE.test(t)) return t;
   let s = t.replace(THINK_TAG_PATTERN, "");
   s = s.replace(TOOL_RESULT_TAG_PATTERN, "");
   // Strip tool call XML tags (complete + partial at chunk boundaries)

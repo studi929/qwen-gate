@@ -24,6 +24,7 @@ test('reproduces and tests fix for corrupted tool call when split across chunks'
     lastDeltaThinkingFull: '',
     loggedToolCalls: new Set(),
     lastParsePosition: 0,
+    toolCallDepth: 0,
   };
 
   const writtenEvents: string[] = [];

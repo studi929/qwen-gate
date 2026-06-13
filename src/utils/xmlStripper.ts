@@ -1,3 +1,5 @@
+import { TOOL_RESULT_KEYWORDS, ALL_TOOL_KEYWORDS } from './tagNames.ts';
+
 /**
  * Tool echo patterns — strip lines where the model echoes tool results
  * as JSON: [{"type":"function","tool":"name","result":{...}}]
@@ -10,40 +12,33 @@ const TOOL_ECHO_PATTERNS: RegExp[] = [
 export function stripToolCallArtifacts(text: string): string {
   if (!text) return '';
   // Strip XML tool_result blocks (complete pairs)
-  text = text.replace(/<tool_result[^>]*>[\s\S]*?<\/tool_result>/g, '');
+  const blockOpenRe = new RegExp(`<${TOOL_RESULT_KEYWORDS[0]}[^>]*>[\\s\\S]*?<\\/${TOOL_RESULT_KEYWORDS[0]}>`, 'g');
+  text = text.replace(blockOpenRe, '');
   // Strip orphaned <tool_result without matching close
-  const unmatchedOpenIdx = text.search(/<tool_result(?:\s[^>]*)?>/);
+  const orphanOpenRe = new RegExp(`<${TOOL_RESULT_KEYWORDS[0]}(?:\\s[^>]*)?>`);
+  const unmatchedOpenIdx = text.search(orphanOpenRe);
   if (unmatchedOpenIdx !== -1) { text = text.substring(0, unmatchedOpenIdx); }
   // Strip residual </tool_result> without matching open
-  text = text.replace(/<\/tool_result\s*>/g, '');
+  const orphanCloseRe = new RegExp(`<\\/${TOOL_RESULT_KEYWORDS[0]}\\s*>`, 'g');
+  text = text.replace(orphanCloseRe, '');
   // Strip any </...tool_result> where prefix between </ and tool_result may be garbled
-  // Use \w+ instead of [\s\S]*? to avoid eating surrounding text
-  text = text.replace(/<\/\w+tool_result\s*>/g, '');
+  const garbledCloseRe = new RegExp(`<\\/(?:\\w+)?${TOOL_RESULT_KEYWORDS[0]}\\s*>`, 'g');
+  text = text.replace(garbledCloseRe, '');
   // Strip partial / incomplete tool tags at end of text (streaming boundaries).
   // These are conservatively matched — only unambiguous tool tag prefixes.
-  // Combined into a single regex to avoid 5 separate .replace() passes.
-  text = text.replace(/\n?<(?:tool_result|tool_call|tool_use|function|parameter)(?:\s[^>]*)?$/g, '');
-  // Strip any remaining </tool or </tool_result prefix (with > requirement to avoid
+  // Combined into a single regex built from the shared keyword array.
+  const streamBoundaryRe = new RegExp(`\\n?<(?:${ALL_TOOL_KEYWORDS.join('|')})(?:\\s[^>]*)?$`, 'g');
+  text = text.replace(streamBoundaryRe, '');
+  // Strip any remaining closing tool tags (with > requirement to avoid
   // matching </toolbox, </toolkit etc.)
-  text = text.replace(/<\/tool(?:_result)?>/g, '');
+  const toolCloseRe = new RegExp(`<\\/(?:${TOOL_RESULT_KEYWORDS.join('|')})>`, 'g');
+  text = text.replace(toolCloseRe, '');
   // Strip JSON tool result echo blocks (handles both single-line and pretty-printed multi-line):
   //   [{"type":"function","tool":"name","result":{"success":true,"stdout":"...","stderr":"","command":"name"}}]
   text = text.replace(/\[\s*\{[\s\S]*?"type"\s*:\s*"function"[\s\S]*?"tool"\s*:\s*"[a-z_]+"[\s\S]*?\}\s*\]/g, '');
   text = stripToolEcho(text);
   text = text.replace(/\n{3,}/g, '\n\n');
   return text;
-}
-
-export function stripStreamingDelta(delta: string): string {
-  if (!delta) return '';
-  let cleaned = delta;
-  cleaned = cleaned.replace(/\[READ TOOL RESULT below[^\]]*\]\s*/g, '');
-  cleaned = cleaned.replace(/<tool_result[^>]*>[\s\S]*?<\/tool_result>/g, '');
-  // Strip partial tool tags at EOL (streaming chunk boundaries)
-  cleaned = cleaned.replace(/\n?<tool_result(?:\s[^>]*)?$/g, '');
-  cleaned = cleaned.replace(/\n?<tool_call(?:\s[^>]*)?$/g, '');
-  cleaned = cleaned.replace(/\n?<function(?:\s[^>]*)?$/g, '');
-  return cleaned;
 }
 
 export function stripToolEcho(text: string): string {
@@ -65,17 +60,4 @@ export function stripToolEcho(text: string): string {
   return result;
 }
 
-export function repairMalformedJson(malformedJson: string): string | null {
-  let fixed = malformedJson.trim();
-  try { JSON.parse(fixed); return null; } catch { /* continue */ }
-  fixed = fixed.replace(/'/g, '"');
-  fixed = fixed.replace(/,\s*([}\]])/g, '$1');
-  fixed = fixed.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
-  const openBraces = (fixed.match(/{/g) || []).length;
-  const closeBraces = (fixed.match(/}/g) || []).length;
-  const openBrackets = (fixed.match(/\[/g) || []).length;
-  const closeBrackets = (fixed.match(/\]/g) || []).length;
-  if (openBraces > closeBraces) fixed += '}'.repeat(openBraces - closeBraces);
-  if (openBrackets > closeBrackets) fixed += ']'.repeat(openBrackets - closeBrackets);
-  try { JSON.parse(fixed); return fixed; } catch { return null; }
-}
+

@@ -141,5 +141,6 @@ function buildInitialStreamState(finalPrompt: string, initialParentId: string | 
     lastDeltaThinkingFull: '',
     loggedToolCalls: new Set(),
     lastParsePosition: 0,
+    toolCallDepth: 0,
   };
 }
