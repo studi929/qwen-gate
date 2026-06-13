@@ -3,16 +3,16 @@ import { stripToolCallArtifacts } from "./xmlStripper.ts";
 import { THINK_TAG_NAMES } from "./tagNames.ts";
 export type { FilterResult } from './thinkTagStripper.ts';
 
+// Pre-compiled end-tag patterns for known think tag names (avoids new RegExp() per filterContent invocation)
+const END_TAG_PATTERNS: Record<string, RegExp> = Object.fromEntries(
+  THINK_TAG_NAMES.map(name => [name, new RegExp(`<\/${name}>`, 'i')])
+);
+
 export function filterContent(raw: string): FilterResult {
   if (!raw) return { cleanText: '', thinking: '' };
 
   let text = raw;
   const capturedThinking: string[] = [];
-
-  // Pre-compiled end-tag patterns for known think tag names (avoids new RegExp() per iteration)
-  const END_TAG_PATTERNS: Record<string, RegExp> = Object.fromEntries(
-    THINK_TAG_NAMES.map(name => [name, new RegExp(`<\/${name}>`, 'i')])
-  );
 
   // Segment-based extraction: avoids O(n²) string concatenation by collecting
   // non-thinking segments and joining once at the end.

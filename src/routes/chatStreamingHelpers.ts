@@ -10,7 +10,7 @@ import { logStore } from '../services/logStore.ts';
 import { parseXmlToolCalls, cleanTextOfXmlArtifacts, xmlToolCallToParsed } from '../tools/xmlToolParser.ts';
 import { logQwenSSE } from '../services/qwenLogger.ts';
 import { filterContent } from '../utils/contentFilter.ts';
-import { THINK_TAG_NAMES } from '../utils/tagNames.ts';
+import { THINK_TAG_NAMES, TOOL_CALL_KEYWORDS } from '../utils/tagNames.ts';
 
 import {
   writeReasoningEvent,
@@ -99,8 +99,6 @@ export interface StreamProcessingCtx {
   logId: string;
   resolvedEmail: string;
   ampState: AmplificationGuardState;
-  reader: ReadableStreamDefaultReader<Uint8Array>;
-  streamReader: ReadableStreamDefaultReader<Uint8Array> | null;
   qwenAbortController: AbortController;
   qwenLogFile?: string;
   sseEventCount?: number;
@@ -157,7 +155,7 @@ export async function processStreamData(
 ): Promise<ProcessStreamResult> {
   const {
     streamWriter, completionId, model, enableContentFiltering,
-    logId, resolvedEmail, ampState, reader: _reader, streamReader: _streamReader, qwenAbortController: _qwenAbortController,
+    logId, resolvedEmail, ampState,
   } = ctx;
 
     if (data.choices?.[0]?.delta?.status === 'finished') {
@@ -252,8 +250,9 @@ export async function processStreamData(
   // When inside a tool call block (depth > 0), don't accumulate into
   // lastFilteredFullContent or emit content deltas to the client. The flush
   // path handles the clean version of the tool call text.
-  const tagOpen  = /<function(?:[=\s]|$)/i.test(rawText);
-  const tagClose = /<\/function\s*>/i.test(rawText);
+  const FKW = TOOL_CALL_KEYWORDS[0];
+  const tagOpen  = new RegExp(`<${FKW}(?:[=\\s]|$)`, 'i').test(rawText);
+  const tagClose = new RegExp(`<\\/${FKW}\\s*>`, 'i').test(rawText);
   if (tagOpen)  state.toolCallDepth++;
   if (tagClose) state.toolCallDepth = Math.max(0, state.toolCallDepth - 1);
 
@@ -348,6 +347,4 @@ export async function processStreamData(
   return 'continue';
 }
 
-export { checkFinalAmplification, scheduleCleanup, cleanupImmediately } from "./cleanupHelpers.ts";
-export { runStreamLoop, handlePostStreamCompletion } from "./streamLoop.ts";
-export type { StreamLoopResult } from "./streamLoop.ts";
+

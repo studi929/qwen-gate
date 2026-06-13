@@ -19,7 +19,6 @@ import {
 import {
   runStreamLoop,
   handlePostStreamCompletion,
-  sharedDecoder,
 } from './streamLoop.ts';
 
 export interface StreamingContext {
@@ -49,7 +48,7 @@ function buildPromptString(messages: Message[]): string {
 }
 
 export async function handleStreamingRequest(ctx: StreamingContext): Promise<Response> {
-  const { c, logId, completionId, body, session, stream, qwenAbortController, resolvedEmail, sessionHeaders, toolCalling: _toolCalling, cleanOutput, toolResultContents: _toolResultContents } = ctx;
+  const { c, logId, completionId, body, session, stream, qwenAbortController, resolvedEmail, sessionHeaders, cleanOutput } = ctx;
 
   const finalPrompt = buildPromptString(body.messages);
 
@@ -69,20 +68,37 @@ export async function handleStreamingRequest(ctx: StreamingContext): Promise<Res
 
       streamReader = stream.getReader();
       const reader: ReadableStreamDefaultReader<Uint8Array> = streamReader;
-      // decoder no longer needed per-request — streamLoop uses shared module-level TextDecoder
       const enableContentFiltering = cleanOutput;
       const streamState = buildInitialStreamState(finalPrompt, ctx.initialParentId);
 
       const streamCtx: StreamProcessingCtx = {
         streamWriter, completionId, model: body.model,
         enableContentFiltering, cleanOutput,
-        logId, resolvedEmail, ampState, reader, streamReader, qwenAbortController,
+        logId, resolvedEmail, ampState, qwenAbortController,
         qwenLogFile: ctx.qwenLogFile,
         emittedToolCallCount: 0,
       };
 
       const bufferRef = { text: '' };
-      const loopResult = await runStreamLoop(c, reader, sharedDecoder, streamState, streamCtx, ampState, bufferRef);
+      const loopResult = await runStreamLoop(c, reader, streamState, streamCtx, ampState, bufferRef);
+
+      if (loopResult.error) {
+        // Upstream went silent or timed out — write error to client so it doesn't hang
+        console.error(`[Chat] Stream loop error for ${logId}: ${loopResult.error}`);
+        logStore.addError(logId, loopResult.error);
+        await writeEvent(streamWriter, buildChunkEvent(completionId, body.model, [makeChoice({
+          content: `\n\n[Stream interrupted: ${loopResult.error}]`,
+          finish_reason: 'error',
+        })]));
+        await streamWriter.write('data: [DONE]\n\n');
+        logStore.updateEntry(logId, entry => {
+          entry.finalResponse = entry.finalResponse || { finishReason: '', toolCallCount: 0, contentPreview: '' };
+          entry.finalResponse.finishReason = 'error';
+        });
+        logStore.finalizeRequest(ctx.logId);
+        streamReleased = true;
+        return;
+      }
 
       await handlePostStreamCompletion(
         {

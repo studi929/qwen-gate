@@ -22,6 +22,7 @@ import { registerDashboardRoutes } from "./routes/dashboard/dashboardRoutes.ts";
 import { projectPath } from "./utils/paths.ts";
 import { fileURLToPath } from "url";
 import { writeFileSync, unlinkSync, existsSync } from "fs";
+import { safeCompare } from "./utils/auth.ts";
 
 // ── Runtime detection ───────────────────────────────────────────────
 const isBun = typeof Bun !== 'undefined';
@@ -130,7 +131,7 @@ app.route("/api/accounts", accountsRouter);
 if (config.get("API_KEY")) {
   configRouter.use("*", async (c, next) => {
     const auth = c.req.header("Authorization");
-    if (!auth || auth !== `Bearer ${config.get("API_KEY")}`) {
+    if (!auth || !auth.startsWith("Bearer ") || !safeCompare(auth.slice(7), config.get("API_KEY"))) {
       return c.json({ error: "Unauthorized" }, 401);
     }
     await next();

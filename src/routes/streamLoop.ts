@@ -23,16 +23,17 @@ import {
 
 /** Shared TextDecoder — stateless, safe to reuse across streams */
 export const sharedDecoder = new TextDecoder();
+const IDLE_TIMEOUT_MS = Math.max(10_000, parseInt(process.env.STREAM_IDLE_TIMEOUT_MS || '') || 45_000);
 
 export interface StreamLoopResult {
   buffer: string;
   nextParentId: string | null;
+  error?: string;
 }
 
 export async function runStreamLoop(
   c: { req: { raw?: { signal?: AbortSignal } } },
   reader: ReadableStreamDefaultReader<Uint8Array>,
-  _decoder: TextDecoder,  // Deprecated — uses shared module-level decoder
   streamState: StreamProcessingState,
   streamCtx: StreamProcessingCtx,
   ampState: AmplificationGuardState,
@@ -40,23 +41,27 @@ export async function runStreamLoop(
 ): Promise<StreamLoopResult> {
   let streamDone = false;
   let nextParentId = streamState.nextParentId;
-  let _totalChunks = 0;
 
   while (true) {
     if (streamDone) break;
     if (c.req.raw?.signal?.aborted) { reader.cancel(); break; }
 
-    const IDLE_TIMEOUT_MS = 60_000;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
-    const readResult = await Promise.race([
-      reader.read(),
-      new Promise<never>((_, reject) => {
-        idleTimer = setTimeout(() => reject(new Error('Upstream stream idle timeout — no data for 60s')), IDLE_TIMEOUT_MS);
-      }),
-    ]);
+    let readResult: Awaited<ReturnType<typeof reader.read>>;
+    try {
+      readResult = await Promise.race([
+        reader.read(),
+        new Promise<any>((_, reject) => {
+          idleTimer = setTimeout(() => reject(new Error(`Upstream stream idle timeout — no data for ${IDLE_TIMEOUT_MS / 1000}s`)), IDLE_TIMEOUT_MS);
+        }),
+      ]);
+    } catch (timeoutErr) {
+      if (idleTimer) clearTimeout(idleTimer);
+      reader.cancel();
+      return { buffer: bufferRef.text, nextParentId, error: (timeoutErr as Error).message };
+    }
     if (idleTimer) clearTimeout(idleTimer);
     if (readResult.done) break;
-    _totalChunks++;
     if (readResult.value) ampState.rawInputBytes += readResult.value.length;
 
     const rawDecoded = sharedDecoder.decode(readResult.value, { stream: true });
@@ -80,7 +85,7 @@ export async function runStreamLoop(
         const result = await processStreamData(chunk, streamState, streamCtx);
         if (result === 'break_stream') { streamDone = true; break; }
       } catch (e) {
-        console.error('[Chat] Streaming: parse error on chunk, ignoring partial:', (e as Error)?.message);
+        console.error('[Chat] Streaming: parse error on chunk, ignoring partial:', (e as Error)?.message, 'raw:', dataStr.slice(0, 200));
       }
     }
     nextParentId = streamState.nextParentId;

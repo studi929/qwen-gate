@@ -215,7 +215,7 @@ export async function chatCompletions(c: Context) {
       );
     }
 
-    const { toolResultContents, sessionMessages: _sessionMessages, session, nextParentId, sessionHeaders, resolvedEmail, stream, qwenAbortController } =
+    const { toolResultContents, session, nextParentId, sessionHeaders, resolvedEmail, stream, qwenAbortController } =
       await setupSession(
         messages,
         body,

@@ -1,7 +1,8 @@
 
 import { validateSingleToolCall } from "../tools/guard.ts";
 import { logStore } from "../services/logStore.ts";
-import { TOOL_CALL_KEYWORDS, THINK_TAG_NAMES, TOOL_RESULT_KEYWORDS } from "../utils/tagNames.ts";
+import { TOOL_CALL_KEYWORDS, TOOL_RESULT_KEYWORDS } from "../utils/tagNames.ts";
+import { QWEN_THINK_TAG_PATTERN as THINK_TAG_PATTERN } from "../utils/thinkTagStripper.ts";
 
 function safeTruncate(val: any, maxLen = 200): any {
   if (typeof val === "string") {
@@ -116,8 +117,6 @@ export function getSnapshotDelta(
   return "";
 }
 
-/** Matches closing/opening think tags (with optional attributes/self-close). Bounded attr length for ReDoS safety. */
-const THINK_TAG_PATTERN = new RegExp(`<\\/?(?:${THINK_TAG_NAMES.join('|')})(?:\\s[^>]{0,100})?\\/?>`, 'gi');
 /** Matches tool result tag fragments (requires closing > to avoid false stripping of /toolbox /toolkit etc). */
 const TOOL_RESULT_TAG_PATTERN = new RegExp(`<\\/${TOOL_RESULT_KEYWORDS.join('|')}>`, 'gi');
 

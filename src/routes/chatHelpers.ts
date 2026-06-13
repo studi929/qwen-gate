@@ -7,7 +7,7 @@ import modelSpecs from "../models.json" with { type: "json" };
 import type { ModelSpec } from "../types/openai.ts";
 import { pendingCorrections } from "./chatHelpersCore.ts";
 import { compressToolResult } from "./compressToolResult.ts";
-import { THINK_TAG_NAMES } from "../utils/tagNames.ts";
+import { THINK_TAG_NAMES, TOOL_CALL_KEYWORDS } from "../utils/tagNames.ts";
 
 // Re-export everything from core utilities
 export * from "./chatHelpersCore.ts";
@@ -116,10 +116,12 @@ export function buildQwenMessages(
           } else if (args && typeof args === "object") {
             parsedArgs = args;
           }
+          const FKW = TOOL_CALL_KEYWORDS[0];
+          const PKW = TOOL_CALL_KEYWORDS[1];
           const xmlParams = Object.entries(parsedArgs)
-            .map(([k, v]) => `<parameter=${k}>${typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}</parameter>`)
+            .map(([k, v]) => `<${PKW}=${k}>${typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}</${PKW}>`)
             .join("\n");
-          const xmlPayload = `<function=${tc.function?.name}>\n${xmlParams}\n</function>`;
+          const xmlPayload = `<${FKW}=${tc.function?.name}>\n${xmlParams}\n</${FKW}>`;
           assistantContent = assistantContent
             ? assistantContent + "\n" + xmlPayload
             : xmlPayload;
