@@ -105,6 +105,14 @@ else
 fi
 ok "Dependencies installed"
 
+# ── Step 4b: Install Playwright browsers ─────────────────────────────
+info "Installing Playwright browsers..."
+if npx playwright install 2>/dev/null; then
+  ok "Playwright browsers installed"
+else
+  warn "Playwright browser install failed — continuing anyway"
+fi
+
 # ── Step 5: Create config.json ───────────────────────────────────────
 if [ ! -f config.json ]; then
   if [ -f config.example.jsonc ]; then

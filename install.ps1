@@ -114,6 +114,20 @@ if ($UseBun) {
   Ok "Dependencies installed via npm"
 }
 
+# ── 4b. Install Playwright browsers ────────────────────────────────
+
+Info "Installing Playwright browsers..."
+try {
+  npx playwright install 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Warn "Playwright browser install returned non-zero exit code — continuing anyway"
+  } else {
+    Ok "Playwright browsers installed"
+  }
+} catch {
+  Warn "Playwright browser install failed — continuing anyway ($_ )"
+}
+
 # ── 5. Configuration ────────────────────────────────────────────────
 
 if (-not (Test-Path "$Dir\config.json")) {
